@@ -1,0 +1,145 @@
+{
+  "page_title": "New Member Application",
+  "page_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+  "fields": [
+    {
+      "name": "Upload Profile Photo",
+      "xpath": "//input[@type=\"file\"]",
+      "uid": null,
+      "type": "file_upload",
+      "required": false,
+      "value_entered": "File uploaded (preview shown)",
+      "accepted": true,
+      "behavior": "Uses hidden input[type=file]; visible action via 'Re-upload' button.",
+      "dropdown_options": [],
+      "validation_rules": "Accepts image upload (type unspecified in UI).",
+      "issues": "None observed with upload on this screen."
+    },
+    {
+      "name": "First Name*",
+      "xpath": "//input[@aria-label='First Name*']",
+      "uid": "1_17",
+      "type": "text",
+      "required": true,
+      "value_entered": "Roman",
+      "accepted": true,
+      "behavior": "Auto-uppercase; unexpected letter transposition to 'RMOAN'; field became read-only.",
+      "dropdown_options": [],
+      "validation_rules": "Not surfaced; transformation occurs immediately.",
+      "issues": "Data corruption (character order); read-only after fill prevents edits."
+    },
+    {
+      "name": "Email ID*",
+      "xpath": "//input[@placeholder='Enter email address']",
+      "uid": "1_20",
+      "type": "email",
+      "required": true,
+      "value_entered": "roman.qa+tecu@example.com",
+      "accepted": true,
+      "behavior": "Auto-uppercase entire email to 'ROMAN.QA+TECU@EXAMPLE.COM'.",
+      "dropdown_options": [],
+      "validation_rules": "Not shown; plus addressing accepted.",
+      "issues": "Uppercasing may be undesirable; verify backend case handling."
+    },
+    {
+      "name": "Middle Name (optional)",
+      "xpath": "//input[@placeholder='Middle Name (optional)']",
+      "uid": "1_22",
+      "type": "text",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "No auto-format observed (left blank).",
+      "dropdown_options": [],
+      "validation_rules": "Optional.",
+      "issues": "None."
+    },
+    {
+      "name": "Mobile Number*",
+      "xpath": "//input[@aria-label='Mobile Number*']",
+      "uid": "1_27",
+      "type": "phone",
+      "required": true,
+      "value_entered": "6201234",
+      "accepted": true,
+      "behavior": "Auto-formats to '620-1234'; country code pre-filled '+1868' with flag.",
+      "dropdown_options": [],
+      "validation_rules": "Local 7-digit number accepted; formatting mask applies.",
+      "issues": "None."
+    },
+    {
+      "name": "Last Name*",
+      "xpath": "//input[@aria-label='Last Name*']",
+      "uid": "1_30",
+      "type": "text",
+      "required": true,
+      "value_entered": "Tester",
+      "accepted": true,
+      "behavior": "Auto-uppercase; unexpected letter transposition to 'TSETER'; field became read-only.",
+      "dropdown_options": [],
+      "validation_rules": "Not surfaced; transformation occurs immediately.",
+      "issues": "Data corruption (character order); read-only after fill prevents edits."
+    },
+    {
+      "name": "Branch* (selection)",
+      "xpath": "//button[normalize-space(.)='100 - TECU - MARABELLA BRANCH']",
+      "uid": "1_33",
+      "type": "dropdown",
+      "required": true,
+      "value_entered": "100 - TECU - MARABELLA BRANCH",
+      "accepted": true,
+      "behavior": "Custom button-triggered list; selected option displayed on button.",
+      "dropdown_options": [
+        "100 - TECU - MARABELLA BRANCH"
+      ],
+      "validation_rules": "Selection required.",
+      "issues": "Options list not visible in snapshot; cannot enumerate full list here."
+    }
+  ],
+  "buttons": [
+    {
+      "name": "Re-upload",
+      "xpath": "//button[normalize-space(.)='Re-upload']",
+      "uid": "1_13",
+      "purpose": "upload",
+      "clicked": false,
+      "notes": "Triggers hidden file input; accessible name includes icon text."
+    },
+    {
+      "name": "100 - TECU - MARABELLA BRANCH",
+      "xpath": "//button[normalize-space(.)='100 - TECU - MARABELLA BRANCH']",
+      "uid": "1_33",
+      "purpose": "other",
+      "clicked": true,
+      "notes": "Acts as selection control for Branch."
+    },
+    {
+      "name": "Save & Exit",
+      "xpath": "//button[normalize-space(.)='Save & Exit']",
+      "uid": "1_34",
+      "purpose": "submit",
+      "clicked": false,
+      "notes": "Not tested."
+    },
+    {
+      "name": "Save & Continue",
+      "xpath": "//button[normalize-space(.)='Save & Continue']",
+      "uid": "1_35",
+      "purpose": "submit",
+      "clicked": false,
+      "notes": "Per instruction, not clicked."
+    }
+  ],
+  "page_notes": "Contact Info step of a multi-step new member application. Left column shows photo upload and personal info fields; right column shows continuation controls. Required fields display asterisks. Country calling code prefilled (+1868) with flag.",
+  "accessibility_issues": [
+    "Re-upload button accessible name includes icon label ('camera'), should be cleaned via aria-hidden on icon or explicit aria-label.",
+    "Unlabeled submit button exists in DOM (//button[@type='submit']); hidden or without accessible name can confuse screen reader users.",
+    "Name inputs become read-only without an obvious reason; may trap users if corrections are needed."
+  ],
+  "_meta": {
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "app_name": "TECU Credit Union",
+    "saved_at": "2026-03-17T16:33:34.334996",
+    "source": "pass1_exploration"
+  }
+}
