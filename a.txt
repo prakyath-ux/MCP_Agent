@@ -1,0 +1,83 @@
+Update Todos
+
+Document all Pass 2 problems and proposed solutions
+
+R&D and architecture design before next test
+
+Implement solutions after design approval
+Pass 2 — Problems & Proposed Solutions
+Problem 1: UID Staleness
+What: MCP fill/click tools require UIDs from a fresh take_snapshot. Pass 1 UIDs are useless in Pass 2 — they change every page load.
+Impact: Can't skip snapshots entirely. Every page load needs one.
+Solution A: One snapshot per page load, batch multiple tests on same load (test empty firstName, empty lastName, empty email — all in one load before navigating fresh).
+Solution B: Use XPaths via evaluate_script instead of UIDs. document.querySelector('[aria-label="First Name*"]').value = "" bypasses the UID requirement entirely. Zero snapshots needed.
+Winner: Solution B — eliminates snapshots completely. XPaths from Pass 1 are stable across loads.
+
+Problem 2: Compaction Wipes Agent Memory
+What: keep_last_n=0 erased which test cases the agent already ran. Agent repeated empty-field tests and never moved to invalid-format tests.
+Impact: Wasted turns, incomplete coverage.
+Solution A: keep_last_n=1 — agent remembers last test.
+Solution B: Don't rely on conversation history at all. Inject a test plan into the prompt — numbered list of exact test cases to execute. Agent just follows the list, doesn't need to remember.
+Winner: Solution B — the orchestrator generates the test plan from knowledge JSON before the run starts. Agent becomes a pure executor, no decision-making about what to test next.
+
+Problem 3: One Test Per Page Load
+What: Agent navigates fresh for every single test case. 7 navigations = 7 snapshots + 7 page loads.
+Impact: ~4 turns per test case instead of ~2.
+Solution A: Batch — navigate once, test all empty-required fields, then navigate for invalid-format tests.
+Solution B: If using evaluate_script (Problem 1 Solution B), just location.reload() via evaluate_script between tests — faster than navigate_page + snapshot.
+Solution C: Don't reload at all for independent tests. Fill field → check error → clear field → fill next test value. Only reload when testing requires clean state.
+Winner: Solution C with B as fallback — minimize reloads, only reload when field state is corrupted (e.g., read-only after fill).
+
+Problem 4: Agent Decides Test Cases (Expensive)
+What: Agent spends output tokens reasoning about which tests to run, what inputs to use, what to check. That's LLM thinking time we're paying for.
+Impact: ~$0.05+ in output tokens just for the agent to plan.
+Solution: Orchestrator generates the exact test plan from knowledge JSON — field name, XPath, test value, expected result. Agent receives a numbered checklist and just executes. Zero reasoning needed.
+
+
+Test 1: fill //input[@aria-label='First Name*'] with "" → check error
+Test 2: fill //input[@aria-label='First Name*'] with "123!@#" → check error
+Test 3: fill //input[@placeholder='Enter email address'] with "" → check error
+...
+Winner: This is the approach. Orchestrator does the planning (free), agent does the clicking (cheap).
+
+Problem 5: No Cost Tracking Per Test Case
+What: We know total cost but not cost-per-test-case. Can't optimize what we can't measure.
+Impact: Can't identify which test cases are expensive vs cheap.
+Solution: Track tokens per test case in the turn log. Orchestrator knows which turns belong to which test case. Log it.
+
+Problem 6: Cache Hit Keeps Dropping
+What: 40% cache hit in Pass 2 vs 67% in Pass 1. Each navigate+snapshot adds new uncached content.
+Impact: Paying full price for most input tokens.
+Solution: If we use evaluate_script instead of snapshots (Problem 1 Solution B), the conversation stays small and the system prompt (with knowledge) dominates — higher cache hit ratio.
+
+Proposed Architecture (Pass 2 v2)
+
+Orchestrator (Python — free, no LLM cost)
+  │
+  ├── Reads knowledge JSON from Pass 1
+  ├── Generates test plan (list of exact test cases)
+  │     - Field, XPath, test value, expected behavior
+  │     - Ordered by: empty-required first, then invalid-format
+  │
+  └── For each test case:
+        │
+        ├── Injects into prompt: "Execute test #N: [exact instructions]"
+        ├── Agent executes via evaluate_script:
+        │     1. Set field value via JS (no snapshot needed)
+        │     2. Trigger blur/change event
+        │     3. Check for error message
+        │     4. Return result
+        ├── Orchestrator logs: test #, field, cost, result
+        ├── Compaction: keep_last_n=1
+        └── Next test case
+Expected cost: ~1-2 turns per test case, ~$0.01-0.02 each. 14 test cases = ~$0.15-0.25 total.
+
+Do We Need Grafana/Prometheus?
+Not yet. What we need first is per-test-case cost logging in the turn log JSON + Excel tracker. That gives us the data. Grafana/Prometheus is for when we're running this in production with scheduled runs. Right now we're still iterating on the design — adding monitoring infrastructure would slow us down without adding value.
+
+What we DO need:
+
+Per-test-case cost breakdown in the output file
+Cumulative cost tracker across Pass 1 + Pass 2
+Token budget per test case (kill if exceeded)
+Want me to save this to a design doc before we start building?
