@@ -16,7 +16,7 @@ TURN_LIMITS = {
     "recon": 15,
     "poc_short": 30,
     "poc": 120,
-    "testcase": 25,
+    "testcase": 45,
     "full": 600,
 }
 
@@ -27,13 +27,18 @@ XPATH_NUDGE_BEFORE_END = 3             # Inject "extract XPaths now" N turns bef
 
 
 # -------- Safety Limits -------------
-MAX_BUDGET = 1.0
+MAX_BUDGET = 2.0
 BUDGET_WARNING_PCT = 0.5
 MAX_RETRIES_PER_FIELD = 3
 LOOP_WINDOW = 6                    # Check last N turns for repeated targets
 LOOP_THRESHOLD = 3                 # Inject warning after this many attempts on same element
 COMPACT_AFTER_TURNS = 5            # Start compacting after this many turns
 KEEP_LAST_N_TURNS = 2              # Keep last N turns raw, summarize the rest
+PER_TEST_BUDGET = 0.05             # Kill if single test case exceeds this
+RUNAWAY_MULTIPLIER = 2.0           # Warn if cost-per-turn > Nx average
+
+# -------- Pass 2 Phase Detection ----------
+TESTCASE_PLAN_MARKER = "## TEST PLAN"  # Orchestrator detects this to switch from 2a → 2b
 
 
 

@@ -18,8 +18,8 @@ from agents.run_context import RunContextWrapper
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_error_handlers import RunErrorHandlerInput, RunErrorHandlerResult
 
-from config import MODEL, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING, V2_RUNS_DIR, PASS1_RUNS_DIR, PASS2_RUNS_DIR, XPATH_NUDGE_BEFORE_END, LOOP_WINDOW, LOOP_THRESHOLD, KNOWLEDGE_DIR, KEEP_LAST_N_TURNS
-from prompts import SYSTEM_PROMPT, TESTCASE_PROMPT
+from config import MODEL, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING, V2_RUNS_DIR, PASS1_RUNS_DIR, PASS2_RUNS_DIR, XPATH_NUDGE_BEFORE_END, LOOP_WINDOW, LOOP_THRESHOLD, KNOWLEDGE_DIR, KEEP_LAST_N_TURNS, PER_TEST_BUDGET, RUNAWAY_MULTIPLIER, TESTCASE_PLAN_MARKER
+from prompts import SYSTEM_PROMPT, TESTCASE_PLAN_PROMPT, TESTCASE_EXEC_PROMPT
 from compactor import compact_history, update_summary
 
 # Add parent dir to path so we can import state modules
@@ -109,12 +109,11 @@ async def run_orchestrated(url: str, app_name: str, mode: str) -> None:
             print("  ERROR: No Pass 1 knowledge found for this URL.")
             print(f"  Run a 'poc' first to generate knowledge in {KNOWLEDGE_DIR}/")
             return
-        active_prompt = TESTCASE_PROMPT.replace("{knowledge_json}", knowledge_json).replace("{page_url}", url)
+        # Start with Phase 2a (plan generation) — will switch to 2b when plan detected
+        active_prompt = TESTCASE_PLAN_PROMPT.replace("{knowledge_json}", knowledge_json)
         task = (
-            f"Run regression test cases on {url} ({app_name}). "
-            "Execute test cases using the knowledge JSON. "
-            "No snapshots, no screenshots, no exploration. "
-            "Fill → check error → record → next field."
+            f"Analyze the knowledge for {url} ({app_name}) and generate a test plan. "
+            "Output ONLY the ## TEST PLAN section with numbered test cases."
         )
     elif mode == "safe_test":
         task = f"Navigate to {url} and take a snapshot. Describe what you see."
@@ -174,12 +173,15 @@ async def run_orchestrated(url: str, app_name: str, mode: str) -> None:
         final_output = ""
         agent_done = False
 
+        # ── Phase tracking for testcase mode ──────────────────────
+        tc_phase = "2a" if mode == "testcase" else None  # "2a" = planning, "2b" = executing
+        test_plan = ""
+        tc_cost_log: list[dict] = []     # Per-test-case cost tracking
+        tc_turn_start_cost = 0.0         # Cost at start of current test case
+
         for turn_num in range(1, max_turns + 1):
 
             # ── Run exactly ONE turn ──────────────────────────────
-            # Error handler catches MaxTurnsExceeded and returns a
-            # placeholder output so Runner.run returns normally with
-            # all history intact (new_items, raw_responses, etc.)
             def _on_max_turns(info: RunErrorHandlerInput) -> RunErrorHandlerResult:
                 return RunErrorHandlerResult(
                     final_output="__TURN_LIMIT__",
@@ -205,7 +207,6 @@ async def run_orchestrated(url: str, app_name: str, mode: str) -> None:
 
             # ── Update rolling summary ────────────────────────────
             full_history = result.to_input_list()
-            # Get the items from this turn only (last few items in history)
             new_items_count = len(result.new_items) if hasattr(result, "new_items") else 3
             recent = full_history[-new_items_count:] if new_items_count > 0 else []
             rolling_summary = update_summary(rolling_summary, recent)
@@ -217,6 +218,46 @@ async def run_orchestrated(url: str, app_name: str, mode: str) -> None:
                 break
             if current_cost >= MAX_BUDGET * BUDGET_WARNING_PCT:
                 print(f"\n  BUDGET WARNING: ${current_cost:.4f} ({current_cost/MAX_BUDGET*100:.0f}% of ${MAX_BUDGET})")
+
+            # ── Runaway detection ─────────────────────────────────
+            if turn_num > 3:
+                avg_cost = current_cost / turn_num
+                turn_cost = (turn_entry["uncached_tokens"] * PRICING[MODEL]["input"]
+                           + turn_entry["cached_tokens"] * PRICING[MODEL]["input_cached"]
+                           + turn_entry["output_tokens"] * PRICING[MODEL]["output"])
+                if turn_cost > avg_cost * RUNAWAY_MULTIPLIER:
+                    print(f"\n  RUNAWAY WARNING: Turn {turn_num} cost ${turn_cost:.4f} vs avg ${avg_cost:.4f}")
+
+            # ── Phase 2a → 2b switch (testcase mode only) ─────────
+            if tc_phase == "2a" and agent_done and TESTCASE_PLAN_MARKER in final_output:
+                # Agent produced test plan — switch to execution phase
+                test_plan = final_output
+                final_output = ""
+                agent_done = False
+                tc_phase = "2b"
+
+                # Count test cases in plan
+                tc_count = sum(1 for line in test_plan.split("\n") if line.strip().startswith("TC"))
+                print(f"\n  PHASE 2a COMPLETE: {tc_count} test cases planned")
+                print(f"  Switching to Phase 2b (execution)...\n")
+
+                # Rebuild agent with execution prompt
+                exec_prompt = TESTCASE_EXEC_PROMPT.replace("{page_url}", url)
+                agent = Agent(
+                    name="QA Test Case Executor",
+                    instructions=exec_prompt,
+                    model=MODEL,
+                    mcp_servers=[server],
+                )
+
+                # Feed the test plan as input for execution
+                input_items = (
+                    f"Here is your test plan:\n\n{test_plan}\n\n"
+                    f"Execute ALL test cases now. Start by navigating to {url}"
+                )
+                rolling_summary = f"Phase 2a: Generated {tc_count} test cases."
+                tc_turn_start_cost = current_cost
+                continue
 
             # ── Stop if agent is done ─────────────────────────────
             if agent_done:
@@ -255,8 +296,13 @@ async def run_orchestrated(url: str, app_name: str, mode: str) -> None:
                 })
 
             # ── Compact history for next turn ─────────────────────
-            # Testcase mode: each test is independent, wipe all old turns
-            keep_n = 0 if mode == "testcase" else KEEP_LAST_N_TURNS
+            if tc_phase == "2b":
+                # Execution phase: keep last 1 turn (agent needs to see its last result)
+                keep_n = 1
+            elif mode == "testcase":
+                keep_n = KEEP_LAST_N_TURNS
+            else:
+                keep_n = KEEP_LAST_N_TURNS
             input_items = compact_history(full_history, rolling_summary, keep_last_n=keep_n)
 
         # ── End of loop ───────────────────────────────────────────
@@ -454,10 +500,73 @@ def _save_knowledge(final_output: str, url: str, app_name: str) -> str | None:
     return str(knowledge_path)
 
 
+def _xpath_to_css_selectors(xpath: str, tag: str = "input") -> dict:
+    """Convert an XPath string to CSS selector + fallbacks.
+
+    Parses @name, @id, @placeholder from XPath attributes.
+    Returns {"css_selector": "...", "css_fallbacks": [...]}.
+    """
+    import re
+    # Match @attr-name='value' — supports hyphenated attrs like aria-label, data-testid
+    attrs = re.findall(r"@([\w-]+)='([^']*)'", xpath)
+    if not attrs:
+        attrs = re.findall(r'@([\w-]+)="([^"]*)"', xpath)
+
+    # Attributes commonly used as selectors on web pages, ordered by reliability
+    CSS_SAFE_ATTRS = (
+        "id", "name", "data-testid", "data-test", "data-cy",  # most stable
+        "placeholder", "aria-label", "aria-labelledby",         # accessibility
+        "type", "role", "for", "href",                          # semantic
+        "title", "alt", "value", "action",                      # content
+        "class",                                                # least stable (changes often)
+    )
+
+    selectors = []
+    for attr_name, attr_value in attrs:
+        if attr_name in CSS_SAFE_ATTRS:
+            selectors.append(f"{tag}[{attr_name}=\"{attr_value}\"]")
+
+    if not selectors:
+        return {"css_selector": "", "css_fallbacks": []}
+
+    return {
+        "css_selector": selectors[0],
+        "css_fallbacks": selectors[1:],
+    }
+
+
+def _enrich_knowledge_with_css(knowledge_json: str) -> str:
+    """Add css_selector and css_fallbacks to each field in the knowledge JSON.
+
+    Runs at Pass 2 start — free Python conversion, no LLM cost.
+    """
+    try:
+        data = json.loads(knowledge_json)
+    except json.JSONDecodeError:
+        return knowledge_json
+
+    for field in data.get("fields", []):
+        xpath = field.get("xpath", "")
+        if not xpath or field.get("css_selector"):
+            continue
+
+        # Detect tag from xpath (//input, //button, //select, etc.)
+        tag = "input"
+        tag_match = __import__("re").match(r"//(\w+)", xpath)
+        if tag_match:
+            tag = tag_match.group(1)
+
+        css = _xpath_to_css_selectors(xpath, tag)
+        field["css_selector"] = css["css_selector"]
+        field["css_fallbacks"] = css["css_fallbacks"]
+
+    return json.dumps(data, indent=2)
+
+
 def _load_knowledge(url: str) -> str | None:
     """Load Pass 1 knowledge for a given URL.
 
-    Returns the JSON string to inject into the testcase prompt, or None.
+    Returns the JSON string (enriched with CSS selectors) to inject into the testcase prompt, or None.
     """
     knowledge_dir = Path(__file__).parent.parent / KNOWLEDGE_DIR
     if not knowledge_dir.exists():
@@ -481,6 +590,11 @@ def _load_knowledge(url: str) -> str | None:
 
     content = knowledge_path.read_text()
     print(f"  Knowledge loaded: {knowledge_path}")
+
+    # Enrich with CSS selectors (free Python conversion)
+    content = _enrich_knowledge_with_css(content)
+    print(f"  CSS selectors injected into knowledge")
+
     return content
 
 

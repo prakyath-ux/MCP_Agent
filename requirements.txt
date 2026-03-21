@@ -8,3 +8,16 @@ openpyxl>=3.1.0
 streamlit>=1.40.0
 pandas>=2.0.0
 plotly>=5.18.0
+
+
+
+# Ctrl+C in the terminal running Grafana to stop it.
+
+# Whenever you want to see the dashboard again:
+# /opt/homebrew/opt/grafana/bin/grafana server --config /opt/homebrew/etc/grafana/grafana.ini --homepath /opt/homebrew/opt/grafana/share/grafana
+# Then open http://localhost:3000. Your dashboard and data persist — nothing is lost when you stop it.
+
+# And remember: after new agent runs, sync first:
+
+
+# python state/sync.py

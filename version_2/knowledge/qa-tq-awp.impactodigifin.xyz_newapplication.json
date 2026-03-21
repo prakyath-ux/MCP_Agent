@@ -3,143 +3,150 @@
   "page_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
   "fields": [
     {
-      "name": "Upload Profile Photo",
-      "xpath": "//input[@type=\"file\"]",
-      "uid": null,
-      "type": "file_upload",
-      "required": false,
-      "value_entered": "File uploaded (preview shown)",
-      "accepted": true,
-      "behavior": "Uses hidden input[type=file]; visible action via 'Re-upload' button.",
-      "dropdown_options": [],
-      "validation_rules": "Accepts image upload (type unspecified in UI).",
-      "issues": "None observed with upload on this screen."
-    },
-    {
-      "name": "First Name*",
-      "xpath": "//input[@aria-label='First Name*']",
+      "name": "First Name",
+      "xpath": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
       "uid": "1_17",
       "type": "text",
       "required": true,
       "value_entered": "Roman",
       "accepted": true,
-      "behavior": "Auto-uppercase; unexpected letter transposition to 'RMOAN'; field became read-only.",
+      "behavior": "Auto-uppercased to ROMAN",
       "dropdown_options": [],
-      "validation_rules": "Not surfaced; transformation occurs immediately.",
-      "issues": "Data corruption (character order); read-only after fill prevents edits."
+      "validation_rules": "No inline error shown; accepts alphabetic input; transforms to uppercase",
+      "issues": ""
     },
     {
-      "name": "Email ID*",
-      "xpath": "//input[@placeholder='Enter email address']",
+      "name": "Email ID",
+      "xpath": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
       "uid": "1_20",
       "type": "email",
       "required": true,
       "value_entered": "roman.qa+tecu@example.com",
       "accepted": true,
-      "behavior": "Auto-uppercase entire email to 'ROMAN.QA+TECU@EXAMPLE.COM'.",
+      "behavior": "Auto-uppercased to ROMAN.QA+TECU@EXAMPLE.COM",
       "dropdown_options": [],
-      "validation_rules": "Not shown; plus addressing accepted.",
-      "issues": "Uppercasing may be undesirable; verify backend case handling."
+      "validation_rules": "No inline error shown; accepts valid email format",
+      "issues": "Uppercasing email may be undesirable"
     },
     {
-      "name": "Middle Name (optional)",
-      "xpath": "//input[@placeholder='Middle Name (optional)']",
+      "name": "Middle Name",
+      "xpath": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
       "uid": "1_22",
       "type": "text",
       "required": false,
       "value_entered": "",
       "accepted": true,
-      "behavior": "No auto-format observed (left blank).",
+      "behavior": "",
       "dropdown_options": [],
-      "validation_rules": "Optional.",
-      "issues": "None."
+      "validation_rules": "",
+      "issues": ""
     },
     {
-      "name": "Mobile Number*",
-      "xpath": "//input[@aria-label='Mobile Number*']",
+      "name": "Mobile Number",
+      "xpath": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
       "uid": "1_27",
       "type": "phone",
       "required": true,
-      "value_entered": "6201234",
+      "value_entered": "1234567",
       "accepted": true,
-      "behavior": "Auto-formats to '620-1234'; country code pre-filled '+1868' with flag.",
-      "dropdown_options": [],
-      "validation_rules": "Local 7-digit number accepted; formatting mask applies.",
-      "issues": "None."
+      "behavior": "Auto-formats to 123-4567; Country code +1868 shown by default",
+      "dropdown_options": [
+        "+1868 (default)"
+      ],
+      "validation_rules": "Formatting mask inserts hyphen",
+      "issues": ""
     },
     {
-      "name": "Last Name*",
-      "xpath": "//input[@aria-label='Last Name*']",
+      "name": "Last Name",
+      "xpath": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
       "uid": "1_30",
       "type": "text",
       "required": true,
       "value_entered": "Tester",
       "accepted": true,
-      "behavior": "Auto-uppercase; unexpected letter transposition to 'TSETER'; field became read-only.",
+      "behavior": "Auto-uppercased to TESTER",
       "dropdown_options": [],
-      "validation_rules": "Not surfaced; transformation occurs immediately.",
-      "issues": "Data corruption (character order); read-only after fill prevents edits."
+      "validation_rules": "No inline error shown; transforms to uppercase",
+      "issues": ""
     },
     {
-      "name": "Branch* (selection)",
-      "xpath": "//button[normalize-space(.)='100 - TECU - MARABELLA BRANCH']",
+      "name": "Branch",
+      "xpath": "//button[normalize-space()=\"100 - TECU - MARABELLA BRANCH\"]",
       "uid": "1_33",
       "type": "dropdown",
       "required": true,
       "value_entered": "100 - TECU - MARABELLA BRANCH",
       "accepted": true,
-      "behavior": "Custom button-triggered list; selected option displayed on button.",
+      "behavior": "Opens a custom list; selection updates button label",
       "dropdown_options": [
-        "100 - TECU - MARABELLA BRANCH"
+        "100 - TECU - MARABELLA BRANCH",
+        "200 - TECU - COUVA BRANCH",
+        "300 - TECU - PT. FORTIN BRANCH",
+        "900 - TECU Business Development Unit",
+        "600 - TISL",
+        "601 - TISL Branch 1"
       ],
-      "validation_rules": "Selection required.",
-      "issues": "Options list not visible in snapshot; cannot enumerate full list here."
+      "validation_rules": "No inline error shown upon selection",
+      "issues": "Options rendered as static text without listbox/option roles"
+    },
+    {
+      "name": "Profile Photo",
+      "xpath": "//button[normalize-space()=\"Re-upload\"]",
+      "uid": "1_13",
+      "type": "file_upload",
+      "required": false,
+      "value_entered": "Skipped (already uploaded)",
+      "accepted": true,
+      "behavior": "Uploads via a button; no input[type=file] found in DOM via query",
+      "dropdown_options": [],
+      "validation_rules": "Not evaluated",
+      "issues": "Ensure accessible name persists and control is operable via keyboard"
     }
   ],
   "buttons": [
     {
       "name": "Re-upload",
-      "xpath": "//button[normalize-space(.)='Re-upload']",
+      "xpath": "//button[normalize-space()=\"Re-upload\"]",
       "uid": "1_13",
       "purpose": "upload",
       "clicked": false,
-      "notes": "Triggers hidden file input; accessible name includes icon text."
+      "notes": "Profile photo already present; did not re-upload"
     },
     {
-      "name": "100 - TECU - MARABELLA BRANCH",
-      "xpath": "//button[normalize-space(.)='100 - TECU - MARABELLA BRANCH']",
+      "name": "Branch (current selection)",
+      "xpath": "//button[normalize-space()=\"100 - TECU - MARABELLA BRANCH\"]",
       "uid": "1_33",
-      "purpose": "other",
+      "purpose": "choose_dropdown_option",
       "clicked": true,
-      "notes": "Acts as selection control for Branch."
+      "notes": "Opened list and selected first option"
     },
     {
       "name": "Save & Exit",
-      "xpath": "//button[normalize-space(.)='Save & Exit']",
+      "xpath": "//button[normalize-space()=\"Save & Exit\"]",
       "uid": "1_34",
       "purpose": "submit",
       "clicked": false,
-      "notes": "Not tested."
+      "notes": "Not clicked per instruction"
     },
     {
       "name": "Save & Continue",
-      "xpath": "//button[normalize-space(.)='Save & Continue']",
+      "xpath": "//button[normalize-space()=\"Save & Continue\"]",
       "uid": "1_35",
       "purpose": "submit",
       "clicked": false,
-      "notes": "Per instruction, not clicked."
+      "notes": "Not clicked per instruction"
     }
   ],
-  "page_notes": "Contact Info step of a multi-step new member application. Left column shows photo upload and personal info fields; right column shows continuation controls. Required fields display asterisks. Country calling code prefilled (+1868) with flag.",
+  "page_notes": "Landing section of the New Member Application includes profile photo upload and Personal Information fields. Text fields transform input to uppercase and mobile number auto-formats with a hyphen. Branch is a custom dropdown implemented with a button and static text options.",
   "accessibility_issues": [
-    "Re-upload button accessible name includes icon label ('camera'), should be cleaned via aria-hidden on icon or explicit aria-label.",
-    "Unlabeled submit button exists in DOM (//button[@type='submit']); hidden or without accessible name can confuse screen reader users.",
-    "Name inputs become read-only without an obvious reason; may trap users if corrections are needed."
+    "Email auto-uppercasing may not be user-friendly",
+    "At least one <button> without a discernible accessible name detected",
+    "Branch dropdown options are static text without ARIA listbox/option semantics"
   ],
   "_meta": {
     "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
     "app_name": "TECU Credit Union",
-    "saved_at": "2026-03-17T16:33:34.334996",
+    "saved_at": "2026-03-20T18:26:25.518898",
     "source": "pass1_exploration"
   }
 }
