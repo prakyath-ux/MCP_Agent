@@ -160,9 +160,9 @@ SYSTEM_PROMPT += """
 
 NEVER guess or fabricate XPaths or selectors. They MUST come from evaluate_script on the live DOM.
 
-After filling ALL fields on a page, run this ONCE:
+BEFORE filling any fields, immediately after your first take_snapshot, run this ONCE on the clean/untouched page:
 
-ACTION: evaluate_script(expression="JSON.stringify(Array.from(document.querySelectorAll('input, select, textarea, button[aria-haspopup], button[role], [role=combobox], [role=listbox]')).map(el => { const attrs = []; const cssAttrs = []; const tag = el.tagName.toLowerCase(); if (el.name) { attrs.push(\\"@name='\\" + el.name + \\"'\\"); cssAttrs.push(tag + '[name=\\\"' + el.name + '\\\"]'); } if (el.id) { attrs.push(\\"@id='\\" + el.id + \\"'\\"); cssAttrs.push(tag + '[id=\\\"' + el.id + '\\\"]'); } if (el.placeholder) { attrs.push(\\"@placeholder='\\" + el.placeholder + \\"'\\"); cssAttrs.push(tag + '[placeholder=\\\"' + el.placeholder + '\\\"]'); } if (el.getAttribute('aria-label')) { attrs.push(\\"@aria-label='\\" + el.getAttribute('aria-label') + \\"'\\"); } const xpath = attrs.length ? '//' + tag + '[' + attrs.join(' and ') + ']' : '//' + tag + '[@type=\\\"' + (el.type||'text') + '\\\"]'; const css_primary = cssAttrs.length > 0 ? cssAttrs[0] : null; const css_fallbacks = cssAttrs.slice(1); return { label: el.name || el.placeholder || el.id || el.getAttribute('aria-label') || el.textContent.trim().substring(0,30) || 'unknown', value: el.value || el.textContent.trim().substring(0,30) || '', xpath: xpath, css_selector: css_primary, css_fallbacks: css_fallbacks }; }))")
+ACTION: evaluate_script(expression="JSON.stringify(Array.from(document.querySelectorAll('input, select, textarea, button, [role=combobox], [role=listbox]')).filter(el => { if (el.tagName === 'BUTTON') { const t = el.textContent.trim().toLowerCase(); return t && !['save', 'cancel', 'close', 'submit'].some(s => t.startsWith(s)); } return true; }).map(el => { const attrs = []; const cssAttrs = []; const tag = el.tagName.toLowerCase(); if (el.name) { attrs.push(\\"@name='\\" + el.name + \\"'\\"); cssAttrs.push(tag + '[name=\\\"' + el.name + '\\\"]'); } if (el.id) { attrs.push(\\"@id='\\" + el.id + \\"'\\"); cssAttrs.push(tag + '[id=\\\"' + el.id + '\\\"]'); } if (el.placeholder) { attrs.push(\\"@placeholder='\\" + el.placeholder + \\"'\\"); cssAttrs.push(tag + '[placeholder=\\\"' + el.placeholder + '\\\"]'); } if (el.getAttribute('aria-label')) { attrs.push(\\"@aria-label='\\" + el.getAttribute('aria-label') + \\"'\\"); } const text = el.textContent.trim().substring(0,50); if (tag === 'button' && attrs.length === 0 && text) { attrs.push('normalize-space()=\\\"' + text + '\\\"'); } const xpath = attrs.length ? '//' + tag + '[' + attrs.join(' and ') + ']' : '//' + tag + '[@type=\\\"' + (el.type||'text') + '\\\"]'; const css_primary = cssAttrs.length > 0 ? cssAttrs[0] : null; const css_fallbacks = cssAttrs.slice(1); return { label: el.name || el.placeholder || el.id || el.getAttribute('aria-label') || text || 'unknown', value: el.value || text || '', xpath: xpath, css_selector: css_primary, css_fallbacks: css_fallbacks, text_content: tag === 'button' ? text : null }; }))")
 
 Use the output directly in your report. Do NOT modify the XPaths or CSS selectors.
 Both are extracted from the live DOM — XPaths for QA reporting, CSS selectors for automated test execution.
@@ -360,14 +360,16 @@ TC3 | Email ID* | input[name="email"] | "notanemail" | error_shown | HIGH | inva
 
 IMPORTANT:
 - Copy the css_selector value DIRECTLY from the knowledge JSON — do NOT modify or guess
-- If css_selector is empty, skip that field
-- Generate test cases for EVERY field that has a css_selector
+- If css_selector is empty BUT js_selector exists, use js_selector as the selector and prefix with JS:
+- If both css_selector and js_selector are empty, skip that field
+- Generate test cases for EVERY field that has a css_selector or js_selector
 - Order by priority: HIGH first, then MED, then LOW
 - Do NOT include any other output — just the ## TEST PLAN section
 
 WRONG: TC1 | First Name* | input[aria-label="First Name*"] | "" | error_shown | HIGH
 WRONG: TC1 | First Name* | //input[@name='firstName'] | "" | error_shown | HIGH
 RIGHT: TC1 | First Name* | input[name="firstName"] | "" | error_shown | HIGH
+RIGHT: TC7 | Branch* | JS:[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch') | "" | error_shown | HIGH | required dropdown left unselected
 """
 
 
@@ -395,9 +397,21 @@ step by step using evaluate_script. No thinking, no exploring, just executing.
 
 # HOW TO EXECUTE EACH TEST CASE
 
-For each TC line, run this evaluate_script pattern:
+## For regular CSS selectors (e.g., input[name="firstName"]):
 
 evaluate_script(expression="(function() { var el = document.querySelector('SELECTOR'); if (!el) return 'ELEMENT_NOT_FOUND'; el.focus(); el.value = 'TEST_VALUE'; el.dispatchEvent(new InputEvent('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); el.blur(); var parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement.parentElement; var err = parent ? parent.querySelector('.MuiFormHelperText-root, .error, .helper-text, [class*=error], [class*=Error]') : null; return err ? err.textContent.trim() : 'NO_ERROR'; })()")
+
+## For JS: prefixed selectors (buttons identified by text content):
+
+If the selector starts with "JS:", use it directly as JavaScript to find the element:
+
+evaluate_script(expression="(function() { var el = JS_SELECTOR_HERE; if (!el) return 'ELEMENT_NOT_FOUND'; el.click(); var parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement.parentElement; var err = parent ? parent.querySelector('.MuiFormHelperText-root, .error, .helper-text, [class*=error], [class*=Error]') : null; return err ? err.textContent.trim() : 'NO_ERROR'; })()")
+
+For example, if test plan has:
+TC7 | Branch* | JS:[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch') | "" | error_shown | HIGH
+
+Then execute:
+evaluate_script(expression="(function() { var el = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch'); if (!el) return 'ELEMENT_NOT_FOUND'; el.click(); ... })()")
 
 Replace SELECTOR and TEST_VALUE with values from the test plan.
 

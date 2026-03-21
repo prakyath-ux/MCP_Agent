@@ -526,7 +526,14 @@ def _xpath_to_css_selectors(xpath: str, tag: str = "input") -> dict:
         if attr_name in CSS_SAFE_ATTRS:
             selectors.append(f"{tag}[{attr_name}=\"{attr_value}\"]")
 
+    # Handle text-based XPaths: //button[normalize-space()="Some Text"]
     if not selectors:
+        import re as _re
+        text_match = _re.search(r'normalize-space\(\)=["\']([^"\']+)["\']', xpath)
+        if text_match:
+            text = text_match.group(1)
+            js_selector = f"[...document.querySelectorAll('{tag}')].find(el => el.textContent.trim() === '{text}')"
+            return {"css_selector": "", "css_fallbacks": [], "js_selector": js_selector, "text_content": text}
         return {"css_selector": "", "css_fallbacks": []}
 
     return {
@@ -559,6 +566,10 @@ def _enrich_knowledge_with_css(knowledge_json: str) -> str:
         css = _xpath_to_css_selectors(xpath, tag)
         field["css_selector"] = css["css_selector"]
         field["css_fallbacks"] = css["css_fallbacks"]
+        if css.get("js_selector"):
+            field["js_selector"] = css["js_selector"]
+        if css.get("text_content"):
+            field["text_content"] = css["text_content"]
 
     return json.dumps(data, indent=2)
 
