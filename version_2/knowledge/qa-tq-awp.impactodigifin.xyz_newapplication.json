@@ -3,17 +3,30 @@
   "page_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
   "fields": [
     {
+      "name": "Profile Photo (Upload)",
+      "xpath": "//button[normalize-space()=\"Re-upload\"]",
+      "uid": "1_13",
+      "type": "file_upload",
+      "required": false,
+      "value_entered": "documents/Profile_picture/Profile_picture.png",
+      "accepted": true,
+      "behavior": "After upload, thumbnail appears and button changes to 'Re-upload'",
+      "dropdown_options": [],
+      "validation_rules": "Accepts .jpg, .jpeg, .png per modal hint",
+      "issues": "Upload trigger in modal presented as StaticText; hidden input uses display:none"
+    },
+    {
       "name": "First Name",
       "xpath": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
       "uid": "1_17",
       "type": "text",
       "required": true,
-      "value_entered": "Roman",
+      "value_entered": "ROMAN",
       "accepted": true,
-      "behavior": "Auto-uppercased to ROMAN",
+      "behavior": "Auto-uppercase; typing produced garbled order until corrected via JS",
       "dropdown_options": [],
-      "validation_rules": "No inline error shown; accepts alphabetic input; transforms to uppercase",
-      "issues": ""
+      "validation_rules": "No explicit messages shown; required (asterisk)",
+      "issues": "Typing bug reorders characters (ROMNA on direct typing)"
     },
     {
       "name": "Email ID",
@@ -21,12 +34,12 @@
       "uid": "1_20",
       "type": "email",
       "required": true,
-      "value_entered": "roman.qa+tecu@example.com",
+      "value_entered": "ROMAN.QA+TECU@EXAMPLE.COM",
       "accepted": true,
-      "behavior": "Auto-uppercased to ROMAN.QA+TECU@EXAMPLE.COM",
+      "behavior": "Auto-uppercase",
       "dropdown_options": [],
-      "validation_rules": "No inline error shown; accepts valid email format",
-      "issues": "Uppercasing email may be undesirable"
+      "validation_rules": "No inline validation surfaced; required (asterisk)",
+      "issues": "Uppercasing email may be confusing (email local-part can be case-sensitive in theory)"
     },
     {
       "name": "Middle Name",
@@ -36,9 +49,9 @@
       "required": false,
       "value_entered": "",
       "accepted": true,
-      "behavior": "",
+      "behavior": "Standard text input",
       "dropdown_options": [],
-      "validation_rules": "",
+      "validation_rules": "Optional",
       "issues": ""
     },
     {
@@ -47,13 +60,11 @@
       "uid": "1_27",
       "type": "phone",
       "required": true,
-      "value_entered": "1234567",
+      "value_entered": "555-1234",
       "accepted": true,
-      "behavior": "Auto-formats to 123-4567; Country code +1868 shown by default",
-      "dropdown_options": [
-        "+1868 (default)"
-      ],
-      "validation_rules": "Formatting mask inserts hyphen",
+      "behavior": "Auto-formats to XXX-XXXX; country code displayed as +1868 with flag",
+      "dropdown_options": [],
+      "validation_rules": "Appears to allow 7-digit local number; no error shown",
       "issues": ""
     },
     {
@@ -62,22 +73,22 @@
       "uid": "1_30",
       "type": "text",
       "required": true,
-      "value_entered": "Tester",
+      "value_entered": "TESTER",
       "accepted": true,
-      "behavior": "Auto-uppercased to TESTER",
+      "behavior": "Auto-uppercase; typing produced garbled order until corrected via JS",
       "dropdown_options": [],
-      "validation_rules": "No inline error shown; transforms to uppercase",
-      "issues": ""
+      "validation_rules": "No explicit messages shown; required (asterisk)",
+      "issues": "Typing bug reorders characters (TESTRE on direct typing)"
     },
     {
       "name": "Branch",
-      "xpath": "//button[normalize-space()=\"100 - TECU - MARABELLA BRANCH\"]",
+      "xpath": "//button[normalize-space()=\"Select Branch\"]",
       "uid": "1_33",
       "type": "dropdown",
       "required": true,
       "value_entered": "100 - TECU - MARABELLA BRANCH",
       "accepted": true,
-      "behavior": "Opens a custom list; selection updates button label",
+      "behavior": "Custom dropdown; updates button label to the selected branch",
       "dropdown_options": [
         "100 - TECU - MARABELLA BRANCH",
         "200 - TECU - COUVA BRANCH",
@@ -86,21 +97,8 @@
         "600 - TISL",
         "601 - TISL Branch 1"
       ],
-      "validation_rules": "No inline error shown upon selection",
-      "issues": "Options rendered as static text without listbox/option roles"
-    },
-    {
-      "name": "Profile Photo",
-      "xpath": "//button[normalize-space()=\"Re-upload\"]",
-      "uid": "1_13",
-      "type": "file_upload",
-      "required": false,
-      "value_entered": "Skipped (already uploaded)",
-      "accepted": true,
-      "behavior": "Uploads via a button; no input[type=file] found in DOM via query",
-      "dropdown_options": [],
-      "validation_rules": "Not evaluated",
-      "issues": "Ensure accessible name persists and control is operable via keyboard"
+      "validation_rules": "Required (asterisk); must choose a branch",
+      "issues": "Options are StaticText in a11y tree; lacking proper listbox/option roles"
     }
   ],
   "buttons": [
@@ -110,15 +108,15 @@
       "uid": "1_13",
       "purpose": "upload",
       "clicked": false,
-      "notes": "Profile photo already present; did not re-upload"
+      "notes": "Appears after successful photo upload"
     },
     {
-      "name": "Branch (current selection)",
-      "xpath": "//button[normalize-space()=\"100 - TECU - MARABELLA BRANCH\"]",
+      "name": "Select Branch",
+      "xpath": "//button[normalize-space()=\"Select Branch\"]",
       "uid": "1_33",
-      "purpose": "choose_dropdown_option",
+      "purpose": "other",
       "clicked": true,
-      "notes": "Opened list and selected first option"
+      "notes": "Used to open branch list and select option"
     },
     {
       "name": "Save & Exit",
@@ -126,7 +124,7 @@
       "uid": "1_34",
       "purpose": "submit",
       "clicked": false,
-      "notes": "Not clicked per instruction"
+      "notes": "Not clicked during testing"
     },
     {
       "name": "Save & Continue",
@@ -137,16 +135,16 @@
       "notes": "Not clicked per instruction"
     }
   ],
-  "page_notes": "Landing section of the New Member Application includes profile photo upload and Personal Information fields. Text fields transform input to uppercase and mobile number auto-formats with a hyphen. Branch is a custom dropdown implemented with a button and static text options.",
+  "page_notes": "Single-page form with profile photo upload, personal details, and branch selection. Required fields are marked with an asterisk. Country code fixed to +1868 with Trinidad & Tobago flag. Photo upload opens a modal with Capture/Upload options.",
   "accessibility_issues": [
-    "Email auto-uppercasing may not be user-friendly",
-    "At least one <button> without a discernible accessible name detected",
-    "Branch dropdown options are static text without ARIA listbox/option semantics"
+    "Branch dropdown options lack role=option/listbox semantics (exposed as StaticText)",
+    "Upload control labeled as StaticText rather than a focusable button",
+    "Hidden file input uses display:none, potentially not keyboard-accessible"
   ],
   "_meta": {
     "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
     "app_name": "TECU Credit Union",
-    "saved_at": "2026-03-20T18:26:25.518898",
+    "saved_at": "2026-03-21T18:48:47.825456",
     "source": "pass1_exploration"
   }
 }

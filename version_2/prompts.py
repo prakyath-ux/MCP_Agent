@@ -321,11 +321,16 @@ For required phone fields:
 For optional fields:
   - Empty value → expect NO error
 
-For dropdowns:
-  - Leave unselected → expect error (if required)
+For dropdowns (type: "dropdown"):
+  - VERIFY ONLY — do NOT click or open the dropdown
+  - Check: does button exist? What is the default text?
+  - Check: is it required? (if yes, test that submitting without selection shows error)
+  - Mark test approach as VERIFY_ONLY in the test plan
 
-For file uploads:
-  - Skip upload → check if error appears (if required)
+For file uploads (type: "file_upload"):
+  - SKIP — cannot be tested via evaluate_script
+  - File uploads require OS-level file dialogs, not JS
+  - Mark as SKIP_UPLOAD in the test plan with reason
 
 For fields with known issues:
   - Design tests that specifically probe the known issue
@@ -341,8 +346,8 @@ LOW: Optional field checks, very long input
 You MUST output EXACTLY this format — the orchestrator parses it:
 
 ## TEST PLAN
-TC1 | field_name | selector | test_value | expected_result | priority | description
-TC2 | field_name | selector | test_value | expected_result | priority | description
+TC1 | field_name | selector | test_value | expected_result | priority | approach | description
+TC2 | field_name | selector | test_value | expected_result | priority | approach | description
 ...
 
 Where:
@@ -351,12 +356,18 @@ Where:
 - test_value: the value to set (use "" for empty, use actual string for invalid)
 - expected_result: error_shown OR no_error OR value_rejected
 - priority: HIGH, MED, or LOW
+- approach: one of FILL_CHECK, VERIFY_ONLY, or SKIP_UPLOAD
+  - FILL_CHECK: set value via JS, trigger events, check for error (for input fields)
+  - VERIFY_ONLY: check element exists and has expected state, do NOT click/fill (for dropdowns, buttons)
+  - SKIP_UPLOAD: cannot test via JS, mark as skipped (for file uploads)
 - description: one-line description of what this test checks
 
 Example:
-TC1 | First Name* | input[name="firstName"] | "" | error_shown | HIGH | empty required field
-TC2 | First Name* | input[name="firstName"] | "123" | error_shown | MED | numbers in name field
-TC3 | Email ID* | input[name="email"] | "notanemail" | error_shown | HIGH | invalid email format
+TC1 | First Name* | input[name="firstName"] | "" | error_shown | HIGH | FILL_CHECK | empty required field
+TC2 | First Name* | input[name="firstName"] | "123" | error_shown | MED | FILL_CHECK | numbers in name field
+TC3 | Email ID* | input[name="email"] | "notanemail" | error_shown | HIGH | FILL_CHECK | invalid email format
+TC7 | Branch* | JS:selector | "" | error_shown | HIGH | VERIFY_ONLY | required dropdown unselected
+TC8 | Upload | | "" | no_error | LOW | SKIP_UPLOAD | file upload cannot be tested via JS
 
 IMPORTANT:
 - Copy the css_selector value DIRECTLY from the knowledge JSON — do NOT modify or guess
@@ -401,17 +412,23 @@ step by step using evaluate_script. No thinking, no exploring, just executing.
 
 evaluate_script(expression="(function() { var el = document.querySelector('SELECTOR'); if (!el) return 'ELEMENT_NOT_FOUND'; el.focus(); el.value = 'TEST_VALUE'; el.dispatchEvent(new InputEvent('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); el.blur(); var parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement.parentElement; var err = parent ? parent.querySelector('.MuiFormHelperText-root, .error, .helper-text, [class*=error], [class*=Error]') : null; return err ? err.textContent.trim() : 'NO_ERROR'; })()")
 
-## For JS: prefixed selectors (buttons identified by text content):
+## For VERIFY_ONLY tests (dropdowns, buttons — do NOT click):
 
-If the selector starts with "JS:", use it directly as JavaScript to find the element:
+If the test approach is VERIFY_ONLY, do NOT click or fill. Only check if the element exists and its current state:
 
-evaluate_script(expression="(function() { var el = JS_SELECTOR_HERE; if (!el) return 'ELEMENT_NOT_FOUND'; el.click(); var parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement.parentElement; var err = parent ? parent.querySelector('.MuiFormHelperText-root, .error, .helper-text, [class*=error], [class*=Error]') : null; return err ? err.textContent.trim() : 'NO_ERROR'; })()")
+evaluate_script(expression="(function() { var el = JS_SELECTOR_HERE; if (!el) return 'ELEMENT_NOT_FOUND'; var text = el.textContent.trim(); return 'EXISTS|text=' + text; })()")
+
+This returns 'EXISTS|text=Select Branch' or 'ELEMENT_NOT_FOUND'. Do NOT call el.click() — it will open modals/dropdowns that block execution.
 
 For example, if test plan has:
-TC7 | Branch* | JS:[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch') | "" | error_shown | HIGH
+TC7 | Branch* | JS:[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch') | "" | error_shown | HIGH | VERIFY_ONLY
 
 Then execute:
-evaluate_script(expression="(function() { var el = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch'); if (!el) return 'ELEMENT_NOT_FOUND'; el.click(); ... })()")
+evaluate_script(expression="(function() { var el = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch'); if (!el) return 'ELEMENT_NOT_FOUND'; var text = el.textContent.trim(); return 'EXISTS|text=' + text; })()")
+
+## For SKIP_UPLOAD tests:
+
+Do NOT execute anything. Simply record the test case as SKIP with note "File upload cannot be tested via evaluate_script".
 
 Replace SELECTOR and TEST_VALUE with values from the test plan.
 
