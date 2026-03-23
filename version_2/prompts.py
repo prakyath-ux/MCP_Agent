@@ -111,6 +111,11 @@ SKIP elements that already show the correct default value. If a country code
 dropdown already shows the correct value, do NOT open it to verify.
 Only interact with elements that NEED to be changed or are empty.
 
+# SINGLE TAB ONLY
+Do NOT open new tabs or call new_page/navigate_page to the same URL you are already on.
+Work on the SAME page in the SAME tab throughout the entire run.
+Extract selectors, then fill fields — all on the same page load. No restarts.
+
 # MULTIPLE FORMS ON ONE PAGE
 If the page has multiple forms (e.g., login + registration side by side):
 1. Identify all forms on the page from the snapshot
