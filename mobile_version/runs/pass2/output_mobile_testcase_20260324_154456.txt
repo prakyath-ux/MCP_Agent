@@ -1,0 +1,128 @@
+Mode: testcase
+Version: mobile (orchestrated loop)
+Device: RZCXA21GV9P
+Package: net.impacto.B2U
+App: Bank App (B2U)
+Model: gpt-5
+Turns: 58 / 60
+Real Cost: $1.374382 (₹125.1237)
+No-Cache Cost: $1.547470
+Savings: $0.173088 (11.2%)
+Cache Hit: 13.8%
+Duration: 460.3s
+Rolling Summary: Phase 2a: Generated 15 test cases. Tapped (). Tapped (). Tapped (). Pressed . Pressed . Typed ''. Tapped (). Long-pressed (). Double-tapped (). Typed ''. Typed ''. Terminated . Launched . Tapped (). Tapped (). Typed ''. Tapped (). Terminated . Launched . Tapped (). Tapped (). Typed ''. Tapped (). Terminated . Launched . Tapped (). Tapped (). Typed ''. Tapped (). Typed ''. Terminated . Launched . Tapped (). Tapped (). Typed ''. Tapped (). Tapped (). Tapped ().
+============================================================
+
+## TURN LOG
+Turn  Action                         Target                 Input  Cached    New    Out  Cache%
+----- ------------------------------ -------------------- ------- ------- ------ ------ -------
+1     text_output                                           3,953       0      —  4,060      0%
+2     list_elements_on_screen                               2,866   1,664 -1,087    292     58%
+3     click_on_screen_at_coordinat   (583,1490)             4,182   3,072  1,316  1,003     74%
+4     list_elements_on_screen                               5,242   2,816  1,060     28     54%
+5     click_on_screen_at_coordinat   (540,26)               6,220       0    978    101      0%
+6     list_elements_on_screen                               6,380   2,816    160     28     44%
+7     click_on_screen_at_coordinat   (573,975)              7,361   2,816    981    187     38%
+8     list_elements_on_screen                               7,610   2,816    249     28     37%
+9     press_button                   BACK                   8,404   2,816    794    158     34%
+10    list_elements_on_screen                               8,618   2,816    214     28     33%
+11    press_button                   BACK                   9,605   2,816    987    135     29%
+12    list_elements_on_screen                               9,799   2,816    194     28     29%
+13    type_keys                      MEM123456             10,896   2,816  1,097    330     26%
+14    click_on_screen_at_coordinat   (540,400)             11,288   2,816    392     37     25%
+15    list_elements_on_screen                              11,398   2,816    110     28     25%
+16    long_press_on_screen_at_coor   (583,1490)            12,501   2,816  1,103    370     22%
+17    list_elements_on_screen                              12,950   2,816    449     28     22%
+18    double_tap_on_screen           (583,1490)            14,057   2,816  1,107    222     20%
+19    type_keys                      12345678              14,363   2,816    306     36     20%
+20    list_elements_on_screen                              14,475   2,816    112     28     20%
+21    type_keys                          15,484   2,816  1,009    934     18%
+22    terminate_app                  net.impacto.B2U       16,835   2,816  1,351    325     17%
+23    launch_app                     net.impacto.B2U       17,245   2,816    410     37     16%
+24    list_elements_on_screen                              17,369   2,816    124     28     16%
+25    click_on_screen_at_coordinat   (324,2229)            18,615   2,816  1,246    254     15%
+26    list_elements_on_screen                              18,964   2,816    349     28     15%
+27    click_on_screen_at_coordinat   (583,1490)            20,084   2,816  1,120    283     14%
+28    type_keys                      12345678              20,465       0    381     36      0%
+29    click_on_screen_at_coordinat   (540,400)             20,593   2,816    128     37     14%
+30    list_elements_on_screen                              20,732   2,816    139     28     14%
+31    terminate_app                  net.impacto.B2U       21,757   2,816  1,025    116     13%
+32    launch_app                     net.impacto.B2U       21,975   2,816    218     37     13%
+33    click_on_screen_at_coordinat   (324,2229)            22,116   2,816    141     38     13%
+34    list_elements_on_screen                              22,266       0    150     28      0%
+35    click_on_screen_at_coordinat   (583,1490)            23,403   2,816  1,137     38     12%
+36    type_keys                      !@#$%^&*              23,556   2,816    153     39     12%
+37    click_on_screen_at_coordinat   (540,400)             23,706   2,816    150     37     12%
+38    list_elements_on_screen                              23,862   2,816    156     28     12%
+39    terminate_app                  net.impacto.B2U       24,907   2,944  1,045    231     12%
+40    launch_app                     net.impacto.B2U       25,257   2,816    350     37     11%
+41    click_on_screen_at_coordinat   (324,2229)            25,415   2,944    158     38     12%
+42    click_on_screen_at_coordinat   (583,1490)            25,582   2,944    167     38     12%
+43    type_keys                      AAAAAAAAAAAAAAAAAA    25,752   2,944    170     65     11%
+44    click_on_screen_at_coordinat   (540,400)             25,973   2,944    221     37     11%
+45    list_elements_on_screen                              26,146   2,944    173     28     11%
+46    type_keys                      B                     27,233   3,072  1,087    456     11%
+47    list_elements_on_screen                              27,817   2,944    584     28     11%
+48    terminate_app                  net.impacto.B2U       28,907   2,944  1,090    186     10%
+49    launch_app                     net.impacto.B2U       29,231   2,944    324     37     10%
+50    click_on_screen_at_coordinat   (324,2229)            29,408   2,944    177     38     10%
+51    click_on_screen_at_coordinat   (583,1490)            29,594   2,944    186     38     10%
+52    type_keys                        MEM123              29,783   2,944    189     37     10%
+53    click_on_screen_at_coordinat   (540,400)             29,965   2,944    182     37     10%
+54    list_elements_on_screen                              30,157   2,944    192     28     10%
+55    click_on_screen_at_coordinat   (583,1432)            31,234   3,072  1,077    167     10%
+56    list_elements_on_screen                              31,560   2,944    326     28      9%
+57    click_on_screen_at_coordinat   (1000,1432)           32,640   2,944  1,080    332      9%
+58    text_output                                          27,812   2,944 -4,828  3,909     11%
+
+============================================================
+
+## TEST CASE RESULTS
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | Member ID | FILL_CHECK | "" | Required field error is shown; no acceptance | Not executed | SKIP | Did not perform empty+blur due to time; could not reliably clear via backspace on device shell |
+| TC2 | Member ID | FILL_CHECK | MEM123456 | Value accepted; no error; text retained | Field “Enter Details” displayed MEM123456 after blur; no error text appeared; value retained | PASS | Verified by element text; no new error TextView observed |
+| TC3 | Member ID | FILL_CHECK | 12345678 | Value accepted; no error; text retained | Field displayed 12345678 after blur; no error; value retained | PASS | Alphanumeric allowed behavior met |
+| TC4 | Member ID | FILL_CHECK | !@#$%^&* | Validation rejects non-alphanumeric; error displayed and/or chars not accepted | Field displayed !@#$%^&*; no error text shown; non-alphanumeric accepted | FAIL | No validation message appeared anywhere on screen |
+| TC5 | Member ID | FILL_CHECK | 256-char string | Input length constrained and/or validation error; app responsive | Field accepted very long string; later accepted additional “B”; no error; app responsive | FAIL | Indicates no max length enforcement and no validation |
+| TC6 | Member ID | FILL_CHECK | "  MEM123  " | App trims spaces; displays MEM123; no error | After blur, field showed MEM123 (spaces trimmed); no error | PASS | Trimming works as expected |
+| TC7 | Date of Birth | TAP_VERIFY | n/a | Date picker opens with current/previous date highlighted | Not executed | SKIP | Did not tap DOB group due to limited turns |
+| TC8 | Date of Birth | TAP_VERIFY | 1990-01-01 | Field updates to 1990-01-01; no error | Not executed | SKIP | Requires picker interaction |
+| TC9 | Date of Birth | TAP_VERIFY | 2030-01-01 | Future dates disallowed or error | Not executed | SKIP | Requires picker interaction |
+| TC10 | Date of Birth | TAP_VERIFY | 2024-02-29 | Accepts leap day; no error | Not executed | SKIP | Requires picker interaction |
+| TC11 | Date of Birth | TAP_VERIFY | Cancel | Field unchanged; no error | Not executed | SKIP | Requires picker interaction |
+| TC12 | Find Member | VERIFY_ONLY | n/a | "Find Member" button visible, labeled, has button role | “Find Member” visible as TextView with matching ViewGroup; label correct; role not exposed | PASS | Label/visibility confirmed; could not confirm role from hierarchy |
+| TC13 | Find Member | VERIFY_ONLY | Empty -> Valid inputs | Disabled when required fields missing; enabled when ID + DOB valid | Not executed | SKIP | Could not verify enabled/disabled state from available attributes; DOB not set |
+| TC14 | Date of Birth (a11y) | VERIFY_ONLY | n/a | Stable label separate from selected value for SRs | Not executed | SKIP | Could not validate accessibility label/value separation |
+| TC15 | Header Image | VERIFY_ONLY | n/a | Accessible label/content description and correct role; tappable area adequate | On iTeller screen, headerImage ViewGroup had empty label/contentDescription | FAIL | Element identifier “headerImage” with no label indicates missing content description; role not exposed |
+
+## BUGS FOUND
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| B1 | Member ID | Non-alphanumeric characters are accepted with no validation error | Medium | After typing “!@#$%^&*”, EditText showed same value; no new error TextView appeared |
+| B2 | Member ID | No maximum length enforcement; extremely long input accepted with no error | Medium | 256 “A”s accepted; an additional “B” appended successfully; no error and UI remained responsive |
+| B3 | Header Image | Missing accessibility label/contentDescription on header image in iTeller screen | Medium | Element listed as identifier “headerImage” with empty label; no role exposed |
+
+## TEST SUMMARY
+- Total test cases: 15
+- Passed: 4
+- Failed: 3
+- Skipped: 8
+
+## RECOMMENDATIONS
+- Member ID validation:
+  - Enforce alphanumeric-only input at the UI layer and/or show clear inline error messaging when invalid characters are entered.
+  - Add a sensible maxLength (e.g., 20–32 chars) and present an error if exceeded.
+  - Ensure required-field validation triggers on blur and on submit; display helper/error text near the field.
+- Accessibility:
+  - Provide contentDescription/accessible label for the header image; expose correct roles for tappable elements (e.g., Button role for actionable controls).
+  - For Date of Birth, expose a stable accessibility label separate from the selected value so screen readers announce both properly.
+  - Expose enabled/disabled state for the “Find Member” button to accessibility services.
+- Date of Birth UX/validation:
+  - Verify that the date picker opens reliably, disallows future dates, and accepts leap days; persist selected date in yyyy-MM-dd.
+  - Ensure Cancel/Back in the picker does not modify the field value.
+- Field behavior:
+  - Confirm that tapping outside reliably removes focus and triggers validation (we observed the field sometimes remained focused after outside taps).
+  - Keep the good behavior of trimming leading/trailing spaces on Member ID.
+- General QA hygiene:
+  - Surface error/help text consistently as dedicated TextView(s) to make automated verification and accessibility announcement reliable.

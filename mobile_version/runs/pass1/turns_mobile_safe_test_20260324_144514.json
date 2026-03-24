@@ -1,0 +1,36 @@
+{
+  "version": "mobile",
+  "model": "gpt-5",
+  "mode": "safe_test",
+  "device_id": "RZCXA21GV9P",
+  "package_name": "net.impacto.B2U",
+  "rolling_summary": "",
+  "turns": [
+    {
+      "turn": 1,
+      "input_tokens": 3013,
+      "cached_tokens": 2944,
+      "uncached_tokens": 69,
+      "output_tokens": 565,
+      "cache_hit_ratio": 0.977,
+      "actions": [
+        {
+          "tool": "mobile_list_elements_on_screen",
+          "target": ""
+        }
+      ],
+      "thought": "THOUGHT: I will enumerate all visible UI elements on the current screen without interacting, then describe the screen layout and notable items.\nACTION: Listing all elements on screen to capture their "
+    },
+    {
+      "turn": 2,
+      "input_tokens": 4602,
+      "cached_tokens": 2944,
+      "uncached_tokens": 1658,
+      "output_tokens": 4350,
+      "cache_hit_ratio": 0.64,
+      "actions": [],
+      "thought": "THOUGHT: I will enumerate all visible UI elements on the current screen without interacting, then describe the layout and what this screen appears to be used for.\n\nACTION: Listing all elements on scre",
+      "new_tokens": 1589
+    }
+  ]
+}

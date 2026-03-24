@@ -1,0 +1,263 @@
+{
+  "screen_title": "iTeller - Cash Deposit",
+  "package_name": "net.impacto.B2U",
+  "device_id": "RZCXA21GV9P",
+  "elements": [
+    {
+      "name": "Back",
+      "type": "button",
+      "coordinates": {
+        "x": 32,
+        "y": 146,
+        "width": 66,
+        "height": 66
+      },
+      "center": {
+        "x": 65,
+        "y": 179
+      },
+      "identifier": "backButton",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Likely navigates back",
+      "issues": "No visible accessibility label"
+    },
+    {
+      "name": "Header Image",
+      "type": "button",
+      "coordinates": {
+        "x": 1004,
+        "y": 157,
+        "width": 44,
+        "height": 44
+      },
+      "center": {
+        "x": 1026,
+        "y": 179
+      },
+      "identifier": "headerImage",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Appears tappable; purpose unclear",
+      "issues": "No accessibility label"
+    },
+    {
+      "name": "Cash Deposit",
+      "type": "button",
+      "coordinates": {
+        "x": 141,
+        "y": 1128,
+        "width": 864,
+        "height": 122
+      },
+      "center": {
+        "x": 573,
+        "y": 1189
+      },
+      "identifier": "",
+      "label": "Cash Deposit",
+      "text": "Cash Deposit",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Section heading or selectable tile",
+      "issues": ""
+    },
+    {
+      "name": "Member ID",
+      "type": "text_input",
+      "coordinates": {
+        "x": 141,
+        "y": 1422,
+        "width": 885,
+        "height": 136
+      },
+      "center": {
+        "x": 584,
+        "y": 1490
+      },
+      "identifier": "",
+      "label": "Enter Details",
+      "text": "MEM123455",
+      "required": true,
+      "value_entered": "MEM123455",
+      "accepted": true,
+      "behavior": "Field accepts alphanumeric input; remained focused after date selection",
+      "issues": "Label 'Enter Details' is generic"
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_picker",
+      "coordinates": {
+        "x": 141,
+        "y": 1581,
+        "width": 885,
+        "height": 130
+      },
+      "center": {
+        "x": 584,
+        "y": 1646
+      },
+      "identifier": "",
+      "label": "2026-03-24",
+      "text": "2026-03-24",
+      "required": true,
+      "value_entered": "2026-03-24",
+      "accepted": true,
+      "behavior": "Tapping opens a date picker; Confirm sets date and updates field",
+      "issues": "Label changes to value, which may be confusing for screen readers"
+    },
+    {
+      "name": "Find Member",
+      "type": "button",
+      "coordinates": {
+        "x": 44,
+        "y": 1907,
+        "width": 992,
+        "height": 143
+      },
+      "center": {
+        "x": 540,
+        "y": 1979
+      },
+      "identifier": "",
+      "label": "Find Member",
+      "text": "Find Member",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Primary action; likely navigates to member details",
+      "issues": ""
+    },
+    {
+      "name": "DASHBOARD",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 0,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 108,
+        "y": 2230
+      },
+      "identifier": "",
+      "label": "DASHBOARD",
+      "text": "DASHBOARD",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Bottom navigation tab",
+      "issues": ""
+    },
+    {
+      "name": "iTELLER",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 216,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 324,
+        "y": 2230
+      },
+      "identifier": "",
+      "label": "iTELLER",
+      "text": "iTELLER",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Bottom navigation tab",
+      "issues": ""
+    },
+    {
+      "name": "iBRANCH",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 432,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 540,
+        "y": 2230
+      },
+      "identifier": "",
+      "label": "iBRANCH",
+      "text": "iBRANCH",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Bottom navigation tab",
+      "issues": ""
+    },
+    {
+      "name": "LOAN",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 648,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 756,
+        "y": 2230
+      },
+      "identifier": "",
+      "label": "LOAN",
+      "text": "LOAN",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Bottom navigation tab",
+      "issues": ""
+    },
+    {
+      "name": "MORE",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 864,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 972,
+        "y": 2230
+      },
+      "identifier": "",
+      "label": "MORE",
+      "text": "MORE",
+      "required": false,
+      "value_entered": "",
+      "accepted": true,
+      "behavior": "Bottom navigation tab",
+      "issues": ""
+    }
+  ],
+  "screen_notes": "Screen shows a camera preview area, a Cash Deposit section, Member ID input, Date of Birth picker, and a primary 'Find Member' action. Bottom navigation is present. Member ID was already populated; date was selected via picker.",
+  "accessibility_issues": [
+    "Back button has no visible content description.",
+    "Header image appears tappable without an accessible label.",
+    "Member ID input uses a generic label 'Enter Details', which is not descriptive.",
+    "Date field label becomes the selected value (e.g., '2026-03-24'), which may reduce clarity for screen readers.",
+    "Buttons are implemented as ViewGroups without explicit button roles; ensure proper accessibility roles and labels."
+  ],
+  "_meta": {
+    "package_name": "net.impacto.B2U",
+    "app_name": "Bank App (B2U)",
+    "saved_at": "2026-03-24T15:15:27",
+    "source": "pass1_mobile_exploration"
+  }
+}
