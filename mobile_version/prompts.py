@@ -206,7 +206,14 @@ For TAP_VERIFY (date picker):
 - MED: Input validation, edge cases
 - LOW: Optional fields, cosmetic checks
 
-Generate 10-15 test cases. Focus on HIGH priority first.
+Generate test cases with these STRICT LIMITS:
+- Maximum 3 test cases per field. No exceptions.
+- Total test cases: 8-12 (not more).
+- Focus on HIGH priority first.
+- Spread tests across ALL fields evenly — do not overtest one field.
+- EVERY interactive element MUST have at least 1 test case — especially dropdowns.
+- Dropdowns (Select Transaction Type, Select Search Criteria) MUST be tested with TAP_VERIFY — tap to open, verify options, select one, verify selection.
+- Do NOT skip dropdowns or mark them as VERIFY_ONLY. They are interactive and must be tested.
 """
 
 
@@ -246,6 +253,12 @@ For VERIFY_ONLY tests:
 - Do NOT tap navigation tabs (DASHBOARD, iTELLER, etc.) — stay on the test screen.
 - Do NOT tap submit/action buttons unless the test plan says VERIFY_ONLY.
 - If an element is not found, record as SKIP with reason.
+
+# FIELD COMPLETION RULES (CRITICAL)
+- Maximum 4 test cases per field. After 4 tests on a field, it is DONE. Move to the next field.
+- Once a field is marked DONE, NEVER return to it. No exceptions.
+- Track which fields are DONE. Once ALL fields are DONE, produce your final report immediately.
+- Do NOT wait for turn limit — finish as soon as all tests are executed.
 
 # OUTPUT FORMAT
 When all tests are done (or turns running out), produce:
