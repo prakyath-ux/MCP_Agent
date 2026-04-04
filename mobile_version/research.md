@@ -298,27 +298,74 @@ Mobile: tap(x, y) → type_keys("test") → list_elements (verify)        → 3 
 
 ---
 
+## Answered Questions (April 2026)
+
+3. **Keyboard dismissal:** ANSWERED — NEVER use `press_button(BACK)`, it navigates away. Tap (540, 100) header area instead. Fixed in all tools.
+4. **Dropdown interaction:** ANSWERED — Tap dropdown → modal opens with options as new elements → tap option → modal closes → verify field text updated. Works via `test_dropdown` tool.
+6. **Clearing text:** ANSWERED — Long-press to select all → type new value (replaces) or press DEL (deletes). Works in `test_text_field` tool.
+
 ## Open Questions (Remaining)
 
 1. **Scrolling:** How does the agent discover off-screen elements? Does swiping + re-listing reveal them?
-2. **Error detection:** What do validation errors look like in the bank app's a11y tree?
-3. **Keyboard dismissal:** Does tapping outside the field dismiss the keyboard, or does the agent need `press_button(BACK)`?
-4. **Dropdown interaction:** After tapping "Select Transaction Type", what does the picker look like in the a11y tree?
+2. **Error detection:** What do validation errors look like in the bank app's a11y tree? (Current: no validation messages found — may be a real bug, not a detection issue)
 5. **Cross-device coordinates:** Will the same coordinates work on a different phone with different screen resolution?
-6. **Clearing text:** No `clear_text` tool — need to test: triple-tap (select all) then type, or long press → select all → type?
+
+---
+
+## Task-Level Tools (BREAKTHROUGH — April 2026)
+
+### The Problem
+Each mobile interaction required 3-4 LLM turns: list_elements → tap → type → list_elements. Cost: $0.65 for 34 turns.
+
+### The Solution
+Python functions that batch multiple MCP calls internally. LLM makes 1 decision, Python handles 3-5 MCP calls:
+
+| Tool | What LLM says | What Python does internally | MCP calls |
+|------|--------------|---------------------------|-----------|
+| `test_text_field("Enter Details", ",!@#$%,MEM123")` | "Test this field" | scan → tap → type → check → clear → tap → type → check → clear → tap → type → check → dismiss keyboard | ~15 |
+| `test_dropdown("Cash Withdrawal", "Cash Deposit")` | "Test this dropdown" | dismiss keyboard → scan → tap dropdown → scan options → tap option → dismiss keyboard → verify | ~7 |
+| `test_date_picker("Date of Birth")` | "Test date picker" | dismiss keyboard → scan → tap → scan for picker → tap Confirm → dismiss keyboard → verify | ~7 |
+| `verify_elements_exist("Find Member,Back")` | "Check these exist" | scan once → find all | ~1 |
+
+### Results
+| Metric | Before (raw MCP) | After (task tools) |
+|--------|-----------------|-------------------|
+| Turns | 34-44 | 5-10 |
+| Cost (GPT-5) | $0.65 | $0.21 |
+| Cost (gpt-oss-120b) | N/A | $0.005-0.01 |
+| Tests executed | 4-7/15 | 8-10/11 |
+
+---
+
+## Model Comparison (April 2026)
+
+| Model | Provider | Cost/run | Turns | Tests done | Quality | API format |
+|-------|----------|---------|-------|------------|---------|------------|
+| GPT-5 (Responses API) | OpenAI | HUNG | ∞ | 0 | N/A | Responses — incompatible with task tools |
+| GPT-5 (Chat Completions) | OpenAI | $0.21 | 8 | 7/8 | Good — found 3 bugs | Chat Completions — works |
+| gpt-oss-120b | Groq (free) | $0.009 | 9 | 8/8 | Great — found 5 bugs | Chat Completions — works |
+| gpt-oss-120b | OpenRouter | $0.010 | 9-10 | 10/11 | Great — found 5 bugs | Chat Completions — works |
+
+**Winner: gpt-oss-120b via OpenRouter** — cheap, no daily limits, best results.
 
 ---
 
 ## Progress
 
-- [x] Install ADB (`brew install android-platform-tools`) — DONE
-- [x] Connect Android phone, enable USB debugging, verify with `adb devices` — DONE (device: RZCXA21GV9P, SM-M356B, Android 16)
-- [x] Install mobile-mcp (`npx -y @mobilenext/mobile-mcp@latest`) — DONE (v0.0.48, runs on stdio)
-- [x] Test `mobile_list_elements_on_screen` on the bank app — DONE (clean JSON, ~1,500 tokens, all elements labeled)
-- [x] Verify ADB raw dump vs mobile-mcp output — DONE (mobile-mcp is significantly cleaner)
-- [x] Test `mobile_click_on_screen_at_coordinates` + `mobile_type_keys` on a form field — DONE (tap + type + verify all work)
-- [ ] Test dropdown interaction (tap → picker → select → verify)
-- [ ] Test scrolling (swipe → list elements → find new elements)
-- [ ] Design mobile-specific prompts based on verified output format
-- [ ] Build POC: agent fills one screen of the bank app
-- [ ] Test Pass 2 flow: plan test cases → execute on mobile
+- [x] Install ADB — DONE
+- [x] Connect Android phone — DONE (RZCXA21GV9P, SM-M356B, Android 16)
+- [x] Install mobile-mcp — DONE
+- [x] Test list_elements, tap, type — DONE
+- [x] Build mobile orchestrator + prompts — DONE
+- [x] Pass 1 (poc) working — DONE
+- [x] Pass 2 (testcase) working — DONE
+- [x] Task-level tools built — DONE (5 tools: test_text_field, test_dropdown, test_date_picker, verify_elements_exist, scan_screen_summary)
+- [x] gpt-oss-120b integration (Groq + OpenRouter) — DONE
+- [x] GPT-5 Chat Completions integration — DONE
+- [x] Keyboard dismiss fix (tap outside, not BACK) — DONE
+- [x] Dual coordinate caching — DONE
+- [x] Model name in output filenames — DONE
+- [ ] Second dropdown (Select Search Criteria) capture in Pass 1
+- [ ] Keyboard re-dismiss after dropdown/date selection — added, needs testing
+- [ ] Test on a different mobile app (generalization)
+- [ ] Streamlit dashboard integration for OpenRouter runs

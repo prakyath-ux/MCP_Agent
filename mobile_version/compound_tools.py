@@ -80,11 +80,11 @@ def _find_errors(elements: list[dict]) -> str:
 
 
 async def _dismiss_keyboard():
-    """Press BACK to dismiss keyboard if active."""
+    """Dismiss keyboard by tapping outside the input area. NEVER uses BACK (navigates away)."""
     global _keyboard_active
     if _keyboard_active:
-        await _call_mcp("mobile_press_button", {"button": "BACK"})
-        await asyncio.sleep(0.3)
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+        await asyncio.sleep(0.5)
         _keyboard_active = False
 
 
@@ -215,16 +215,18 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
         })
 
     # If select_option is specified, find and tap it
-    selected = False
     if select_option:
         option_el = _find_element(elements_after, select_option)
         if option_el:
             ox, oy = _center(option_el)
             await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": ox, "y": oy})
-            await asyncio.sleep(0.3)
-            selected = True
+            await asyncio.sleep(0.5)
 
-            # Verify selection — rescan and check if dropdown label changed
+            # Dismiss keyboard if app re-focused a text field after selection
+            await _dismiss_keyboard()
+            await asyncio.sleep(0.3)
+
+            # Verify selection
             raw_verify = await _call_mcp("mobile_list_elements_on_screen", {})
             elements_verify = _parse_elements(raw_verify)
             dropdown_after = _find_element(elements_verify, dropdown_label) or _find_element(elements_verify, select_option)
@@ -239,8 +241,8 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
                 "verified": dropdown_text,
             })
         else:
-            # Option not found — close and report
-            await _call_mcp("mobile_press_button", {"button": "BACK"})
+            # Option not found — close by tapping outside (not BACK)
+            await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
             await asyncio.sleep(0.3)
             return json.dumps({
                 "status": "FAIL",
@@ -251,9 +253,12 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
                 "error": f"Option '{select_option}' not found in dropdown options",
             })
 
-    # No selection requested — just close and report options
-    await _call_mcp("mobile_press_button", {"button": "BACK"})
+    # No selection requested — just close by tapping outside (not BACK)
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
     await asyncio.sleep(0.3)
+
+    # Dismiss keyboard if app re-focused a text field
+    await _dismiss_keyboard()
 
     return json.dumps({
         "status": "PASS",
@@ -299,8 +304,9 @@ async def test_date_picker(picker_label: str) -> str:
     has_picker = any(sign in " ".join(new_elements).lower() for sign in picker_signs)
 
     if not has_picker:
-        await _call_mcp("mobile_press_button", {"button": "BACK"})
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
         await asyncio.sleep(0.3)
+        await _dismiss_keyboard()
         return json.dumps({
             "status": "FAIL",
             "picker_opened": False,
@@ -317,13 +323,34 @@ async def test_date_picker(picker_label: str) -> str:
     if confirm_el:
         ccx, ccy = _center(confirm_el)
         await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": ccx, "y": ccy})
+        await asyncio.sleep(0.5)
+
+        # Dismiss keyboard if app re-focused text field after date confirm
+        await _dismiss_keyboard()
         await asyncio.sleep(0.3)
 
         # Verify — rescan and check if date field updated
+        # After confirming, the field label changes from "Date of Birth" to the date value
+        import re
         raw_verify = await _call_mcp("mobile_list_elements_on_screen", {})
         elements_verify = _parse_elements(raw_verify)
+        date_value = "unknown"
+
+        # Try 1: Find by original label
         date_el = _find_element(elements_verify, picker_label)
-        date_value = date_el.get("text", "") or date_el.get("label", "") if date_el else "unknown"
+        if date_el:
+            date_value = date_el.get("text", "") or date_el.get("label", "")
+
+        # Try 2: Find any element with a date value (YYYY-MM-DD pattern)
+        if date_value in ("unknown", picker_label, ""):
+            for el in elements_verify:
+                for field in ["text", "label"]:
+                    val = el.get(field, "")
+                    if re.match(r"\d{4}-\d{2}-\d{2}", val):
+                        date_value = val
+                        break
+                if date_value not in ("unknown", picker_label, ""):
+                    break
 
         return json.dumps({
             "status": "PASS",
@@ -332,9 +359,10 @@ async def test_date_picker(picker_label: str) -> str:
             "date_value": date_value,
         })
     else:
-        # No Confirm button found — close with BACK
-        await _call_mcp("mobile_press_button", {"button": "BACK"})
+        # No Confirm button found — close by tapping outside (not BACK)
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
         await asyncio.sleep(0.3)
+        await _dismiss_keyboard()
         return json.dumps({
             "status": "PASS",
             "picker_opened": True,

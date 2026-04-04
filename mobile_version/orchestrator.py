@@ -182,6 +182,18 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
             openai_client=openai_client,
         )
         print(f"  Provider: OpenAI (Chat Completions API)")
+    elif MODEL_PROVIDER == "openrouter":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        openrouter_client = AsyncOpenAI(
+            api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+            base_url="https://openrouter.ai/api/v1",
+        )
+        model_config = OpenAIChatCompletionsModel(
+            model=MODEL,
+            openai_client=openrouter_client,
+        )
+        print(f"  Provider: OpenRouter (cheap, no daily limit)")
 
     async with MCPServerStdio(
         name="mobile-mcp",
@@ -199,7 +211,7 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
         # Pick tools based on provider
         # Task tools work with Chat Completions API (Groq + OpenAI Chat)
         # Simple tools for Responses API (default OpenAI)
-        active_tools = TASK_TOOLS if MODEL_PROVIDER in ("groq", "openai_chat") else SIMPLE_TOOLS
+        active_tools = TASK_TOOLS if MODEL_PROVIDER in ("groq", "openai_chat", "openrouter") else SIMPLE_TOOLS
 
         model_tuning = ModelSettings()
 
@@ -288,7 +300,9 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
                 agent_done = False
                 tc_phase = "2b"
 
-                tc_count = sum(1 for line in test_plan.split("\n") if line.strip().startswith("TC"))
+                tc_count = sum(1 for line in test_plan.split("\n")
+                              if line.strip().startswith("TC") or
+                              (line.strip()[:2].rstrip(".").isdigit() and "|" in line))
                 print(f"\n  PHASE 2a COMPLETE: {tc_count} test cases planned")
                 print(f"  Switching to Phase 2b (execution)...\n")
 
@@ -486,9 +500,11 @@ def _save_knowledge(final_output: str, package_name: str, app_name: str) -> str 
     if not final_output:
         return None
 
-    knowledge_start = final_output.find("## KNOWLEDGE")
-    if knowledge_start == -1:
-        knowledge_start = final_output.find("KNOWLEDGE\n")
+    # Try multiple formats: ## KNOWLEDGE, **KNOWLEDGE**, KNOWLEDGE
+    for marker in ["## KNOWLEDGE", "**KNOWLEDGE**", "KNOWLEDGE\n"]:
+        knowledge_start = final_output.find(marker)
+        if knowledge_start != -1:
+            break
     if knowledge_start == -1:
         return None
 
@@ -624,8 +640,10 @@ def _save_results(
         runs_dir = Path(__file__).parent / "runs" / "pass1"
     runs_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = runs_dir / f"output_mobile_{mode}_{timestamp}.txt"
-    turns_path = runs_dir / f"turns_mobile_{mode}_{timestamp}.json"
+    # Include model short name in filename for comparison
+    model_short = MODEL.split("/")[-1].replace("-", "")[:12]  # "gpt-5" or "gptoss120b"
+    output_path = runs_dir / f"output_mobile_{mode}_{model_short}_{timestamp}.txt"
+    turns_path = runs_dir / f"turns_mobile_{mode}_{model_short}_{timestamp}.json"
 
     with open(output_path, "w") as f:
         f.write(f"Mode: {mode}\n")

@@ -2,11 +2,12 @@
 
 # ----- Model --------
 MODEL = "gpt-5"                      # OpenAI hosted — $1.25/$10 per MTok
-# MODEL = "openai/gpt-oss-120b"      # Free via Groq — $0/$0
+# MODEL = "openai/gpt-oss-120b"      # Cheap via OpenRouter — $0.039/$0.19 per MTok
 MODEL_MINI = "gpt-5-mini"
 
 # ----- Model Provider --------
-# "openai" = OpenAI API (default), "groq" = Groq Cloud (free), "openai_chat" = OpenAI via Chat Completions
+# "openai" = OpenAI Responses API, "openai_chat" = OpenAI Chat Completions
+# "groq" = Groq Cloud (free, daily limit), "openrouter" = OpenRouter (cheap, no limit)
 MODEL_PROVIDER = "openai_chat"
 
 # ------ Target Application -----------
@@ -20,7 +21,7 @@ TURN_LIMITS = {
     "recon": 20,            # Explore screen, list all elements
     "poc_short": 40,        # Fill fields on one screen
     "poc": 40,              # Full exploration + fill + knowledge
-    "testcase": 12,         # Plan + execute test cases
+    "testcase": 15,         # Plan + execute test cases
     "full": 600,
 }
 
@@ -51,9 +52,9 @@ PRICING = {
         "output": 10.0 / 1_000_000,
     },
     "openai/gpt-oss-120b": {
-        "input": 0.0 / 1_000_000,       # Free on Groq
-        "input_cached": 0.0 / 1_000_000,
-        "output": 0.0 / 1_000_000,
+        "input": 0.039 / 1_000_000,      # OpenRouter pricing
+        "input_cached": 0.039 / 1_000_000,
+        "output": 0.19 / 1_000_000,
     },
 }
 

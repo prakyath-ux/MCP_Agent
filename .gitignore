@@ -12,6 +12,7 @@ __pycache__/
 
 # OS
 .DS_Store
+.txt
 
 # Run outputs (large, regeneratable)
 state/runs/

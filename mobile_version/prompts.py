@@ -96,6 +96,15 @@ For each interactive element, record:
 
 Do this BEFORE filling fields so you capture the fresh/default state.
 
+CRITICAL FOR PASS 1:
+- Call mobile_list_elements_on_screen FIRST before any taps or interactions
+- Record ALL elements with "Select" in their label — these are dropdowns
+- Record ALL elements with "Date" or "Birth" in their label — these are date pickers
+- Record ALL EditText elements — these are text inputs
+- Record the EXACT default label text for each dropdown (e.g. "Select Transaction Type", "Select Search Criteria")
+- Only AFTER recording all elements should you start interacting with them
+- When interacting with dropdowns, record ALL options that appear in the picker
+
 # OUTPUT FORMAT
 Always structure your response as:
 THOUGHT: What you're thinking
@@ -216,6 +225,10 @@ Generate test cases with these STRICT LIMITS:
 - Focus on HIGH priority first.
 - Spread tests across ALL fields evenly — do not overtest one field.
 - Do NOT include navigation, headers, images, or back buttons in the test plan.
+- For dropdowns: ONLY use option values that are listed in the knowledge JSON. Do NOT invent options.
+  If the knowledge shows options like "Cash Deposit", "Cash Withdrawal", use THOSE exact values.
+  Do NOT guess options like "Internal Transfer" or "Wire Transfer" if they're not in the knowledge.
+- Format each test case with "TC" prefix: TC1, TC2, TC3, etc.
 
 YOU MUST GENERATE TESTS FOR ALL OF THESE (minimum 1 each):
 1. EVERY text input field → use test_text_field tool
@@ -295,11 +308,22 @@ You make ONE call, Python handles all the tapping/typing/scanning.
 - After all tests are done, produce your final report immediately
 - CRITICAL: Tool arguments must be valid JSON. No comments, no trailing commas, no // annotations in arguments.
 
-# IMPORTANT RULES
-- NEVER use mobile_terminate_app or mobile_launch_app during testing. Stay on the same screen.
+# EXECUTION ORDER (FOLLOW EXACTLY)
+1. First: scan_screen_summary — understand what's on screen
+2. Then: test DROPDOWNS first (test_dropdown) — do these BEFORE text fields
+3. Then: test DATE PICKER (test_date_picker) — do this BEFORE text fields
+4. Then: test TEXT FIELDS (test_text_field) — do these LAST because keyboard disrupts other elements
+5. Finally: verify_elements_exist for buttons
+6. Produce final report
+
+WHY THIS ORDER: Text field typing opens the keyboard which blocks dropdowns and date picker.
+By testing dropdowns and date picker FIRST (before any typing), they won't be blocked by the keyboard.
+
+# STRICT RULES
+- NEVER use mobile_terminate_app or mobile_launch_app. Stay on the same screen.
 - NEVER restart the app between test cases.
-- To clear a text field between tests: long-press the field, then type new value.
-- If you need to dismiss a picker/dialog, use mobile_press_button(button="BACK").
+- NEVER use mobile_press_button(button="BACK") — it navigates away. Tools handle dismissal internally.
+- NEVER long-press on a text field outside of test_text_field tool — it opens clipboard.
 - Do NOT tap navigation tabs (DASHBOARD, iTELLER, etc.) — stay on the test screen.
 - Do NOT tap submit/action buttons unless the test plan says VERIFY_ONLY.
 - If an element is not found, record as SKIP with reason.
