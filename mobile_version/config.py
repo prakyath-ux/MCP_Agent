@@ -1,8 +1,13 @@
 # mobile_version/config.py — All constants for mobile testing agent
 
 # ----- Model --------
-MODEL = "gpt-5"
+MODEL = "gpt-5"                      # OpenAI hosted — $1.25/$10 per MTok
+# MODEL = "openai/gpt-oss-120b"      # Free via Groq — $0/$0
 MODEL_MINI = "gpt-5-mini"
+
+# ----- Model Provider --------
+# "openai" = OpenAI API (default), "groq" = Groq Cloud (free), "openai_chat" = OpenAI via Chat Completions
+MODEL_PROVIDER = "openai_chat"
 
 # ------ Target Application -----------
 DEVICE_ID = "RZCXA21GV9P"              # From `adb devices`
@@ -14,8 +19,8 @@ TURN_LIMITS = {
     "safe_test": 5,         # Just list elements, no interaction
     "recon": 20,            # Explore screen, list all elements
     "poc_short": 40,        # Fill fields on one screen
-    "poc": 150,             # Full exploration + fill + knowledge
-    "testcase": 60,         # Plan + execute test cases (3 turns per test vs 1 in web)
+    "poc": 40,              # Full exploration + fill + knowledge
+    "testcase": 12,         # Plan + execute test cases
     "full": 600,
 }
 
@@ -44,6 +49,11 @@ PRICING = {
         "input": 1.25 / 1_000_000,
         "input_cached": 0.125 / 1_000_000,
         "output": 10.0 / 1_000_000,
+    },
+    "openai/gpt-oss-120b": {
+        "input": 0.0 / 1_000_000,       # Free on Groq
+        "input_cached": 0.0 / 1_000_000,
+        "output": 0.0 / 1_000_000,
     },
 }
 

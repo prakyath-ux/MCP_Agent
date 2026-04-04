@@ -232,8 +232,76 @@ def _get_last_n_turns(items: list[dict], n: int) -> list[dict]:
 
 
 def _filter_snapshots_in_items(items: list[dict]) -> list[dict]:
-    """No-op for mobile — mobile-mcp returns clean JSON, no filtering needed."""
-    return items
+    """Compress mobile element lists in history to reduce token bloat.
+
+    Replaces full element JSON (~1,500 tokens) with a short summary (~200 tokens).
+    Only interactive elements are kept (EditText, ViewGroup with labels, buttons).
+    Nav tabs, status bar, and decorative elements are stripped.
+    """
+    filtered = []
+    for item in items:
+        item_type = item.get("type", "")
+
+        if item_type == "function_call_output":
+            output = item.get("output", "")
+            if isinstance(output, str) and "Found these elements on screen" in output:
+                item = dict(item)  # Don't mutate original
+                item["output"] = _compress_element_list(output)
+
+        filtered.append(item)
+    return filtered
+
+
+def _compress_element_list(raw_output: str) -> str:
+    """Convert full element JSON to a short summary of interactive elements only."""
+    try:
+        # Extract JSON array from the output
+        json_start = raw_output.index("[")
+        elements = json.loads(raw_output[json_start:])
+    except (ValueError, json.JSONDecodeError):
+        return raw_output[:300]  # Fallback: truncate
+
+    # Filter to interactive elements only
+    skip_types = {
+        "android.widget.FrameLayout",
+        "android.widget.LinearLayout",
+        "android.view.View",
+        "android.view.TextureView",
+    }
+    skip_identifiers = {
+        "android:id/content",
+        "android:id/statusBarBackground",
+        "android:id/navigationBarBackground",
+    }
+    skip_labels = {"DASHBOARD", "iTELLER", "iBRANCH", "LOAN", "MORE"}
+
+    summary_lines = ["Elements on screen:"]
+    for el in elements:
+        el_type = el.get("type", "")
+        identifier = el.get("identifier", "")
+        label = el.get("label", "")
+        text = el.get("text", "")
+        coords = el.get("coordinates", {})
+
+        # Skip non-interactive and nav elements
+        if el_type in skip_types and not label and not text:
+            continue
+        if identifier in skip_identifiers:
+            continue
+        if label in skip_labels or text in skip_labels:
+            continue
+        if not label and not text and not identifier:
+            continue
+
+        # Build compact description
+        cx = coords.get("x", 0) + coords.get("width", 0) // 2
+        cy = coords.get("y", 0) + coords.get("height", 0) // 2
+        name = label or text or identifier
+        short_type = el_type.split(".")[-1]  # "android.widget.EditText" → "EditText"
+        focused = " [FOCUSED]" if el.get("focused") else ""
+        summary_lines.append(f"  {short_type}: \"{name}\" at ({cx},{cy}){focused}")
+
+    return "\n".join(summary_lines)
 
 
 if __name__ == "__main__":

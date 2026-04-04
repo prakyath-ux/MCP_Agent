@@ -10,16 +10,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from agents import Agent, Runner
+from agents import Agent, Runner, ModelSettings
 from agents.mcp import MCPServerStdio
 from agents.lifecycle import RunHooks
 from agents.items import ModelResponse, TResponseInputItem
 from agents.run_context import RunContextWrapper
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_error_handlers import RunErrorHandlerInput, RunErrorHandlerResult
+from compound_tools import TASK_TOOLS, SIMPLE_TOOLS, set_server
 
 from config import (
-    MODEL, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING,
+    MODEL, MODEL_PROVIDER, DEVICE_ID, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING,
     RUNS_DIR, PASS1_RUNS_DIR, PASS2_RUNS_DIR, ELEMENT_NUDGE_BEFORE_END,
     LOOP_WINDOW, LOOP_THRESHOLD, KNOWLEDGE_DIR, KEEP_LAST_N_TURNS,
     PER_TEST_BUDGET, RUNAWAY_MULTIPLIER, TESTCASE_PLAN_MARKER,
@@ -156,6 +157,32 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
     print(f"  Budget: ${MAX_BUDGET}")
     print(f"{'='*60}\n")
 
+    # ── Set up model (OpenAI or Groq) ─────────────────────────
+    model_config = MODEL
+    if MODEL_PROVIDER == "groq":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        groq_client = AsyncOpenAI(
+            api_key=os.environ.get("GROQ_API_KEY", ""),
+            base_url="https://api.groq.com/openai/v1",
+        )
+        model_config = OpenAIChatCompletionsModel(
+            model=MODEL,
+            openai_client=groq_client,
+        )
+        print(f"  Provider: Groq Cloud (free)")
+    elif MODEL_PROVIDER == "openai_chat":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        openai_client = AsyncOpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+        )
+        model_config = OpenAIChatCompletionsModel(
+            model=MODEL,
+            openai_client=openai_client,
+        )
+        print(f"  Provider: OpenAI (Chat Completions API)")
+
     async with MCPServerStdio(
         name="mobile-mcp",
         params={
@@ -166,11 +193,23 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
         client_session_timeout_seconds=30.0,
     ) as server:
 
+        # Inject MCP server into compound tools
+        set_server(server, DEVICE_ID)
+
+        # Pick tools based on provider
+        # Task tools work with Chat Completions API (Groq + OpenAI Chat)
+        # Simple tools for Responses API (default OpenAI)
+        active_tools = TASK_TOOLS if MODEL_PROVIDER in ("groq", "openai_chat") else SIMPLE_TOOLS
+
+        model_tuning = ModelSettings()
+
         agent = Agent(
             name="Mobile QA Tester" if mode != "testcase" else "Mobile Test Case Runner",
             instructions=active_prompt,
-            model=MODEL,
+            model=model_config,
+            model_settings=model_tuning,
             mcp_servers=[server],
+            tools=active_tools,
         )
 
         logger = LiveTurnLogger()
@@ -256,8 +295,10 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
                 agent = Agent(
                     name="Mobile Test Case Executor",
                     instructions=TESTCASE_EXEC_PROMPT,
-                    model=MODEL,
+                    model=model_config,
+                    model_settings=model_tuning,
                     mcp_servers=[server],
+                    tools=active_tools,
                 )
 
                 input_items = (

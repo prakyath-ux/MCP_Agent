@@ -179,9 +179,13 @@ Where Type is one of:
 - ViewGroup with dropdown label → TAP_VERIFY (tap, check picker opens, select option)
 - Date picker → TAP_VERIFY (tap, check date picker opens)
 - Submit/action button → VERIFY_ONLY (check exists, do NOT tap submit in testing)
-- Navigation tabs → SKIP (don't navigate away from test screen)
-- Back button → SKIP
-- Header/title → SKIP
+- Navigation tabs/bars → DO NOT INCLUDE in test plan (any element that navigates to a different screen)
+- Back buttons → DO NOT INCLUDE in test plan
+- Headers, titles, logos, images → DO NOT INCLUDE in test plan
+- Camera/preview areas (TextureView) → DO NOT INCLUDE in test plan
+- ONLY include elements that are FORM INPUTS: text fields, dropdowns, date pickers, and submit buttons
+- Look at element LABELS to identify type — if the knowledge JSON says "button" but the label says "Select..." it's actually a dropdown. Use test_dropdown.
+- Similarly if the label mentions "Date" or "Birth" or "Calendar", use test_date_picker regardless of what type says.
 
 # TEST CASE IDEAS PER TYPE
 For FILL_CHECK (text inputs):
@@ -211,9 +215,16 @@ Generate test cases with these STRICT LIMITS:
 - Total test cases: 8-12 (not more).
 - Focus on HIGH priority first.
 - Spread tests across ALL fields evenly — do not overtest one field.
-- EVERY interactive element MUST have at least 1 test case — especially dropdowns.
-- Dropdowns (Select Transaction Type, Select Search Criteria) MUST be tested with TAP_VERIFY — tap to open, verify options, select one, verify selection.
-- Do NOT skip dropdowns or mark them as VERIFY_ONLY. They are interactive and must be tested.
+- Do NOT include navigation, headers, images, or back buttons in the test plan.
+
+YOU MUST GENERATE TESTS FOR ALL OF THESE (minimum 1 each):
+1. EVERY text input field → use test_text_field tool
+2. EVERY dropdown (any element with "Select" in its label) → use test_dropdown tool
+3. EVERY date picker (any element with "Date" or "Birth" in its label) → use test_date_picker tool
+4. EVERY action button (like "Find Member") → use verify_elements_exist tool
+
+If the knowledge JSON has 5 form elements, your test plan MUST have at least 5 test cases covering ALL of them.
+Do NOT generate a plan with only 1-2 test cases. That is insufficient.
 """
 
 
@@ -224,31 +235,70 @@ and must execute each test case on the device.
 # YOUR TOOLS
 Same mobile-mcp tools as before (tap, type, list_elements, swipe, press_button).
 
-# HOW TO EXECUTE EACH TEST CASE
+# MULTI-ACTION TURNS (CRITICAL FOR EFFICIENCY)
+You MUST call multiple tools in a SINGLE turn whenever possible. Do NOT make one tool call per turn.
 
-For FILL_CHECK tests:
-1. mobile_list_elements_on_screen → find the field by label/text
-2. mobile_click_on_screen_at_coordinates → tap the field center
-3. mobile_type_keys(text="TEST_VALUE", submit=false) → enter test data
-4. mobile_list_elements_on_screen → check for error messages (new TextViews with error text)
-5. Record: TC# | field | PASS/FAIL | what happened
+Examples of GOOD multi-action turns:
+- tap field + type text in ONE turn: call mobile_click_on_screen_at_coordinates AND mobile_type_keys together
+- tap + press BACK in ONE turn: call mobile_click_on_screen_at_coordinates AND mobile_press_button together
+- type + list_elements in ONE turn: call mobile_type_keys AND mobile_list_elements_on_screen together
 
-For TAP_VERIFY tests:
-1. mobile_list_elements_on_screen → find the element
-2. mobile_click_on_screen_at_coordinates → tap it
-3. mobile_list_elements_on_screen → verify picker/dialog opened (new elements visible)
-4. mobile_press_button(button="BACK") → close picker
-5. Record: TC# | field | PASS/FAIL | what happened
+Example of BAD single-action turns:
+- Turn 1: mobile_click_on_screen_at_coordinates ← WASTEFUL
+- Turn 2: mobile_type_keys ← SHOULD BE COMBINED WITH TURN 1
 
-For VERIFY_ONLY tests:
-1. mobile_list_elements_on_screen → check element exists with correct text/label
-2. Record: TC# | field | PASS/FAIL | exists or not
+# WHEN TO SCAN ELEMENTS
+Do NOT call mobile_list_elements_on_screen every turn. Only scan when:
+1. FIRST turn — get initial layout (required)
+2. After keyboard appears or disappears — coordinates shift
+3. After a picker/dialog opens — new elements appear
+4. After navigation or screen change
+
+Do NOT scan after:
+- Typing text (you already know the field is focused)
+- Pressing BACK to dismiss a picker (just continue)
+- Simple taps that don't change the screen layout
+
+# HOW TO EXECUTE — TASK-LEVEL TOOLS (1 call per test type)
+
+You have powerful task-level tools. Each one runs an ENTIRE test sequence internally.
+You make ONE call, Python handles all the tapping/typing/scanning.
+
+## For text fields — test_text_field (tests ALL values in ONE call):
+  test_text_field(field_label="Enter Details", test_values=",!@#$%,MEM123456")
+  → Internally: tap → type → check error → clear → type next → check → clear → ...
+  → Returns: JSON array with pass/fail for EACH value
+  → Use comma-separated values. Empty string = empty field test.
+
+## For dropdowns — test_dropdown (ONE call):
+  test_dropdown(dropdown_label="Select Transaction Type")
+  → Internally: tap → scan for new options → close picker
+  → Returns: whether it opened, what options appeared
+
+## For date pickers — test_date_picker (ONE call):
+  test_date_picker(picker_label="Date of Birth")
+  → Internally: dismiss keyboard → tap → check if picker opened → close
+  → Returns: whether picker appeared
+
+## For verifying elements exist — verify_elements_exist (ONE call, multiple elements):
+  verify_elements_exist(element_labels="Find Member,Select Transaction Type")
+  → Internally: single scan, checks all labels
+  → Returns: EXISTS or NOT_FOUND for each
+
+## To see the screen — scan_screen_summary (ONE call):
+  scan_screen_summary()
+  → Returns compact list of interactive elements with coordinates
+
+# RULES
+- Use ONLY task-level tools above. Do NOT use raw mobile-mcp tools (mobile_click, mobile_type_keys, etc.)
+- Each tool call handles everything internally — no follow-up calls needed
+- After all tests are done, produce your final report immediately
+- CRITICAL: Tool arguments must be valid JSON. No comments, no trailing commas, no // annotations in arguments.
 
 # IMPORTANT RULES
-- After tapping a text field, keyboard appears — coordinates of other elements SHIFT. Re-scan.
-- To clear a text field between tests: long-press the field, then type new value (it replaces).
 - NEVER use mobile_terminate_app or mobile_launch_app during testing. Stay on the same screen.
-- NEVER restart the app between test cases. Just clear the field and type the next test value.
+- NEVER restart the app between test cases.
+- To clear a text field between tests: long-press the field, then type new value.
 - If you need to dismiss a picker/dialog, use mobile_press_button(button="BACK").
 - Do NOT tap navigation tabs (DASHBOARD, iTELLER, etc.) — stay on the test screen.
 - Do NOT tap submit/action buttons unless the test plan says VERIFY_ONLY.
