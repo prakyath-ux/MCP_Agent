@@ -17,7 +17,7 @@ from agents.items import ModelResponse, TResponseInputItem
 from agents.run_context import RunContextWrapper
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_error_handlers import RunErrorHandlerInput, RunErrorHandlerResult
-from compound_tools import TASK_TOOLS, SIMPLE_TOOLS, set_server
+from compound_tools import TASK_TOOLS, SIMPLE_TOOLS, EXPLORE_TOOLS, set_server
 
 from config import (
     MODEL, MODEL_PROVIDER, DEVICE_ID, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING,
@@ -108,7 +108,7 @@ class LiveTurnLogger(RunHooks):
 
 # ── Main Orchestrated Run ────────────────────────────────────────────────────
 
-async def run_orchestrated(device_id: str, package_name: str, app_name: str, mode: str) -> None:
+async def run_orchestrated(device_id: str, package_name: str, app_name: str, mode: str, screen_name: str = "") -> None:
     max_turns = TURN_LIMITS[mode]
 
     # ── Select prompt and task based on mode ───────────────────
@@ -116,7 +116,7 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
     active_prompt = SYSTEM_PROMPT
 
     if mode == "testcase":
-        knowledge_json = _load_knowledge(package_name)
+        knowledge_json = _load_knowledge(package_name, screen_name)
         if not knowledge_json:
             print("  ERROR: No Pass 1 knowledge found for this app.")
             print(f"  Run a 'poc' first to generate knowledge in {KNOWLEDGE_DIR}/")
@@ -208,10 +208,16 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
         # Inject MCP server into compound tools
         set_server(server, DEVICE_ID)
 
-        # Pick tools based on provider
-        # Task tools work with Chat Completions API (Groq + OpenAI Chat)
-        # Simple tools for Responses API (default OpenAI)
-        active_tools = TASK_TOOLS if MODEL_PROVIDER in ("groq", "openai_chat", "openrouter") else SIMPLE_TOOLS
+        # Pick tools based on mode + provider
+        if mode in ("poc", "safe_test", "recon"):
+            # Pass 1: exploration tools (fill once, no multi-value testing)
+            active_tools = EXPLORE_TOOLS
+        elif MODEL_PROVIDER in ("groq", "openai_chat", "openrouter"):
+            # Pass 2: task tools for Chat Completions API
+            active_tools = TASK_TOOLS
+        else:
+            # Pass 2: simple tools for Responses API
+            active_tools = SIMPLE_TOOLS
 
         model_tuning = ModelSettings()
 
@@ -375,7 +381,7 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
 
         # ── Save knowledge from Pass 1 ────────────────────────────
         if mode not in ("safe_test", "recon", "testcase") and final_output:
-            knowledge_path = _save_knowledge(final_output, package_name, app_name)
+            knowledge_path = _save_knowledge(final_output, package_name, app_name, screen_name)
             if knowledge_path:
                 print(f"  Pass 1 knowledge ready — run 'testcase' mode next")
 
@@ -496,7 +502,7 @@ def _detect_loop(turn_log: list[dict]) -> str | None:
 
 # ── Helper: Knowledge Storage ────────────────────────────────────────────────
 
-def _save_knowledge(final_output: str, package_name: str, app_name: str) -> str | None:
+def _save_knowledge(final_output: str, package_name: str, app_name: str, screen_name: str = "") -> str | None:
     if not final_output:
         return None
 
@@ -544,11 +550,14 @@ def _save_knowledge(final_output: str, package_name: str, app_name: str) -> str 
     knowledge_dir.mkdir(parents=True, exist_ok=True)
 
     safe_name = package_name.replace(".", "_")[:80]
+    if screen_name:
+        safe_name = f"{safe_name}_{screen_name}"
     knowledge_path = knowledge_dir / f"{safe_name}.json"
 
     knowledge["_meta"] = {
         "package_name": package_name,
         "app_name": app_name,
+        "screen_name": screen_name,
         "saved_at": datetime.now().isoformat(),
         "source": "pass1_mobile_exploration",
     }
@@ -560,12 +569,14 @@ def _save_knowledge(final_output: str, package_name: str, app_name: str) -> str 
     return str(knowledge_path)
 
 
-def _load_knowledge(package_name: str) -> str | None:
+def _load_knowledge(package_name: str, screen_name: str = "") -> str | None:
     knowledge_dir = Path(__file__).parent / "knowledge"
     if not knowledge_dir.exists():
         return None
 
     safe_name = package_name.replace(".", "_")[:80]
+    if screen_name:
+        safe_name = f"{safe_name}_{screen_name}"
     knowledge_path = knowledge_dir / f"{safe_name}.json"
 
     if not knowledge_path.exists():

@@ -1,0 +1,129 @@
+{
+  "screen_title": "Bank App (B2U) \u2013 Find Member Screen",
+  "package_name": "net.impacto.B2U",
+  "device_id": "RZCXA21GV9P",
+  "elements": [
+    {
+      "name": "Select Transaction Type",
+      "type": "dropdown",
+      "coordinates": {
+        "x": 141,
+        "y": 1128,
+        "width": 750,
+        "height": 151
+      },
+      "center": {
+        "x": 516,
+        "y": 1204
+      },
+      "identifier": "android:id/text1",
+      "label": "",
+      "text": "Select Transaction Type",
+      "required": true,
+      "value_entered": "Balance Enquiry",
+      "accepted": true,
+      "behavior": "Opens a picker with one option; selection updates label.",
+      "issues": null
+    },
+    {
+      "name": "Select Search Criteria",
+      "type": "dropdown",
+      "coordinates": {
+        "x": 141,
+        "y": 1304,
+        "width": 750,
+        "height": 151
+      },
+      "center": {
+        "x": 516,
+        "y": 1380
+      },
+      "identifier": "android:id/text1",
+      "label": "",
+      "text": "Select Search Criteria",
+      "required": true,
+      "value_entered": null,
+      "accepted": true,
+      "behavior": "Opens a picker with four options; no selection made during test.",
+      "issues": null
+    },
+    {
+      "name": "Enter Details",
+      "type": "text_input",
+      "coordinates": {
+        "x": 141,
+        "y": 1480,
+        "width": 885,
+        "height": 136
+      },
+      "center": {
+        "x": 583,
+        "y": 1548
+      },
+      "identifier": "",
+      "label": "Enter Details",
+      "text": "Enter Details",
+      "required": true,
+      "value_entered": "Test123",
+      "accepted": true,
+      "behavior": "Taps field, brings up keyboard, accepts typed text.",
+      "issues": null
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_picker",
+      "coordinates": {
+        "x": 141,
+        "y": 1639,
+        "width": 885,
+        "height": 130
+      },
+      "center": {
+        "x": 583,
+        "y": 1704
+      },
+      "identifier": "",
+      "label": "Date of Birth",
+      "text": "2026-04-06",
+      "required": true,
+      "value_entered": "2026-04-06",
+      "accepted": true,
+      "behavior": "Opens native date picker; default date displayed.",
+      "issues": null
+    },
+    {
+      "name": "Find Member",
+      "type": "button",
+      "coordinates": {
+        "x": 44,
+        "y": 1907,
+        "width": 992,
+        "height": 143
+      },
+      "center": {
+        "x": 540,
+        "y": 1979
+      },
+      "identifier": "",
+      "label": "",
+      "text": "Find Member",
+      "required": false,
+      "value_entered": null,
+      "accepted": true,
+      "behavior": "Standard button; present on screen.",
+      "issues": null
+    }
+  ],
+  "screen_notes": "The screen presents two dropdowns, a date picker, a text input, and a Find Member button. Dropdown for Transaction Type only offers one option (Balance Enquiry). Keyboard appearance shifts coordinates, handled correctly.",
+  "accessibility_issues": [
+    "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+    "Date picker label is present but not explicitly linked to picker control."
+  ],
+  "_meta": {
+    "package_name": "net.impacto.B2U",
+    "app_name": "Bank App (B2U)",
+    "screen_name": "MORE",
+    "saved_at": "2026-04-06T15:22:00.138766",
+    "source": "pass1_mobile_exploration"
+  }
+}

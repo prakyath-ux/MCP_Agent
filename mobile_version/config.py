@@ -1,14 +1,14 @@
 # mobile_version/config.py — All constants for mobile testing agent
 
 # ----- Model --------
-MODEL = "gpt-5"                      # OpenAI hosted — $1.25/$10 per MTok
-# MODEL = "openai/gpt-oss-120b"      # Cheap via OpenRouter — $0.039/$0.19 per MTok
+# MODEL = "gpt-5"                    # OpenAI hosted — $1.25/$10 per MTok
+MODEL = "openai/gpt-oss-120b"        # Cheap via OpenRouter — $0.039/$0.19 per MTok
 MODEL_MINI = "gpt-5-mini"
 
 # ----- Model Provider --------
 # "openai" = OpenAI Responses API, "openai_chat" = OpenAI Chat Completions
 # "groq" = Groq Cloud (free, daily limit), "openrouter" = OpenRouter (cheap, no limit)
-MODEL_PROVIDER = "openai_chat"
+MODEL_PROVIDER = "openrouter"
 
 # ------ Target Application -----------
 DEVICE_ID = "RZCXA21GV9P"              # From `adb devices`
@@ -20,7 +20,7 @@ TURN_LIMITS = {
     "safe_test": 5,         # Just list elements, no interaction
     "recon": 20,            # Explore screen, list all elements
     "poc_short": 40,        # Fill fields on one screen
-    "poc": 40,              # Full exploration + fill + knowledge
+    "poc": 20,              # Full exploration + fill + knowledge
     "testcase": 15,         # Plan + execute test cases
     "full": 600,
 }
@@ -36,8 +36,8 @@ BUDGET_WARNING_PCT = 0.5
 MAX_RETRIES_PER_FIELD = 3
 LOOP_WINDOW = 6
 LOOP_THRESHOLD = 3
-COMPACT_AFTER_TURNS = 5
-KEEP_LAST_N_TURNS = 2
+COMPACT_AFTER_TURNS = 15            # Was 5 — too aggressive, caused agent to forget which fields were done
+KEEP_LAST_N_TURNS = 4              # Was 2 — agent lost memory of completed actions
 PER_TEST_BUDGET = 0.05
 RUNAWAY_MULTIPLIER = 2.0
 

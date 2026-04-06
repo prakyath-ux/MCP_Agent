@@ -68,7 +68,22 @@ Then call mobile_list_elements_on_screen to see newly revealed elements.
 
 # SINGLE APP INSTANCE
 Do NOT launch the same app multiple times. Work within the current screen.
-If you need to go back, use the BACK button, not launch_app.
+
+# DO NOT TOUCH THESE ELEMENTS
+- Header images, logos, avatars — NEVER tap
+- Back buttons — NEVER tap
+- Navigation tabs (bottom bar) — NEVER tap
+- Camera/preview areas — NEVER tap
+- Notification icons, email links, settings — NEVER tap
+- ANY element that could navigate away from the current form
+
+# EXECUTION ORDER (FOLLOW EXACTLY)
+1. scan_screen_summary() — understand the screen FIRST
+2. test_dropdown() for EACH dropdown — dropdowns FIRST
+3. test_date_picker() — date pickers SECOND
+4. fill_field_and_verify() — text fields LAST (keyboard blocks other elements)
+5. verify_elements_exist() — check buttons exist
+6. Produce your final report
 
 # CRITICAL: FILL ONCE, VERIFY ONCE, MOVE ON
 - Fill each field with ONE test value.

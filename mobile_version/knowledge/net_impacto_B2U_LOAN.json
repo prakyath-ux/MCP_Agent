@@ -1,0 +1,285 @@
+{
+  "screen_title": "Loan",
+  "package_name": "net.impacto.B2U",
+  "device_id": "RZCXA21GV9P",
+  "elements": [
+    {
+      "name": "backButton",
+      "type": "button",
+      "coordinates": {
+        "x": 32,
+        "y": 146,
+        "width": 66,
+        "height": 66
+      },
+      "center": {
+        "x": 65,
+        "y": 179
+      },
+      "identifier": "backButton",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Appears as a back icon in header",
+      "issues": "No accessible label/content description"
+    },
+    {
+      "name": "Select Search Criteria",
+      "type": "dropdown",
+      "coordinates": {
+        "x": 141,
+        "y": 1128,
+        "width": 864,
+        "height": 122
+      },
+      "center": {
+        "x": 573,
+        "y": 1189
+      },
+      "identifier": "",
+      "label": "Select Search Criteria",
+      "text": "Select Search Criteria",
+      "required": false,
+      "value_entered": "Member ID",
+      "accepted": true,
+      "behavior": "Dropdown opened and displayed 4 options; selection reflected on field",
+      "issues": ""
+    },
+    {
+      "name": "Enter Details",
+      "type": "text_input",
+      "coordinates": {
+        "x": 141,
+        "y": 1275,
+        "width": 885,
+        "height": 136
+      },
+      "center": {
+        "x": 584,
+        "y": 1343
+      },
+      "identifier": "",
+      "label": "Enter Details",
+      "text": "Enter Details",
+      "required": false,
+      "value_entered": "M123456789",
+      "accepted": true,
+      "behavior": "Accepted alphanumeric entry; value persisted",
+      "issues": ""
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_picker",
+      "coordinates": {
+        "x": 141,
+        "y": 1434,
+        "width": 885,
+        "height": 130
+      },
+      "center": {
+        "x": 584,
+        "y": 1499
+      },
+      "identifier": "",
+      "label": "Date of Birth",
+      "text": "Date of Birth",
+      "required": false,
+      "value_entered": "2026-04-06",
+      "accepted": true,
+      "behavior": "Date picker opened; Confirm applied date to field",
+      "issues": ""
+    },
+    {
+      "name": "Find Member",
+      "type": "button",
+      "coordinates": {
+        "x": 44,
+        "y": 1907,
+        "width": 992,
+        "height": 143
+      },
+      "center": {
+        "x": 540,
+        "y": 1978
+      },
+      "identifier": "",
+      "label": "Find Member",
+      "text": "Find Member",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Primary action button (not tapped in this pass)",
+      "issues": ""
+    },
+    {
+      "name": "DASHBOARD",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 0,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 108,
+        "y": 2229
+      },
+      "identifier": "",
+      "label": "DASHBOARD",
+      "text": "DASHBOARD",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Bottom navigation tab",
+      "issues": "TextView and View duplicate accessible name"
+    },
+    {
+      "name": "iTELLER",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 216,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 324,
+        "y": 2229
+      },
+      "identifier": "",
+      "label": "iTELLER",
+      "text": "iTELLER",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Bottom navigation tab",
+      "issues": "TextView and View duplicate accessible name"
+    },
+    {
+      "name": "iBRANCH",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 432,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 540,
+        "y": 2229
+      },
+      "identifier": "",
+      "label": "iBRANCH",
+      "text": "iBRANCH",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Bottom navigation tab",
+      "issues": "TextView and View duplicate accessible name"
+    },
+    {
+      "name": "LOAN",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 648,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 756,
+        "y": 2229
+      },
+      "identifier": "",
+      "label": "LOAN",
+      "text": "LOAN",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Bottom navigation tab (current section)",
+      "issues": "TextView and View duplicate accessible name"
+    },
+    {
+      "name": "MORE",
+      "type": "nav_tab",
+      "coordinates": {
+        "x": 864,
+        "y": 2161,
+        "width": 216,
+        "height": 137
+      },
+      "center": {
+        "x": 972,
+        "y": 2229
+      },
+      "identifier": "",
+      "label": "MORE",
+      "text": "MORE",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Bottom navigation tab",
+      "issues": "TextView and View duplicate accessible name"
+    },
+    {
+      "name": "headerImage",
+      "type": "button",
+      "coordinates": {
+        "x": 1004,
+        "y": 157,
+        "width": 44,
+        "height": 44
+      },
+      "center": {
+        "x": 1026,
+        "y": 179
+      },
+      "identifier": "headerImage",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Appears tappable (avatar/settings) in header",
+      "issues": "No accessible label/content description"
+    },
+    {
+      "name": "texture_view",
+      "type": "view",
+      "coordinates": {
+        "x": 0,
+        "y": 267,
+        "width": 1080,
+        "height": 773
+      },
+      "center": {
+        "x": 540,
+        "y": 653
+      },
+      "identifier": "net.impacto.B2U:id/texture_view",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": false,
+      "behavior": "Non-interactive display area",
+      "issues": "No accessible label"
+    }
+  ],
+  "screen_notes": "Loan screen with a single dropdown, a details input, a DOB picker, and a primary action button. Bottom navigation bar present.",
+  "accessibility_issues": [
+    "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+    "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+    "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+    "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+  ],
+  "_meta": {
+    "package_name": "net.impacto.B2U",
+    "app_name": "Bank App (B2U)",
+    "screen_name": "LOAN",
+    "saved_at": "2026-04-06T13:26:52.134165",
+    "source": "pass1_mobile_exploration"
+  }
+}

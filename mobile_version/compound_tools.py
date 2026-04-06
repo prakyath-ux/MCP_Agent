@@ -676,5 +676,14 @@ SIMPLE_TOOLS = [
     dismiss_keyboard_safe,
 ]
 
+# Exploration tools (for Pass 1 — fill once, explore, collect knowledge)
+EXPLORE_TOOLS = [
+    scan_screen_summary,
+    fill_field_and_verify,
+    test_dropdown,
+    test_date_picker,
+    verify_elements_exist,
+]
+
 # Default — orchestrator picks based on provider
 COMPOUND_TOOLS = TASK_TOOLS
