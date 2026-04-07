@@ -1,14 +1,14 @@
 # mobile_version/config.py — All constants for mobile testing agent
 
 # ----- Model --------
-# MODEL = "gpt-5"                    # OpenAI hosted — $1.25/$10 per MTok
-MODEL = "openai/gpt-oss-120b"        # Cheap via OpenRouter — $0.039/$0.19 per MTok
+MODEL = "gpt-5.1"                    # OpenAI hosted — $1.25/$10 per MTok
+# MODEL = "openai/gpt-oss-120b"      # Cheap via OpenRouter — $0.039/$0.19 per MTok
 MODEL_MINI = "gpt-5-mini"
 
 # ----- Model Provider --------
 # "openai" = OpenAI Responses API, "openai_chat" = OpenAI Chat Completions
 # "groq" = Groq Cloud (free, daily limit), "openrouter" = OpenRouter (cheap, no limit)
-MODEL_PROVIDER = "openrouter"
+MODEL_PROVIDER = "openai_chat"
 
 # ------ Target Application -----------
 DEVICE_ID = "RZCXA21GV9P"              # From `adb devices`
@@ -36,8 +36,8 @@ BUDGET_WARNING_PCT = 0.5
 MAX_RETRIES_PER_FIELD = 3
 LOOP_WINDOW = 6
 LOOP_THRESHOLD = 3
-COMPACT_AFTER_TURNS = 15            # Was 5 — too aggressive, caused agent to forget which fields were done
-KEEP_LAST_N_TURNS = 4              # Was 2 — agent lost memory of completed actions
+COMPACT_AFTER_TURNS = 5
+KEEP_LAST_N_TURNS = 2
 PER_TEST_BUDGET = 0.05
 RUNAWAY_MULTIPLIER = 2.0
 
@@ -47,6 +47,11 @@ TESTCASE_PLAN_MARKER = "## TEST PLAN"
 # ------- Pricing (per token) -------------
 PRICING = {
     "gpt-5": {
+        "input": 1.25 / 1_000_000,
+        "input_cached": 0.125 / 1_000_000,
+        "output": 10.0 / 1_000_000,
+    },
+    "gpt-5.1": {
         "input": 1.25 / 1_000_000,
         "input_cached": 0.125 / 1_000_000,
         "output": 10.0 / 1_000_000,

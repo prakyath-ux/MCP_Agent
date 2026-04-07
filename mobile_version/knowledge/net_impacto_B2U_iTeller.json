@@ -1,0 +1,102 @@
+{
+  "screen_title": "Find Member",
+  "package_name": "net.impacto.B2U",
+  "device_id": "RZCXA21GV9P",
+  "elements": [
+    {
+      "name": "Back",
+      "type": "button",
+      "coordinates": { "x": 32, "y": 146, "width": 66, "height": 66 },
+      "center": { "x": 65, "y": 179 },
+      "identifier": "backButton",
+      "label": "",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": null,
+      "behavior": "closes the current screen",
+      "issues": ""
+    },
+    {
+      "name": "Transaction Type",
+      "type": "dropdown",
+      "coordinates": { "x": 141, "y": 1128, "width": 864, "height": 122 },
+      "center": { "x": 573, "y": 1189 },
+      "identifier": "",
+      "label": "Select Transaction Type",
+      "text": "ACH Transfers (TECU to Bank)",
+      "required": true,
+      "value_entered": "ACH Transfers (TECU to Bank)",
+      "accepted": true,
+      "behavior": "opens a list of transaction types, selection updates the field",
+      "issues": ""
+    },
+    {
+      "name": "Search Criteria",
+      "type": "dropdown",
+      "coordinates": { "x": 141, "y": 1275, "width": 864, "height": 122 },
+      "center": { "x": 573, "y": 1336 },
+      "identifier": "",
+      "label": "Select Search Criteria",
+      "text": "Driver Permit",
+      "required": true,
+      "value_entered": "Driver Permit",
+      "accepted": true,
+      "behavior": "opens a list of criteria, selection updates the field",
+      "issues": ""
+    },
+    {
+      "name": "Enter Details",
+      "type": "text_input",
+      "coordinates": { "x": 141, "y": 1208, "width": 885, "height": 136 },
+      "center": { "x": 584, "y": 1490 },
+      "identifier": "",
+      "label": "Enter Details",
+      "text": "TestUserQA-MEMBER-001",
+      "required": true,
+      "value_entered": "TestUserQA-MEMBER-001",
+      "accepted": true,
+      "behavior": "standard text entry field, brings up on-screen keyboard",
+      "issues": ""
+    },
+    {
+      "name": "Date of Birth",
+      "type": "date_picker",
+      "coordinates": { "x": 141, "y": 1367, "width": 885, "height": 130 },
+      "center": { "x": 584, "y": 1432 },
+      "identifier": "",
+      "label": "Date of Birth",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": null,
+      "behavior": "opens a calendar dialog when tapped",
+      "issues": ""
+    },
+    {
+      "name": "Find Member",
+      "type": "button",
+      "coordinates": { "x": 44, "y": 1693, "width": 992, "height": 143 },
+      "center": { "x": 540, "y": 1765 },
+      "identifier": "",
+      "label": "Find Member",
+      "text": "",
+      "required": false,
+      "value_entered": "",
+      "accepted": null,
+      "behavior": "submits the form",
+      "issues": ""
+    }
+  ],
+  "screen_notes": "The screen contains two dropdowns, one text field, a date picker and a submit button.",
+  "accessibility_issues": [
+    "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+    "The back button lacks an accessibility label"
+  ],
+  "_meta": {
+    "package_name": "net.impacto.B2U",
+    "app_name": "Bank App (B2U)",
+    "saved_at": "2026-04-04T11:44:49",
+    "source": "pass1_mobile_exploration"
+  }
+}

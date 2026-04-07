@@ -219,7 +219,7 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
             # Pass 2: simple tools for Responses API
             active_tools = SIMPLE_TOOLS
 
-        model_tuning = ModelSettings()
+        model_tuning = ModelSettings(parallel_tool_calls=False)
 
         agent = Agent(
             name="Mobile QA Tester" if mode != "testcase" else "Mobile Test Case Runner",
