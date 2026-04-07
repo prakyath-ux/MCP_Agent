@@ -219,15 +219,13 @@ For FILL_CHECK (text inputs):
 - Special characters
 - Very long input
 
-For TAP_VERIFY (dropdowns):
-- Tap to open picker
-- Verify options are listed
-- Select one option
-- Verify selection is reflected
+For TAP_VERIFY (dropdowns) — MANDATORY for EVERY dropdown:
+- TC must SELECT an option (not just open/dismiss). Use select_option parameter.
+- Verify selection is reflected in the field after closing.
+- Do NOT create "open and dismiss without selecting" test cases — that wastes a turn.
 
-For TAP_VERIFY (date picker):
-- Tap to open
-- Verify date picker UI appears
+For TAP_VERIFY (date picker) — MANDATORY:
+- Tap to open, confirm a date, verify date appears in the field.
 
 # PRIORITY
 - HIGH: Required fields, core functionality
@@ -299,14 +297,15 @@ You make ONE call, Python handles all the tapping/typing/scanning.
   → Use comma-separated values. Empty string = empty field test.
 
 ## For dropdowns — test_dropdown (ONE call):
-  test_dropdown(dropdown_label="Select Transaction Type")
-  → Internally: tap → scan for new options → close picker
-  → Returns: whether it opened, what options appeared
+  test_dropdown(dropdown_label="Select Transaction Type", select_option="Cash Deposit")
+  → Internally: tap → scan for new options → tap option → verify selection → close
+  → Returns: whether it opened, options list, what was selected
+  → ALWAYS pass select_option — every dropdown MUST have an option selected and verified.
 
 ## For date pickers — test_date_picker (ONE call):
   test_date_picker(picker_label="Date of Birth")
-  → Internally: dismiss keyboard → tap → check if picker opened → close
-  → Returns: whether picker appeared
+  → Internally: dismiss keyboard → tap → confirm date → verify date in field
+  → Returns: whether picker appeared, confirmed date value
 
 ## For verifying elements exist — verify_elements_exist (ONE call, multiple elements):
   verify_elements_exist(element_labels="Find Member,Select Transaction Type")
@@ -323,16 +322,17 @@ You make ONE call, Python handles all the tapping/typing/scanning.
 - After all tests are done, produce your final report immediately
 - CRITICAL: Tool arguments must be valid JSON. No comments, no trailing commas, no // annotations in arguments.
 
-# EXECUTION ORDER (FOLLOW EXACTLY)
-1. First: scan_screen_summary — understand what's on screen
-2. Then: test DROPDOWNS first (test_dropdown) — do these BEFORE text fields
-3. Then: test DATE PICKER (test_date_picker) — do this BEFORE text fields
-4. Then: test TEXT FIELDS (test_text_field) — do these LAST because keyboard disrupts other elements
-5. Finally: verify_elements_exist for buttons
-6. Produce final report
+# EXECUTION ORDER (MANDATORY — NO EXCEPTIONS)
+1. scan_screen_summary() — understand what's on screen
+2. test_dropdown() for EACH dropdown — SELECT an option in every one (use select_option param)
+3. test_date_picker() — confirm a date, verify it appears in the field
+4. test_text_field() — text fields LAST (keyboard blocks everything above)
+5. verify_elements_exist() for buttons
+6. Produce final report IMMEDIATELY
 
-WHY THIS ORDER: Text field typing opens the keyboard which blocks dropdowns and date picker.
-By testing dropdowns and date picker FIRST (before any typing), they won't be blocked by the keyboard.
+WHY THIS ORDER: Text field typing opens the keyboard which covers dropdowns and date picker.
+If you test text fields first, dropdowns and date picker become untappable behind the keyboard.
+NEVER change this order. NEVER test a text field before all dropdowns and date picker are done.
 
 # STRICT RULES
 - NEVER use mobile_terminate_app or mobile_launch_app. Stay on the same screen.

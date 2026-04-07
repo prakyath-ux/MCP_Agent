@@ -15,8 +15,8 @@ PRICING = {
     "gpt-4o":      {"input": 2.50 / 1_000_000, "input_cached": 1.25 / 1_000_000,   "output": 10.0 / 1_000_000},
     "gpt-4.1":     {"input": 2.00 / 1_000_000, "input_cached": 0.50 / 1_000_000,   "output": 8.00 / 1_000_000},
     "gpt-5":       {"input": 1.25 / 1_000_000, "input_cached": 0.125 / 1_000_000,  "output": 10.0 / 1_000_000},
-    "gpt-5-mini":  {"input": 0.25 / 1_000_000, "input_cached": 0.025 / 1_000_000,  "output": 2.00 / 1_000_000},
-    "gpt-5-nano":  {"input": 0.05 / 1_000_000, "input_cached": 0.005 / 1_000_000,  "output": 0.40 / 1_000_000},
+    "gpt-5.1":     {"input": 1.25 / 1_000_000, "input_cached": 0.125 / 1_000_000,  "output": 10.0 / 1_000_000},
+    "openai/gpt-oss-120b": {"input": 0.039 / 1_000_000, "input_cached": 0.039 / 1_000_000, "output": 0.19 / 1_000_000},
     # Groq (free tier)
     "groq/llama-3.3-70b-versatile":  {"input": 0.59 / 1_000_000, "input_cached": 0.59 / 1_000_000, "output": 0.79 / 1_000_000},
     "groq/llama-3.1-8b-instant":     {"input": 0.05 / 1_000_000, "input_cached": 0.05 / 1_000_000, "output": 0.08 / 1_000_000},

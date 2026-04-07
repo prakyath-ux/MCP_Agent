@@ -3,9 +3,11 @@
 # LLM says what to test, Python handles ALL execution.
 
 import json
+import time
 import asyncio
 from agents import function_tool
 from agents.mcp import MCPServerStdio
+from config import SAFE_TAP_X, SAFE_TAP_Y
 
 # Module-level reference to the MCP server — set by orchestrator before agent runs
 _mcp_server: MCPServerStdio | None = None
@@ -24,13 +26,25 @@ def set_server(server: MCPServerStdio, device_id: str) -> None:
     _device_id = device_id
 
 
+def clear_caches() -> None:
+    """Reset element coordinate caches between screens."""
+    global _coords_no_keyboard, _coords_with_keyboard, _keyboard_active
+    _coords_no_keyboard = {}
+    _coords_with_keyboard = {}
+    _keyboard_active = False
+
+
 # ── Internal helpers (not exposed to LLM) ────────────────────────────────────
 
 async def _call_mcp(tool_name: str, args: dict) -> str:
     if not _mcp_server:
         return "ERROR: MCP server not initialized"
     args["device"] = _device_id
+    t0 = time.time()
     result = await _mcp_server.call_tool(tool_name, args)
+    elapsed = time.time() - t0
+    if elapsed > 5:
+        print(f"    ⚠ MCP slow: {tool_name} took {elapsed:.1f}s")
     if result.content and len(result.content) > 0:
         return result.content[0].text
     return ""
@@ -79,11 +93,19 @@ def _find_errors(elements: list[dict]) -> str:
     return "NO_ERROR"
 
 
-async def _dismiss_keyboard():
-    """Dismiss keyboard by tapping outside the input area. NEVER uses BACK (navigates away)."""
+async def _dismiss_keyboard(force: bool = False):
+    """Dismiss keyboard using ADB keyevent 111 (ESCAPE) — bypasses MCP, goes straight to Android.
+    Safe: no navigation, no focus change, just hides keyboard.
+    Args:
+        force: If True, always attempt dismiss even if we think keyboard is down.
+    """
     global _keyboard_active
-    if _keyboard_active:
-        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    if _keyboard_active or force:
+        import subprocess
+        subprocess.run(
+            ["adb", "-s", _device_id, "shell", "input", "keyevent", "111"],
+            capture_output=True, timeout=5,
+        )
         await asyncio.sleep(0.5)
         _keyboard_active = False
 
@@ -100,8 +122,16 @@ async def _scan_and_cache(state: str = "no_keyboard") -> list[dict]:
         if name:
             cache[name.lower()] = _center(el)
 
-    # Detect keyboard: if EditText is focused, keyboard is likely up
-    _keyboard_active = any(el.get("focused") for el in elements)
+    # Detect keyboard: check if content frame is shrunk (keyboard pushes it up)
+    # Normal height ~2207, with keyboard ~2084. Threshold: < 2150 means keyboard is up.
+    for el in elements:
+        if el.get("identifier") == "android:id/content":
+            content_height = el.get("coordinates", {}).get("height", 9999)
+            _keyboard_active = content_height < 2150
+            break
+    else:
+        # Fallback: if no content frame found, check if any EditText is focused
+        _keyboard_active = any(el.get("focused") for el in elements)
     return elements
 
 
@@ -169,8 +199,8 @@ async def test_text_field(field_label: str, test_values: str) -> str:
                       "PASS" if (not value and error != "NO_ERROR") else "FAIL"
         })
 
-    # Dismiss keyboard after all tests
-    await _dismiss_keyboard()
+    # ALWAYS dismiss keyboard after text field tests — next tool needs full screen
+    await _dismiss_keyboard(force=True)
 
     return json.dumps(results, indent=2)
 
@@ -184,8 +214,8 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
         dropdown_label: The label of the dropdown (e.g. "Select Transaction Type")
         select_option: Option text to select (e.g. "Cash Deposit"). Leave empty to just verify dropdown opens.
     """
-    # Dismiss keyboard first if active
-    await _dismiss_keyboard()
+    # ALWAYS dismiss keyboard — it covers dropdowns and nav bar
+    await _dismiss_keyboard(force=True)
 
     # Scan current state
     elements = await _scan_and_cache("no_keyboard")
@@ -242,7 +272,7 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
             })
         else:
             # Option not found — close by tapping outside (not BACK)
-            await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+            await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
             await asyncio.sleep(0.3)
             return json.dumps({
                 "status": "FAIL",
@@ -254,7 +284,7 @@ async def test_dropdown(dropdown_label: str, select_option: str = "") -> str:
             })
 
     # No selection requested — just close by tapping outside (not BACK)
-    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
     await asyncio.sleep(0.3)
 
     # Dismiss keyboard if app re-focused a text field
@@ -275,8 +305,8 @@ async def test_date_picker(picker_label: str) -> str:
     Args:
         picker_label: The label of the date picker (e.g. "Date of Birth")
     """
-    # Dismiss keyboard first
-    await _dismiss_keyboard()
+    # ALWAYS dismiss keyboard — it covers date picker and nav bar
+    await _dismiss_keyboard(force=True)
 
     # Scan current state
     elements = await _scan_and_cache("no_keyboard")
@@ -304,7 +334,7 @@ async def test_date_picker(picker_label: str) -> str:
     has_picker = any(sign in " ".join(new_elements).lower() for sign in picker_signs)
 
     if not has_picker:
-        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
         await asyncio.sleep(0.3)
         await _dismiss_keyboard()
         return json.dumps({
@@ -360,7 +390,7 @@ async def test_date_picker(picker_label: str) -> str:
         })
     else:
         # No Confirm button found — close by tapping outside (not BACK)
-        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
         await asyncio.sleep(0.3)
         await _dismiss_keyboard()
         return json.dumps({
@@ -524,7 +554,7 @@ async def tap_dropdown_and_select(dropdown_label: str, select_option: str = "") 
         select_option: Option to select (e.g. "Cash Deposit"). Leave empty to just list options.
     """
     # Dismiss keyboard by tapping outside (NOT BACK which navigates away)
-    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
     await asyncio.sleep(0.3)
 
     elements = await _scan_and_cache("no_keyboard")
@@ -560,11 +590,11 @@ async def tap_dropdown_and_select(dropdown_label: str, select_option: str = "") 
             updated_text = updated.get("text", "") or updated.get("label", "") if updated else "unknown"
             return f"SELECTED: '{select_option}' from '{dropdown_label}'. Field now shows: '{updated_text}'. Options were: {', '.join(new_elements[:10])}"
         else:
-            await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+            await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
             return f"TAPPED: '{dropdown_label}'. Options: {', '.join(new_elements[:10])}. '{select_option}' NOT FOUND in options."
 
     # Just report options, close by tapping outside
-    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
     await asyncio.sleep(0.3)
     return f"TAPPED: '{dropdown_label}'. Options: {', '.join(new_elements[:10])}"
 
@@ -577,7 +607,7 @@ async def tap_date_and_confirm(picker_label: str) -> str:
         picker_label: The label of the date field (e.g. "Date of Birth")
     """
     # Dismiss keyboard by tapping outside (NOT BACK)
-    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
     await asyncio.sleep(0.3)
 
     elements = await _scan_and_cache("no_keyboard")
@@ -622,7 +652,7 @@ async def tap_date_and_confirm(picker_label: str) -> str:
         return f"DATE_CONFIRMED: '{picker_label}' = '{date_value}'"
     else:
         # Close with tap outside
-        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+        await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
         return f"PICKER_OPENED but Confirm button not found. Closed by tapping outside."
 
 
@@ -648,7 +678,7 @@ async def dismiss_keyboard_safe(reason: str = "done typing") -> str:
         reason: Why dismissing (for logging)
     """
     # Tap header area — safe, won't navigate away
-    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": 540, "y": 100})
+    await _call_mcp("mobile_click_on_screen_at_coordinates", {"x": SAFE_TAP_X, "y": SAFE_TAP_Y})
     await asyncio.sleep(0.3)
     elements = await _scan_and_cache("no_keyboard")
     labels = [e.get("label", "") or e.get("text", "") for e in elements if e.get("label") or e.get("text")]

@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import time
+import asyncio
 from datetime import datetime
 from pathlib import Path
 
@@ -17,13 +18,16 @@ from agents.items import ModelResponse, TResponseInputItem
 from agents.run_context import RunContextWrapper
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_error_handlers import RunErrorHandlerInput, RunErrorHandlerResult
-from compound_tools import TASK_TOOLS, SIMPLE_TOOLS, EXPLORE_TOOLS, set_server
+from compound_tools import TASK_TOOLS, SIMPLE_TOOLS, EXPLORE_TOOLS, set_server, clear_caches
 
 from config import (
-    MODEL, MODEL_PROVIDER, DEVICE_ID, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING,
+    MODEL as DEFAULT_MODEL, MODEL_PROVIDER as DEFAULT_PROVIDER,
+    DEVICE_ID, TURN_LIMITS, MAX_BUDGET, BUDGET_WARNING_PCT, PRICING,
     RUNS_DIR, PASS1_RUNS_DIR, PASS2_RUNS_DIR, ELEMENT_NUDGE_BEFORE_END,
     LOOP_WINDOW, LOOP_THRESHOLD, KNOWLEDGE_DIR, KEEP_LAST_N_TURNS,
     PER_TEST_BUDGET, RUNAWAY_MULTIPLIER, TESTCASE_PLAN_MARKER,
+    NAV_TAB_COORDINATES, SCREEN_NAME_MAP,
+    SAFE_TAP_X, SAFE_TAP_Y,
 )
 from prompts import SYSTEM_PROMPT, TESTCASE_PLAN_PROMPT, TESTCASE_EXEC_PROMPT
 from compactor import compact_history, update_summary
@@ -38,8 +42,9 @@ from state.tracker import StateTracker
 
 class LiveTurnLogger(RunHooks):
 
-    def __init__(self) -> None:
+    def __init__(self, model: str = "") -> None:
         self.turn = 0
+        self._model = model
         self._header_printed = False
         self.total_input = 0
         self.total_output = 0
@@ -96,8 +101,8 @@ class LiveTurnLogger(RunHooks):
 
         print(f"  {self.turn:<5} {action:<30} {target:<20} {t_input:>7,} {t_cached:>7,} {t_output:>6,} {cache_pct:>6.0f}%")
 
-    def get_current_cost(self) -> float:
-        prices = PRICING.get(MODEL, PRICING["gpt-5"])
+    def get_current_cost(self, model: str = "") -> float:
+        prices = PRICING.get(model or self._model, PRICING["gpt-5"])
         uncached = self.total_input - self.total_cached
         return (
             uncached * prices["input"]
@@ -106,10 +111,144 @@ class LiveTurnLogger(RunHooks):
         )
 
 
-# ── Main Orchestrated Run ────────────────────────────────────────────────────
+# ── Helper: Build model config ────────────────────────────────────────────────
 
-async def run_orchestrated(device_id: str, package_name: str, app_name: str, mode: str, screen_name: str = "") -> None:
+def _build_model_config(model: str, provider: str):
+    """Build the model config object based on provider. Returns (model_config, provider_label)."""
+    if provider == "groq":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        client = AsyncOpenAI(
+            api_key=os.environ.get("GROQ_API_KEY", ""),
+            base_url="https://api.groq.com/openai/v1",
+        )
+        return OpenAIChatCompletionsModel(model=model, openai_client=client), "Groq Cloud (free)"
+    elif provider == "openai_chat":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+        return OpenAIChatCompletionsModel(model=model, openai_client=client), "OpenAI (Chat Completions API)"
+    elif provider == "openrouter":
+        from openai import AsyncOpenAI
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        client = AsyncOpenAI(
+            api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+            base_url="https://openrouter.ai/api/v1",
+        )
+        return OpenAIChatCompletionsModel(model=model, openai_client=client), "OpenRouter (cheap, no daily limit)"
+    else:
+        return model, "OpenAI (Responses API)"
+
+
+# ── Helper: Navigate to screen ────────────────────────────────────────────────
+
+async def _navigate_to_screen(server: MCPServerStdio, device_id: str, screen_name: str) -> bool:
+    """Tap the nav tab for the given screen."""
+    nav_label = SCREEN_NAME_MAP.get(screen_name.lower(), screen_name.upper())
+    coords = NAV_TAB_COORDINATES.get(nav_label)
+
+    if not coords:
+        print(f"  WARNING: No nav coordinates for '{screen_name}' (label: {nav_label})")
+        return False
+
+    # Tap the nav tab
+    x, y = coords
+    print(f"  Tapping {nav_label} tab at ({x}, {y})...")
+    await server.call_tool("mobile_click_on_screen_at_coordinates", {"device": device_id, "x": x, "y": y})
+    await asyncio.sleep(1.5)
+
+    # Verify screen changed
+    result = await server.call_tool("mobile_list_elements_on_screen", {"device": device_id})
+    screen_text = result.content[0].text.lower() if result.content else ""
+
+    if nav_label.lower() in screen_text or screen_name.lower() in screen_text:
+        print(f"  Navigated to {nav_label}")
+        return True
+
+    # Retry once
+    print(f"  Screen may not have changed — retrying...")
+    await server.call_tool("mobile_click_on_screen_at_coordinates", {"device": device_id, "x": x, "y": y})
+    await asyncio.sleep(1.5)
+    print(f"  Navigated to {nav_label} (retry)")
+    return True
+
+
+# ── Helper: Cleanup between screens ──────────────────────────────────────────
+
+async def _cleanup_screen(server: MCPServerStdio, device_id: str) -> None:
+    """Dismiss keyboard, close popups/dialogs, verify screen is clean before navigating."""
+    print(f"\n  ── Screen cleanup ──")
+
+    # Step 1: ADB keyevent 111 (ESCAPE) — dismisses keyboard without navigation
+    print(f"  Step 1: Dismissing keyboard (ADB ESCAPE)...")
+    import subprocess
+    subprocess.run(["adb", "-s", device_id, "shell", "input", "keyevent", "111"],
+                   capture_output=True, timeout=5)
+    await asyncio.sleep(0.8)
+
+    # Step 2: Scan to check state — is keyboard gone? any dialogs open?
+    print(f"  Step 2: Scanning screen state...")
+    result = await server.call_tool("mobile_list_elements_on_screen", {"device": device_id})
+    raw_text = result.content[0].text if result.content else ""
+
+    # Check content frame height to detect keyboard
+    import json as _json
+    try:
+        elements = _json.loads(raw_text[raw_text.index("["):])
+        content_el = next((e for e in elements if e.get("identifier") == "android:id/content"), None)
+        content_height = content_el.get("coordinates", {}).get("height", 9999) if content_el else 9999
+        keyboard_still_up = content_height < 2150
+    except (ValueError, _json.JSONDecodeError):
+        keyboard_still_up = False
+
+    if keyboard_still_up:
+        print(f"  Keyboard still up — sending ESCAPE again...")
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "keyevent", "111"],
+                       capture_output=True, timeout=5)
+        await asyncio.sleep(0.8)
+
+    # Step 3: Check for open dialogs/popups
+    screen_text = raw_text.lower()
+    dialog_signs = ["cancel", "dismiss", "close", "confirm", "select date"]
+    has_dialog = any(sign in screen_text for sign in dialog_signs)
+
+    if has_dialog:
+        print(f"  Found open dialog — sending ESCAPE to close...")
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "keyevent", "111"],
+                       capture_output=True, timeout=5)
+        await asyncio.sleep(0.5)
+
+    # Step 4: Verify nav bar is visible at normal position (y > 2150)
+    print(f"  Step 3: Verifying nav bar visible...")
+    result = await server.call_tool("mobile_list_elements_on_screen", {"device": device_id})
+    screen_text = result.content[0].text.lower() if result.content else ""
+
+    has_nav = "dashboard" in screen_text and ("iteller" in screen_text or "loan" in screen_text)
+    if has_nav:
+        print(f"  Screen clean — nav bar visible")
+    else:
+        print(f"  ⚠ Nav bar not visible — will attempt navigation anyway")
+
+
+# ── Single Screen Run ─────────────────────────────────────────────────────────
+
+async def _run_single_screen(
+    server: MCPServerStdio,
+    device_id: str,
+    package_name: str,
+    app_name: str,
+    mode: str,
+    screen_name: str,
+    model: str,
+    model_config,
+    provider: str,
+) -> dict:
+    """Run a single screen test. Returns summary dict."""
     max_turns = TURN_LIMITS[mode]
+
+    # Clear coordinate caches from previous screen
+    clear_caches()
+    set_server(server, device_id)
 
     # ── Select prompt and task based on mode ───────────────────
     knowledge_json = None
@@ -118,9 +257,9 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
     if mode == "testcase":
         knowledge_json = _load_knowledge(package_name, screen_name)
         if not knowledge_json:
-            print("  ERROR: No Pass 1 knowledge found for this app.")
+            print(f"  ERROR: No Pass 1 knowledge for screen '{screen_name}'.")
             print(f"  Run a 'poc' first to generate knowledge in {KNOWLEDGE_DIR}/")
-            return
+            return {"screen": screen_name, "status": "skipped_no_knowledge", "turns": 0, "cost": 0, "duration": 0}
         active_prompt = TESTCASE_PLAN_PROMPT
         task = (
             f"Here is the knowledge JSON from Pass 1 exploration of {app_name} ({package_name}):\n\n"
@@ -147,109 +286,50 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
             "Do NOT press the HOME button or navigate away from the app."
         )
 
-    print(f"\n{'='*60}")
-    print(f"  Mode: {mode} (mobile — orchestrated loop)")
-    print(f"  Device: {device_id}")
-    print(f"  Package: {package_name}")
-    print(f"  App: {app_name}")
-    print(f"  Model: {MODEL}")
-    print(f"  Max turns: {max_turns}")
-    print(f"  Budget: ${MAX_BUDGET}")
-    print(f"{'='*60}\n")
+    # Pick tools based on mode + provider
+    if mode in ("poc", "safe_test", "recon"):
+        active_tools = EXPLORE_TOOLS
+    elif provider in ("groq", "openai_chat", "openrouter"):
+        active_tools = TASK_TOOLS
+    else:
+        active_tools = SIMPLE_TOOLS
 
-    # ── Set up model (OpenAI or Groq) ─────────────────────────
-    model_config = MODEL
-    if MODEL_PROVIDER == "groq":
-        from openai import AsyncOpenAI
-        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
-        groq_client = AsyncOpenAI(
-            api_key=os.environ.get("GROQ_API_KEY", ""),
-            base_url="https://api.groq.com/openai/v1",
-        )
-        model_config = OpenAIChatCompletionsModel(
-            model=MODEL,
-            openai_client=groq_client,
-        )
-        print(f"  Provider: Groq Cloud (free)")
-    elif MODEL_PROVIDER == "openai_chat":
-        from openai import AsyncOpenAI
-        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
-        openai_client = AsyncOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-        )
-        model_config = OpenAIChatCompletionsModel(
-            model=MODEL,
-            openai_client=openai_client,
-        )
-        print(f"  Provider: OpenAI (Chat Completions API)")
-    elif MODEL_PROVIDER == "openrouter":
-        from openai import AsyncOpenAI
-        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
-        openrouter_client = AsyncOpenAI(
-            api_key=os.environ.get("OPENROUTER_API_KEY", ""),
-            base_url="https://openrouter.ai/api/v1",
-        )
-        model_config = OpenAIChatCompletionsModel(
-            model=MODEL,
-            openai_client=openrouter_client,
-        )
-        print(f"  Provider: OpenRouter (cheap, no daily limit)")
-
-    async with MCPServerStdio(
-        name="mobile-mcp",
-        params={
-            "command": "npx",
-            "args": ["-y", "@mobilenext/mobile-mcp@latest"],
-        },
-        cache_tools_list=True,
-        client_session_timeout_seconds=30.0,
-    ) as server:
-
-        # Inject MCP server into compound tools
-        set_server(server, DEVICE_ID)
-
-        # Pick tools based on mode + provider
-        if mode in ("poc", "safe_test", "recon"):
-            # Pass 1: exploration tools (fill once, no multi-value testing)
-            active_tools = EXPLORE_TOOLS
-        elif MODEL_PROVIDER in ("groq", "openai_chat", "openrouter"):
-            # Pass 2: task tools for Chat Completions API
-            active_tools = TASK_TOOLS
-        else:
-            # Pass 2: simple tools for Responses API
-            active_tools = SIMPLE_TOOLS
-
+    # GPT-5.1 defaults to parallel tool calls which breaks execution
+    if "gpt-5.1" in model:
         model_tuning = ModelSettings(parallel_tool_calls=False)
+    else:
+        model_tuning = ModelSettings()
 
-        agent = Agent(
-            name="Mobile QA Tester" if mode != "testcase" else "Mobile Test Case Runner",
-            instructions=active_prompt,
-            model=model_config,
-            model_settings=model_tuning,
-            mcp_servers=[server],
-            tools=active_tools,
-        )
+    agent = Agent(
+        name="Mobile QA Tester" if mode != "testcase" else "Mobile Test Case Runner",
+        instructions=active_prompt,
+        model=model_config,
+        model_settings=model_tuning,
+        mcp_servers=[server],
+        tools=active_tools,
+    )
 
-        logger = LiveTurnLogger()
-        tracker = StateTracker()
-        tracker.start_run(url=package_name, app_name=app_name)
+    logger = LiveTurnLogger(model=model)
+    tracker = StateTracker()
+    tracker.start_run(url=package_name, app_name=app_name)
 
-        print("Agent ready. Starting orchestrated run...\n")
-        start_time = time.time()
+    print("  Agent ready. Starting orchestrated run...\n")
+    start_time = time.time()
 
-        # ── The Orchestrated Loop ─────────────────────────────────
-        input_items: str | list = task
-        rolling_summary = ""
-        turn_log: list[dict] = []
-        final_output = ""
-        agent_done = False
+    # ── The Orchestrated Loop ─────────────────────────────────
+    input_items: str | list = task
+    rolling_summary = ""
+    turn_log: list[dict] = []
+    final_output = ""
+    agent_done = False
 
-        # ── Phase tracking for testcase mode ──────────────────────
-        tc_phase = "2a" if mode == "testcase" else None
-        test_plan = ""
-        tc_cost_log: list[dict] = []
-        tc_turn_start_cost = 0.0
+    # ── Phase tracking for testcase mode ──────────────────────
+    tc_phase = "2a" if mode == "testcase" else None
+    test_plan = ""
+    tc_cost_log: list[dict] = []
+    tc_turn_start_cost = 0.0
 
+    try:
         for turn_num in range(1, max_turns + 1):
 
             # ── Run exactly ONE turn ──────────────────────────────
@@ -259,6 +339,9 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
                     include_in_history=False,
                 )
 
+            t_start = time.time()
+            print(f"\n  ⏱ Turn {turn_num}: sending to API...", end="", flush=True)
+
             result = await Runner.run(
                 starting_agent=agent,
                 input=input_items,
@@ -266,6 +349,11 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
                 hooks=logger,
                 error_handlers={"max_turns": _on_max_turns},
             )
+
+            t_elapsed = time.time() - t_start
+            print(f" done ({t_elapsed:.1f}s)")
+            if t_elapsed > 30:
+                print(f"  ⚠ SLOW RESPONSE: {t_elapsed:.1f}s — likely API latency, not our code")
 
             # ── Check if agent produced final output ──────────────
             if result.final_output and result.final_output != "__TURN_LIMIT__":
@@ -293,9 +381,10 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
             # ── Runaway detection ─────────────────────────────────
             if turn_num > 3:
                 avg_cost = current_cost / turn_num
-                turn_cost = (turn_entry["uncached_tokens"] * PRICING[MODEL]["input"]
-                           + turn_entry["cached_tokens"] * PRICING[MODEL]["input_cached"]
-                           + turn_entry["output_tokens"] * PRICING[MODEL]["output"])
+                prices = PRICING.get(model, PRICING["gpt-5"])
+                turn_cost = (turn_entry["uncached_tokens"] * prices["input"]
+                           + turn_entry["cached_tokens"] * prices["input_cached"]
+                           + turn_entry["output_tokens"] * prices["output"])
                 if turn_cost > avg_cost * RUNAWAY_MULTIPLIER:
                     print(f"\n  RUNAWAY WARNING: Turn {turn_num} cost ${turn_cost:.4f} vs avg ${avg_cost:.4f}")
 
@@ -374,31 +463,244 @@ async def run_orchestrated(device_id: str, package_name: str, app_name: str, mod
                 keep_n = KEEP_LAST_N_TURNS
             input_items = compact_history(full_history, rolling_summary, keep_last_n=keep_n)
 
-        # ── End of loop ───────────────────────────────────────────
-
+    except Exception as e:
+        print(f"\n  ERROR on screen '{screen_name}': {e}")
         duration = time.time() - start_time
-        tracker.end_run("completed" if agent_done else "max_turns_reached")
+        return {"screen": screen_name, "status": "error", "error": str(e), "turns": logger.turn, "cost": logger.get_current_cost(), "duration": duration}
 
-        # ── Save knowledge from Pass 1 ────────────────────────────
-        if mode not in ("safe_test", "recon", "testcase") and final_output:
-            knowledge_path = _save_knowledge(final_output, package_name, app_name, screen_name)
-            if knowledge_path:
-                print(f"  Pass 1 knowledge ready — run 'testcase' mode next")
+    # ── End of loop ───────────────────────────────────────────
 
-        # ── Save results ──────────────────────────────────────────
-        _save_results(
-            mode=mode,
-            model=MODEL,
-            logger=logger,
-            turn_log=turn_log,
-            final_output=final_output,
-            rolling_summary=rolling_summary,
-            duration=duration,
-            device_id=device_id,
-            package_name=package_name,
-            app_name=app_name,
-            max_turns=max_turns,
-        )
+    duration = time.time() - start_time
+    tracker.end_run("completed" if agent_done else "max_turns_reached")
+
+    # ── Save knowledge from Pass 1 ────────────────────────────
+    if mode not in ("safe_test", "recon", "testcase") and final_output:
+        knowledge_path = _save_knowledge(final_output, package_name, app_name, screen_name)
+        if knowledge_path:
+            print(f"  Pass 1 knowledge ready — run 'testcase' mode next")
+
+    # ── Save results ──────────────────────────────────────────
+    _save_results(
+        mode=mode,
+        model=model,
+        logger=logger,
+        turn_log=turn_log,
+        final_output=final_output,
+        rolling_summary=rolling_summary,
+        duration=duration,
+        device_id=device_id,
+        package_name=package_name,
+        app_name=app_name,
+        max_turns=max_turns,
+    )
+
+    return {
+        "screen": screen_name,
+        "status": "completed" if agent_done else "max_turns_reached",
+        "turns": logger.turn,
+        "cost": logger.get_current_cost(),
+        "duration": duration,
+        "final_output": final_output,
+    }
+
+
+# ── Multi-Screen Run ──────────────────────────────────────────────────────────
+
+async def run_multi_screen(
+    device_id: str,
+    package_name: str,
+    app_name: str,
+    mode: str,
+    screen_names: list[str],
+    model: str = "",
+    provider: str = "",
+) -> None:
+    """Run tests across multiple screens. One MCP server, one model client, multiple screen runs."""
+    model = model or DEFAULT_MODEL
+    provider = provider or DEFAULT_PROVIDER
+
+    model_config, provider_label = _build_model_config(model, provider)
+
+    print(f"\n{'='*60}")
+    print(f"  MULTI-SCREEN RUN")
+    print(f"  Mode: {mode}")
+    print(f"  Screens: {', '.join(screen_names)}")
+    print(f"  Model: {model}")
+    print(f"  Provider: {provider_label}")
+    print(f"  Device: {device_id}")
+    print(f"  Package: {package_name}")
+    print(f"  Budget: ${MAX_BUDGET} per screen")
+    print(f"{'='*60}\n")
+
+    async with MCPServerStdio(
+        name="mobile-mcp",
+        params={
+            "command": "npx",
+            "args": ["-y", "@mobilenext/mobile-mcp@latest"],
+        },
+        cache_tools_list=True,
+        client_session_timeout_seconds=30.0,
+    ) as server:
+
+        results = []
+
+        for i, screen_name in enumerate(screen_names):
+            print(f"\n{'='*60}")
+            print(f"  SCREEN {i+1}/{len(screen_names)}: {screen_name}")
+            print(f"{'='*60}")
+
+            # Clean up from previous screen (dismiss keyboard, close popups)
+            # 30s timeout — if cleanup hangs, move on regardless
+            if i > 0:
+                try:
+                    await asyncio.wait_for(
+                        _cleanup_screen(server, device_id),
+                        timeout=30.0,
+                    )
+                except asyncio.TimeoutError:
+                    print(f"  ⚠ Cleanup timed out (30s) — proceeding anyway")
+
+            # Navigate to the screen tab
+            nav_ok = await _navigate_to_screen(server, device_id, screen_name)
+            if not nav_ok:
+                print(f"  Skipping {screen_name} — could not navigate")
+                results.append({"screen": screen_name, "status": "nav_failed", "turns": 0, "cost": 0, "duration": 0})
+                continue
+
+            # Run the screen
+            result = await _run_single_screen(
+                server=server,
+                device_id=device_id,
+                package_name=package_name,
+                app_name=app_name,
+                mode=mode,
+                screen_name=screen_name,
+                model=model,
+                model_config=model_config,
+                provider=provider,
+            )
+            results.append(result)
+
+        # ── Print combined summary ────────────────────────────
+        _print_multi_summary(results, model)
+        _save_multi_summary(results, model, mode)
+
+
+# ── Single-Screen Entry Point (backward compatible) ───────────────────────────
+
+async def run_orchestrated(device_id: str, package_name: str, app_name: str, mode: str, screen_name: str = "", model: str = "", provider: str = "") -> None:
+    """Single screen run — delegates to run_multi_screen with one screen."""
+    await run_multi_screen(
+        device_id=device_id,
+        package_name=package_name,
+        app_name=app_name,
+        mode=mode,
+        screen_names=[screen_name],
+        model=model,
+        provider=provider,
+    )
+
+
+# ── Multi-Screen Summary Helpers ──────────────────────────────────────────────
+
+def _print_multi_summary(results: list[dict], model: str) -> None:
+    if len(results) <= 1:
+        return  # No summary needed for single screen
+
+    total_turns = sum(r.get("turns", 0) for r in results)
+    total_cost = sum(r.get("cost", 0) for r in results)
+    total_duration = sum(r.get("duration", 0) for r in results)
+
+    print(f"\n{'='*60}")
+    print(f"  MULTI-SCREEN SUMMARY ({model})")
+    print(f"{'='*60}")
+    print(f"  {'Screen':<15} {'Status':<20} {'Turns':>6} {'Cost':>10} {'Duration':>10}")
+    print(f"  {'-'*15} {'-'*20} {'-'*6} {'-'*10} {'-'*10}")
+    for r in results:
+        screen = r.get("screen", "?")[:15]
+        status = r.get("status", "?")[:20]
+        turns = r.get("turns", 0)
+        cost = r.get("cost", 0)
+        dur = r.get("duration", 0)
+        print(f"  {screen:<15} {status:<20} {turns:>6} ${cost:>8.4f} {dur:>8.1f}s")
+    print(f"  {'-'*15} {'-'*20} {'-'*6} {'-'*10} {'-'*10}")
+    print(f"  {'TOTAL':<15} {'':<20} {total_turns:>6} ${total_cost:>8.4f} {total_duration:>8.1f}s")
+    print(f"{'='*60}")
+
+
+def _save_multi_summary(results: list[dict], model: str, mode: str) -> None:
+    if len(results) <= 1:
+        return
+
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    date_folder = now.strftime("%Y-%m-%d")
+
+    if mode == "testcase":
+        runs_dir = Path(__file__).parent / "runs" / "pass2" / date_folder
+    else:
+        runs_dir = Path(__file__).parent / "runs" / "pass1" / date_folder
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
+    model_short = model.split("/")[-1].replace("-", "")[:12]
+
+    # ── Combined text report (one file for all screens) ──────
+    total_turns = sum(r.get("turns", 0) for r in results)
+    total_cost = sum(r.get("cost", 0) for r in results)
+    total_duration = sum(r.get("duration", 0) for r in results)
+
+    report_path = runs_dir / f"report_multi_{model_short}_{timestamp}.txt"
+    with open(report_path, "w") as f:
+        f.write(f"MULTI-SCREEN TEST REPORT\n")
+        f.write(f"{'='*60}\n")
+        f.write(f"Model: {model}\n")
+        f.write(f"Mode: {mode}\n")
+        f.write(f"Screens: {', '.join(r.get('screen', '?') for r in results)}\n")
+        f.write(f"Total Turns: {total_turns}\n")
+        f.write(f"Total Cost: ${total_cost:.4f}\n")
+        f.write(f"Total Duration: {total_duration:.1f}s\n")
+        f.write(f"Timestamp: {now.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"{'='*60}\n\n")
+
+        for r in results:
+            screen = r.get("screen", "?")
+            f.write(f"\n{'#'*60}\n")
+            f.write(f"# SCREEN: {screen}\n")
+            f.write(f"# Status: {r.get('status', '?')}  |  Turns: {r.get('turns', 0)}  |  Cost: ${r.get('cost', 0):.4f}  |  Duration: {r.get('duration', 0):.1f}s\n")
+            f.write(f"{'#'*60}\n\n")
+            f.write(r.get("final_output", "(no output)"))
+            f.write(f"\n\n")
+
+        f.write(f"\n{'='*60}\n")
+        f.write(f"END OF MULTI-SCREEN REPORT\n")
+        f.write(f"{'='*60}\n")
+
+    print(f"\n  Combined report: {report_path}")
+
+    # ── JSON summary ─────────────────────────────────────────
+    summary_path = runs_dir / f"summary_multi_{model_short}_{timestamp}.json"
+
+    # Strip final_output from results to keep JSON compact
+    clean_results = []
+    for r in results:
+        entry = {k: v for k, v in r.items() if k != "final_output"}
+        clean_results.append(entry)
+
+    with open(summary_path, "w") as f:
+        json.dump({
+            "type": "multi_screen_summary",
+            "model": model,
+            "mode": mode,
+            "timestamp": now.isoformat(),
+            "screens": clean_results,
+            "totals": {
+                "turns": sum(r.get("turns", 0) for r in results),
+                "cost": sum(r.get("cost", 0) for r in results),
+                "duration": sum(r.get("duration", 0) for r in results),
+            },
+        }, f, indent=2)
+
+    print(f"\n  Multi-screen summary: {summary_path}")
 
 
 # ── Helper: Extract turn log entry ───────────────────────────────────────────
@@ -644,15 +946,17 @@ def _save_results(
     print(f"  Summary:       {rolling_summary}")
     print(f"{'='*60}")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    date_folder = now.strftime("%Y-%m-%d")
     if mode == "testcase":
-        runs_dir = Path(__file__).parent / "runs" / "pass2"
+        runs_dir = Path(__file__).parent / "runs" / "pass2" / date_folder
     else:
-        runs_dir = Path(__file__).parent / "runs" / "pass1"
+        runs_dir = Path(__file__).parent / "runs" / "pass1" / date_folder
     runs_dir.mkdir(parents=True, exist_ok=True)
 
     # Include model short name in filename for comparison
-    model_short = MODEL.split("/")[-1].replace("-", "")[:12]  # "gpt-5" or "gptoss120b"
+    model_short = model.split("/")[-1].replace("-", "")[:12]  # "gpt-5" or "gptoss120b"
     output_path = runs_dir / f"output_mobile_{mode}_{model_short}_{timestamp}.txt"
     turns_path = runs_dir / f"turns_mobile_{mode}_{model_short}_{timestamp}.json"
 

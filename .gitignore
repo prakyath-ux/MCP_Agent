@@ -19,3 +19,4 @@ state/runs/
 version_2/runs/
 # Agent Monitor
 .agent/
+mobile_version/runs/

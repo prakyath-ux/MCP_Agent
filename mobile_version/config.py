@@ -3,7 +3,6 @@
 # ----- Model --------
 MODEL = "gpt-5.1"                    # OpenAI hosted — $1.25/$10 per MTok
 # MODEL = "openai/gpt-oss-120b"      # Cheap via OpenRouter — $0.039/$0.19 per MTok
-MODEL_MINI = "gpt-5-mini"
 
 # ----- Model Provider --------
 # "openai" = OpenAI Responses API, "openai_chat" = OpenAI Chat Completions
@@ -61,6 +60,29 @@ PRICING = {
         "input_cached": 0.039 / 1_000_000,
         "output": 0.19 / 1_000_000,
     },
+}
+
+# -------- Safe Tap (keyboard dismiss) ----------
+# Empty space between back button (x=65) and header image (x=1026)
+# y=179 is header row — y=300 is safely below header, above form content
+SAFE_TAP_X = 540
+SAFE_TAP_Y = 300
+
+# -------- Navigation (multi-screen) ----------
+NAV_TAB_COORDINATES = {
+    "iTELLER":   (324, 2229),
+    "LOAN":      (756, 2229),
+    "MORE":      (972, 2229),
+    "DASHBOARD": (108, 2229),
+    "iBRANCH":   (540, 2229),
+}
+
+SCREEN_NAME_MAP = {
+    "iteller": "iTELLER",
+    "loan": "LOAN",
+    "more": "MORE",
+    "dashboard": "DASHBOARD",
+    "ibranch": "iBRANCH",
 }
 
 # ------- Output -----------------------

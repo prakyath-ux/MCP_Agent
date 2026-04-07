@@ -653,12 +653,15 @@ def page_new_run():
             cwd = str(ROOT / "version_2")
         else:
             mode = st.selectbox("Mode", ["safe_test", "recon", "poc_short", "poc", "testcase"])
+            screen_name = st.text_input("Screen Name(s)", value="", placeholder="e.g., iTeller  or  iTeller,LOAN,MORE")
+            model_choice = st.selectbox("Model", ["gpt-5.1", "gpt-5", "openai/gpt-oss-120b"], index=0)
+            provider_choice = st.selectbox("Provider", ["openai_chat", "groq", "openrouter"], index=0)
             device_id = st.text_input("Device ID", value="RZCXA21GV9P")
             package_name = st.text_input("Package Name", value="net.impacto.B2U")
             app_name = st.text_input("Application Name", value="Bank App (B2U)")
-            cmd = f"python run.py {mode}"
+            cmd = f"python run.py {mode} {screen_name} --model {model_choice} --provider {provider_choice}"
             if device_id != "RZCXA21GV9P":
-                cmd += f' "{device_id}" "{package_name}" "{app_name}"'
+                cmd += f' --device {device_id} --package "{package_name}" --app "{app_name}"'
             cwd = str(ROOT / "mobile_version")
 
     with col2:
