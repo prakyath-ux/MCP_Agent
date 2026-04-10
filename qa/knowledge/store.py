@@ -21,7 +21,11 @@ class KnowledgeStore:
         return platform_dir / f"{safe_name}.json"
 
     def save(self, kb: KnowledgeBase) -> Path:
+        # Don't overwrite good data with empty knowledge
         path = self._path_for(kb.app)
+        if not kb.screens or all(len(s.l0) == 0 for s in kb.screens):
+            print(f"  WARNING: Not saving empty knowledge base to {path}")
+            return path
         path.parent.mkdir(parents=True, exist_ok=True)
         kb.updated_at = datetime.now().isoformat()
         path.write_text(kb.model_dump_json(indent=2))
@@ -34,7 +38,8 @@ class KnowledgeStore:
         return KnowledgeBase.model_validate_json(path.read_text())
 
     def load_by_name(self, app_name: str, platform: str = "") -> KnowledgeBase | None:
-        """Find a knowledge base by app name (searches all platform dirs)."""
+        """Find a knowledge base by app name OR package name (searches all platform dirs)."""
+        search = app_name.lower()
         for platform_dir in self._base.iterdir():
             if not platform_dir.is_dir():
                 continue
@@ -43,7 +48,10 @@ class KnowledgeStore:
             for f in platform_dir.glob("*.json"):
                 try:
                     kb = KnowledgeBase.model_validate_json(f.read_text())
-                    if kb.app.app_name.lower() == app_name.lower():
+                    # Match by app_name, package_name, or URL
+                    if (kb.app.app_name.lower() == search or
+                        (kb.app.package_name or "").lower() == search or
+                        (kb.app.url or "").lower() == search):
                         return kb
                 except Exception:
                     continue

@@ -28,10 +28,24 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         print("  ERROR: No L0 elements found in knowledge base")
         return PlanOutput(model=inp.model)
 
+    # Filter out non-testable elements (nav tabs, back buttons, headers, decorative)
+    skip_types = {"nav_tab", "other"}
+    skip_names = {"back", "backbutton", "headerimage", "texture_view"}
+    l0_filtered = [
+        el for el in l0_index
+        if el.type.value not in skip_types
+        and el.name.lower().replace(" ", "") not in skip_names
+    ]
+
+    if not l0_filtered:
+        print("  ERROR: No testable elements after filtering")
+        return PlanOutput(model=inp.model)
+
     l0_json = json.dumps(
-        [el.model_dump(exclude_defaults=True) for el in l0_index],
+        [el.model_dump(exclude_defaults=True) for el in l0_filtered],
         indent=2,
     )
+    l0_index = l0_filtered  # Use filtered count for display
 
     print(f"\n{'='*60}")
     print(f"  PIPELINE 2: PLAN")
@@ -57,7 +71,7 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         name="QA Test Planner",
         instructions=PLAN_PROMPT,
         model=model_config,
-        model_settings=model_settings,
+        # No model_settings — no tools means parallel_tool_calls can't be set
         # No mcp_servers — pure planning
     )
 

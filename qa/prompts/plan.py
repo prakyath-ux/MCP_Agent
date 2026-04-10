@@ -25,17 +25,26 @@ Where Approach is one of:
 - TAP_VERIFY: Tap element, verify response (dropdowns, date pickers)
 - VERIFY_ONLY: Check existence/state only (buttons)
 
+# ELEMENTS TO SKIP (DO NOT generate test cases for these):
+- nav_tab elements (DASHBOARD, iTELLER, iBRANCH, LOAN, MORE) — navigation, not form inputs
+- Back buttons (backButton, back) — navigation, not testable
+- Headers, images, avatars (headerImage, texture_view) — decorative
+- ANY element with type "nav_tab", "other", or behavior containing "navigation" or "header"
+- ONLY generate tests for: text_input, dropdown, date_picker, and action buttons (like "Find Member")
+
 # RULES FOR EACH ELEMENT TYPE
 
 ## Text inputs (FILL_CHECK):
 - Empty value (required field validation) — HIGH
 - Valid value — HIGH
-- Special characters — MED
+- Special characters (use ONLY: @, !, -, _, .) — MED
+  NEVER use these in test values: # * $ & ; | > < ( ) { } — they crash ADB shell
 - Maximum 3 test cases per field
 
 ## Dropdowns (TAP_VERIFY):
-- MUST select an option (not just open/close) — HIGH
-- ONLY use options from the knowledge data, NEVER invent options
+- MUST select an actual option from the "options" list in the knowledge data
+- NEVER use generic values like "first", "option1", "any" — use the EXACT option text
+- Example: if options are ["Cash Deposit", "Cash Withdrawal"], use "Cash Deposit" as test_value
 - One test case per dropdown is sufficient
 
 ## Date pickers (TAP_VERIFY):
@@ -43,14 +52,14 @@ Where Approach is one of:
 - One test case per date picker
 
 ## Buttons (VERIFY_ONLY):
-- Check existence and label — LOW
-- Do NOT tap submit/action buttons
+- Only "Find Member" type action buttons — check existence
+- Do NOT include back buttons or nav tabs
 
 # STRICT LIMITS
 - Maximum 3 test cases per field
-- Total: 8-15 test cases (not more)
-- Cover ALL elements (minimum 1 test per element)
+- Total: 8-12 test cases per screen (not more)
+- Cover ALL form elements (minimum 1 test per text_input, dropdown, date_picker)
 - Format with TC prefix: TC1, TC2, TC3...
-- Spread tests evenly — do not overtest one field
+- Include screen_name in each test case
 - HIGH priority first, then MED, then LOW
 """

@@ -8,6 +8,9 @@
 import argparse
 import asyncio
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from qa.models import Platform, TargetApp, ExploreInput, PlanInput, ExecuteInput
 from qa.knowledge.store import KnowledgeStore
 

@@ -530,64 +530,25 @@ def page_home():
     st.markdown("")
     st.markdown("")
 
-    col1, col2, col3 = st.columns(3, gap="large")
-
-    with col1:
-        st.markdown("""
-        <div class="platform-card">
-            <span class="icon">WEB</span>
-            <h3>Web Testing</h3>
-            <p>Test web applications via Chrome DevTools MCP. Navigate pages, fill forms, inspect DOM, run JavaScript.</p>
-            <div style="margin-top: 1rem">
-                <span class="tag">Chrome DevTools</span>
-                <span class="tag">DOM Inspection</span>
-                <span class="tag">CSS Selectors</span>
-                <span class="tag">XPath Extraction</span>
-            </div>
+    st.markdown("""
+    <div class="platform-card">
+        <span class="icon">QA SUITE</span>
+        <h3>QA Suite</h3>
+        <p>Unified 3-pipeline architecture: Explore, Plan, Execute. Layered KB, platform-agnostic, multi-screen.</p>
+        <div style="margin-top: 1rem">
+            <span class="tag">3 Pipelines</span>
+            <span class="tag">Layered KB</span>
+            <span class="tag">Web + Mobile</span>
+            <span class="tag">Auto-Explore</span>
         </div>
-        """, unsafe_allow_html=True)
-        if st.button("Launch Web Agent", use_container_width=True, type="primary", key="web_btn"):
-            st.session_state.platform = "Web"
-            st.session_state.page = "action"
-            st.rerun()
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Launch QA Suite", use_container_width=True, type="primary", key="suite_btn"):
+        st.session_state.platform = "QA Suite"
+        st.session_state.page = "action"
+        st.rerun()
 
-    with col2:
-        st.markdown("""
-        <div class="platform-card">
-            <span class="icon">MOBILE</span>
-            <h3>Mobile Testing</h3>
-            <p>Test Android apps on real devices via mobile-mcp + ADB. Tap, swipe, type on native app screens.</p>
-            <div style="margin-top: 1rem">
-                <span class="tag">Android / ADB</span>
-                <span class="tag">Accessibility Tree</span>
-                <span class="tag">Coordinate Taps</span>
-                <span class="tag">Screen Recording</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Launch Mobile Agent", use_container_width=True, type="primary", key="mobile_btn"):
-            st.session_state.platform = "Mobile"
-            st.session_state.page = "action"
-            st.rerun()
-
-    with col3:
-        st.markdown("""
-        <div class="platform-card">
-            <span class="icon">QA SUITE</span>
-            <h3>QA Suite (Pipeline)</h3>
-            <p>Unified 3-pipeline architecture: Explore, Plan, Execute. Layered KB, platform-agnostic, multi-screen.</p>
-            <div style="margin-top: 1rem">
-                <span class="tag">3 Pipelines</span>
-                <span class="tag">Layered KB</span>
-                <span class="tag">Web + Mobile</span>
-                <span class="tag">Auto-Explore</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Launch QA Suite", use_container_width=True, type="primary", key="suite_btn"):
-            st.session_state.platform = "QA Suite"
-            st.session_state.page = "action"
-            st.rerun()
+    st.caption("Legacy Web + Mobile POCs available on `dev2` branch: `git checkout dev2`")
 
 
 # ── PAGE: Action Selection ──────────────────────────────────────────────────
