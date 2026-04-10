@@ -1,4 +1,6 @@
-# version_2/run.py — CLI entrypoint for v2 orchestrated agent
+# version_2/run.py — CLI entrypoint for v2 orchestrated agent (POC — FROZEN)
+# DEPRECATED: Use `python -m qa.cli` for the new pipeline architecture.
+# This file is kept for backward compatibility. Do not modify.
 # Usage:
 #   python version_2/run.py                                    → safe test on TECU
 #   python version_2/run.py poc                                → POC on TECU (Pass 1: explore + fill + knowledge)

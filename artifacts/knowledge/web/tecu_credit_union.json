@@ -1,0 +1,553 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU Credit Union",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application:profile_photo_upload:file_upload",
+          "name": "Profile Photo (Upload)",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "After upload, thumbnail appears and button changes to 'Re-upload'",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Accepts .jpg, .jpeg, .png per modal hint",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-uppercase; typing produced garbled order until corrected via JS",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "No explicit messages shown; required (asterisk)",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-uppercase",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "No inline validation surfaced; required (asterisk)",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Standard text input",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Optional",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-formats to XXX-XXXX; country code displayed as +1868 with flag",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Appears to allow 7-digit local number; no error shown",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-uppercase; typing produced garbled order until corrected via JS",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "No explicit messages shown; required (asterisk)",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom dropdown; updates button label to the selected branch",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - PT. FORTIN BRANCH",
+            "900 - TECU Business Development Unit",
+            "600 - TISL",
+            "601 - TISL Branch 1"
+          ],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (asterisk); must choose a branch",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:re_upload:other",
+          "name": "Re-upload",
+          "type": "other",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:select_branch:other",
+          "name": "Select Branch",
+          "type": "other",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:save_exit:other",
+          "name": "Save & Exit",
+          "type": "other",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:save_continue:other",
+          "name": "Save & Continue",
+          "type": "other",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application:profile_photo_upload:file_upload",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Re-upload\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_13",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_17",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_20",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_22",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_27",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_30",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Branch\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_33",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:re_upload:other",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Re-upload\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_13",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:select_branch:other",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Branch\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_33",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:save_exit:other",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_34",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        },
+        {
+          "element_id": "new_member_application:save_continue:other",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_35",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application:profile_photo_upload:file_upload",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "documents/Profile_picture/Profile_picture.png",
+              "accepted": true,
+              "issues": "Upload trigger in modal presented as StaticText; hidden input uses display:none",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "ROMAN",
+              "accepted": true,
+              "issues": "Typing bug reorders characters (ROMNA on direct typing)",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:email_id:text_input",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "ROMAN.QA+TECU@EXAMPLE.COM",
+              "accepted": true,
+              "issues": "Uppercasing email may be confusing (email local-part can be case-sensitive in theory)",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:middle_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:mobile_number:text_input",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "555-1234",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:last_name:text_input",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "TESTER",
+              "accepted": true,
+              "issues": "Typing bug reorders characters (TESTRE on direct typing)",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:branch:dropdown",
+          "runs": [
+            {
+              "date": "2026-03-21T18:48:47.825456",
+              "model": "",
+              "value_entered": "100 - TECU - MARABELLA BRANCH",
+              "accepted": true,
+              "issues": "Options are StaticText in a11y tree; lacking proper listbox/option roles",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:re_upload:other",
+          "runs": [],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:select_branch:other",
+          "runs": [],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:save_exit:other",
+          "runs": [],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        },
+        {
+          "element_id": "new_member_application:save_continue:other",
+          "runs": [],
+          "change_log": [
+            "2026-03-21: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-03-21T18:48:47.825456",
+          "last_seen": "2026-03-21T18:48:47.825456"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-03-21T18:48:47.825456",
+  "updated_at": "2026-04-10T11:20:49.616909",
+  "version": 1
+}

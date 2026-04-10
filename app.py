@@ -21,6 +21,10 @@ WEB_PASS1 = ROOT / "version_2" / "runs" / "pass1"
 WEB_PASS2 = ROOT / "version_2" / "runs" / "pass2"
 MOBILE_PASS1 = ROOT / "mobile_version" / "runs" / "pass1"
 MOBILE_PASS2 = ROOT / "mobile_version" / "runs" / "pass2"
+# QA Suite (new pipeline architecture)
+QA_KNOWLEDGE = ROOT / "artifacts" / "knowledge"
+QA_RESULTS = ROOT / "artifacts" / "results"
+QA_PLANS = ROOT / "artifacts" / "plans"
 
 # ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -318,11 +322,21 @@ st.markdown("""
 def list_runs(platform: str, pass_type: str) -> list[Path]:
     if platform == "Web":
         base = WEB_PASS1 if pass_type == "Pass 1" else WEB_PASS2
+    elif platform == "QA Suite":
+        # QA Suite results from artifacts/
+        if pass_type == "Pass 1":
+            base = QA_KNOWLEDGE
+        else:
+            base = QA_RESULTS
+        if not base.exists():
+            return []
+        return sorted(base.rglob("*.json" if pass_type == "Pass 1" else "result_*.txt"), reverse=True)
     else:
         base = MOBILE_PASS1 if pass_type == "Pass 1" else MOBILE_PASS2
     if not base.exists():
         return []
-    return sorted(base.glob("output_*.txt"), reverse=True)
+    # Search recursively (date subfolders like 2026-04-07/)
+    return sorted(base.rglob("output_*.txt"), reverse=True)
 
 
 def parse_run_header(text: str) -> dict:
@@ -516,7 +530,7 @@ def page_home():
     st.markdown("")
     st.markdown("")
 
-    col1, col2 = st.columns(2, gap="large")
+    col1, col2, col3 = st.columns(3, gap="large")
 
     with col1:
         st.markdown("""
@@ -553,6 +567,25 @@ def page_home():
         """, unsafe_allow_html=True)
         if st.button("Launch Mobile Agent", use_container_width=True, type="primary", key="mobile_btn"):
             st.session_state.platform = "Mobile"
+            st.session_state.page = "action"
+            st.rerun()
+
+    with col3:
+        st.markdown("""
+        <div class="platform-card">
+            <span class="icon">QA SUITE</span>
+            <h3>QA Suite (Pipeline)</h3>
+            <p>Unified 3-pipeline architecture: Explore, Plan, Execute. Layered KB, platform-agnostic, multi-screen.</p>
+            <div style="margin-top: 1rem">
+                <span class="tag">3 Pipelines</span>
+                <span class="tag">Layered KB</span>
+                <span class="tag">Web + Mobile</span>
+                <span class="tag">Auto-Explore</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Launch QA Suite", use_container_width=True, type="primary", key="suite_btn"):
+            st.session_state.platform = "QA Suite"
             st.session_state.page = "action"
             st.rerun()
 
@@ -651,6 +684,22 @@ def page_new_run():
             if url != "https://qa-tq-awp.impactodigifin.xyz/newapplication":
                 cmd += f' "{url}" "{app_name}"'
             cwd = str(ROOT / "version_2")
+        elif platform == "QA Suite":
+            pipeline = st.selectbox("Pipeline", ["explore", "plan", "execute", "full"])
+            qa_platform = st.selectbox("Target Platform", ["mobile", "web"], index=0)
+            target = st.text_input("Target", value="net.impacto.B2U", help="Package name (mobile) or URL (web)")
+            app_name = st.text_input("Application Name", value="Bank App (B2U)")
+            screen_name = st.text_input("Screen Name(s)", value="", placeholder="e.g., iTELLER,LOAN,MORE")
+            model_choice = st.selectbox("Model", ["gpt-5.1", "gpt-5", "openai/gpt-oss-120b"], index=0)
+            device_id = st.text_input("Device ID", value="RZCXA21GV9P") if qa_platform == "mobile" else ""
+            cmd = f"python -m qa.cli {pipeline} {target} -p {qa_platform} -a \"{app_name}\" -m {model_choice}"
+            if screen_name:
+                cmd += f" -s {screen_name}"
+            if device_id:
+                cmd += f" -d {device_id}"
+            if pipeline == "execute":
+                cmd += " --auto-explore"
+            cwd = str(ROOT)
         else:
             mode = st.selectbox("Mode", ["safe_test", "recon", "poc_short", "poc", "testcase"])
             screen_name = st.text_input("Screen Name(s)", value="", placeholder="e.g., iTeller  or  iTeller,LOAN,MORE")
@@ -665,13 +714,22 @@ def page_new_run():
             cwd = str(ROOT / "mobile_version")
 
     with col2:
-        mode_info = {
-            "safe_test": ("Observe Only", "Lists elements without interacting. Zero risk."),
-            "recon": ("Reconnaissance", "Discovers all interactive elements. No data entry."),
-            "poc_short": ("Quick POC", "Fills fields with limited turns. Good for validation."),
-            "poc": ("Full Exploration", "Complete exploration, form filling, and knowledge extraction. Required before test cases."),
-            "testcase": ("Test Cases", "Plans and executes regression test cases. Requires a completed exploration run first."),
-        }
+        if platform == "QA Suite":
+            mode_info = {
+                "explore": ("Explore / Discovery", "Discover all screens and elements. Builds the knowledge base (L0/L1/L2)."),
+                "plan": ("Test Planning", "Generate test cases from knowledge. Pure LLM reasoning, no device needed."),
+                "execute": ("Test Execution", "Execute test cases on the app. Auto-explores if no knowledge exists."),
+                "full": ("Full Suite", "Run all 3 pipelines: Explore, Plan, Execute in sequence."),
+            }
+            mode = pipeline
+        else:
+            mode_info = {
+                "safe_test": ("Observe Only", "Lists elements without interacting. Zero risk."),
+                "recon": ("Reconnaissance", "Discovers all interactive elements. No data entry."),
+                "poc_short": ("Quick POC", "Fills fields with limited turns. Good for validation."),
+                "poc": ("Full Exploration", "Complete exploration, form filling, and knowledge extraction. Required before test cases."),
+                "testcase": ("Test Cases", "Plans and executes regression test cases. Requires a completed exploration run first."),
+            }
         title, desc = mode_info.get(mode, ("Unknown", ""))
         st.markdown(f"""
         <div class="mode-info">

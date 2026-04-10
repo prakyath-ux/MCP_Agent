@@ -1,4 +1,6 @@
-# mobile_version/run.py — CLI entrypoint for mobile testing agent
+# mobile_version/run.py — CLI entrypoint for mobile testing agent (POC)
+# DEPRECATED: Use `python -m qa.cli` for the new pipeline architecture.
+# This file is kept for backward compatibility with existing workflows.
 # Usage:
 #   python run.py                                          → safe test with config defaults
 #   python run.py poc iTeller                              → POC on iTeller screen

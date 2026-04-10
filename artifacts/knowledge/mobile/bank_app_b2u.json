@@ -1,0 +1,1289 @@
+{
+  "app": {
+    "platform": "mobile",
+    "url": null,
+    "package_name": "net.impacto.B2U",
+    "app_name": "Bank App (B2U)",
+    "device_id": "RZCXA21GV9P"
+  },
+  "screens": [
+    {
+      "screen_name": "Find Member",
+      "screen_url": "net.impacto.B2U/Find Member",
+      "l0": [
+        {
+          "element_id": "find_member:back:button",
+          "name": "Back",
+          "type": "button",
+          "required": false,
+          "behavior": "closes the current screen",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:transaction_type:dropdown",
+          "name": "Transaction Type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "opens a list of transaction types, selection updates the field",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:search_criteria:dropdown",
+          "name": "Search Criteria",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "opens a list of criteria, selection updates the field",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:enter_details:text_input",
+          "name": "Enter Details",
+          "type": "text_input",
+          "required": true,
+          "behavior": "standard text entry field, brings up on-screen keyboard",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:date_of_birth:date_picker",
+          "name": "Date of Birth",
+          "type": "date_picker",
+          "required": false,
+          "behavior": "opens a calendar dialog when tapped",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:find_member:button",
+          "name": "Find Member",
+          "type": "button",
+          "required": false,
+          "behavior": "submits the form",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Find Member"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "find_member:back:button",
+          "locators": [
+            {
+              "strategy": "accessibility_id",
+              "value": "backButton",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "65,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 65,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "backButton",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:transaction_type:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Transaction Type",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "573,1189",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 573,
+            "y": 1189
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:search_criteria:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Search Criteria",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "573,1336",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 573,
+            "y": 1336
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:enter_details:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Enter Details",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "584,1490",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 584,
+            "y": 1490
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:date_of_birth:date_picker",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Date of Birth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "584,1432",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 584,
+            "y": 1432
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Find Member"
+        },
+        {
+          "element_id": "find_member:find_member:button",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Find Member",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,1765",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 1765
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Find Member"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "find_member:back:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        },
+        {
+          "element_id": "find_member:transaction_type:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "ACH Transfers (TECU to Bank)",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            },
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "ACH Transfers (TECU to Bank)",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        },
+        {
+          "element_id": "find_member:search_criteria:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "Driver Permit",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            },
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "Driver Permit",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        },
+        {
+          "element_id": "find_member:enter_details:text_input",
+          "runs": [
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "TestUserQA-MEMBER-001",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            },
+            {
+              "date": "2026-04-04T11:44:49",
+              "model": "",
+              "value_entered": "TestUserQA-MEMBER-001",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        },
+        {
+          "element_id": "find_member:date_of_birth:date_picker",
+          "runs": [],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        },
+        {
+          "element_id": "find_member:find_member:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-04: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
+            "The back button lacks an accessibility label"
+          ],
+          "first_seen": "2026-04-04T11:44:49",
+          "last_seen": "2026-04-04T11:44:49"
+        }
+      ]
+    },
+    {
+      "screen_name": "LOAN",
+      "screen_url": "net.impacto.B2U/LOAN",
+      "l0": [
+        {
+          "element_id": "loan:backbutton:button",
+          "name": "backButton",
+          "type": "button",
+          "required": false,
+          "behavior": "Appears as a back icon in header",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:select_search_criteria:dropdown",
+          "name": "Select Search Criteria",
+          "type": "dropdown",
+          "required": false,
+          "behavior": "Dropdown opened and displayed 4 options; selection reflected on field",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:enter_details:text_input",
+          "name": "Enter Details",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Accepted alphanumeric entry; value persisted",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:date_of_birth:date_picker",
+          "name": "Date of Birth",
+          "type": "date_picker",
+          "required": false,
+          "behavior": "Date picker opened; Confirm applied date to field",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:find_member:button",
+          "name": "Find Member",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary action button (not tapped in this pass)",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:dashboard:nav_tab",
+          "name": "DASHBOARD",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:iteller:nav_tab",
+          "name": "iTELLER",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:ibranch:nav_tab",
+          "name": "iBRANCH",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:loan:nav_tab",
+          "name": "LOAN",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab (current section)",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:more:nav_tab",
+          "name": "MORE",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headerimage:button",
+          "name": "headerImage",
+          "type": "button",
+          "required": false,
+          "behavior": "Appears tappable (avatar/settings) in header",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:texture_view:other",
+          "name": "texture_view",
+          "type": "other",
+          "required": false,
+          "behavior": "Non-interactive display area",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "loan:backbutton:button",
+          "locators": [
+            {
+              "strategy": "accessibility_id",
+              "value": "backButton",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "65,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 65,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "backButton",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:select_search_criteria:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Search Criteria",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "573,1189",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 573,
+            "y": 1189
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:enter_details:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Enter Details",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "584,1343",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 584,
+            "y": 1343
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:date_of_birth:date_picker",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Date of Birth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "584,1499",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 584,
+            "y": 1499
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:find_member:button",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Find Member",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,1978",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 1978
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:dashboard:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "DASHBOARD",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "108,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 108,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:iteller:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "324,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 324,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:ibranch:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iBRANCH",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:loan:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "LOAN",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "756,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 756,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:more:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "MORE",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "972,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 972,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headerimage:button",
+          "locators": [
+            {
+              "strategy": "accessibility_id",
+              "value": "headerImage",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "1026,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 1026,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "headerImage",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:texture_view:other",
+          "locators": [
+            {
+              "strategy": "accessibility_id",
+              "value": "net.impacto.B2U:id/texture_view",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,653",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 653
+          },
+          "widget_type": "",
+          "identifier": "net.impacto.B2U:id/texture_view",
+          "screen_name": "LOAN"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "loan:backbutton:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:select_search_criteria:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-06T13:26:52.134165",
+              "model": "",
+              "value_entered": "Member ID",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:enter_details:text_input",
+          "runs": [
+            {
+              "date": "2026-04-06T13:26:52.134165",
+              "model": "",
+              "value_entered": "M123456789",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:date_of_birth:date_picker",
+          "runs": [
+            {
+              "date": "2026-04-06T13:26:52.134165",
+              "model": "",
+              "value_entered": "2026-04-06",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:find_member:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:dashboard:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:iteller:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:ibranch:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:loan:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:more:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:headerimage:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        },
+        {
+          "element_id": "loan:texture_view:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
+            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
+            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
+            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
+          ],
+          "first_seen": "2026-04-06T13:26:52.134165",
+          "last_seen": "2026-04-06T13:26:52.134165"
+        }
+      ]
+    },
+    {
+      "screen_name": "MORE",
+      "screen_url": "net.impacto.B2U/MORE",
+      "l0": [
+        {
+          "element_id": "more:select_transaction_type:dropdown",
+          "name": "Select Transaction Type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Opens a picker with one option; selection updates label.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:select_search_criteria:dropdown",
+          "name": "Select Search Criteria",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Opens a picker with four options; no selection made during test.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:enter_details:text_input",
+          "name": "Enter Details",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Taps field, brings up keyboard, accepts typed text.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:date_of_birth:date_picker",
+          "name": "Date of Birth",
+          "type": "date_picker",
+          "required": true,
+          "behavior": "Opens native date picker; default date displayed.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:find_member:button",
+          "name": "Find Member",
+          "type": "button",
+          "required": false,
+          "behavior": "Standard button; present on screen.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "more:select_transaction_type:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Transaction Type",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "516,1204",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 516,
+            "y": 1204
+          },
+          "widget_type": "",
+          "identifier": "android:id/text1",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:select_search_criteria:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Search Criteria",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "516,1380",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 516,
+            "y": 1380
+          },
+          "widget_type": "",
+          "identifier": "android:id/text1",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:enter_details:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Enter Details",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "583,1548",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 583,
+            "y": 1548
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:date_of_birth:date_picker",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Date of Birth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "583,1704",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 583,
+            "y": 1704
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:find_member:button",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Find Member",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,1979",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 1979
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "more:select_transaction_type:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-06T15:22:00.138766",
+              "model": "",
+              "value_entered": "Balance Enquiry",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+            "Date picker label is present but not explicitly linked to picker control."
+          ],
+          "first_seen": "2026-04-06T15:22:00.138766",
+          "last_seen": "2026-04-06T15:22:00.138766"
+        },
+        {
+          "element_id": "more:select_search_criteria:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+            "Date picker label is present but not explicitly linked to picker control."
+          ],
+          "first_seen": "2026-04-06T15:22:00.138766",
+          "last_seen": "2026-04-06T15:22:00.138766"
+        },
+        {
+          "element_id": "more:enter_details:text_input",
+          "runs": [
+            {
+              "date": "2026-04-06T15:22:00.138766",
+              "model": "",
+              "value_entered": "Test123",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+            "Date picker label is present but not explicitly linked to picker control."
+          ],
+          "first_seen": "2026-04-06T15:22:00.138766",
+          "last_seen": "2026-04-06T15:22:00.138766"
+        },
+        {
+          "element_id": "more:date_of_birth:date_picker",
+          "runs": [
+            {
+              "date": "2026-04-06T15:22:00.138766",
+              "model": "",
+              "value_entered": "2026-04-06",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+            "Date picker label is present but not explicitly linked to picker control."
+          ],
+          "first_seen": "2026-04-06T15:22:00.138766",
+          "last_seen": "2026-04-06T15:22:00.138766"
+        },
+        {
+          "element_id": "more:find_member:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-06: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
+            "Date picker label is present but not explicitly linked to picker control."
+          ],
+          "first_seen": "2026-04-06T15:22:00.138766",
+          "last_seen": "2026-04-06T15:22:00.138766"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-04T11:44:49",
+  "updated_at": "2026-04-10T11:20:49.616005",
+  "version": 4
+}
