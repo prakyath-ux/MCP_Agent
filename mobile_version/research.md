@@ -365,7 +365,26 @@ Python functions that batch multiple MCP calls internally. LLM makes 1 decision,
 - [x] Keyboard dismiss fix (tap outside, not BACK) — DONE
 - [x] Dual coordinate caching — DONE
 - [x] Model name in output filenames — DONE
-- [ ] Second dropdown (Select Search Criteria) capture in Pass 1
-- [ ] Keyboard re-dismiss after dropdown/date selection — added, needs testing
+- [x] Second dropdown (Select Search Criteria) capture in Pass 1 — DONE (all 3 screens)
+- [x] Keyboard re-dismiss after dropdown/date selection — DONE and working
+- [x] Multi-screen knowledge collection (iTeller, LOAN, MORE) — DONE
+- [x] Multi-screen testcases — DONE (all 3 screens tested)
+- [x] GPT-5.1 integration — DONE (same price as GPT-5, works better)
+- [x] parallel_tool_calls=False — DONE (prevents GPT-5.1 from calling tools simultaneously)
+- [x] EXPLORE_TOOLS for Pass 1 — DONE (prevents looping on text fields during knowledge collection)
+- [x] Screen name parameter for per-screen knowledge files — DONE
 - [ ] Test on a different mobile app (generalization)
-- [ ] Streamlit dashboard integration for OpenRouter runs
+- [ ] Improve text field clearing (append vs replace still inconsistent)
+- [ ] Investigate GPT-5 hanging (possibly deprecated for Tier 3)
+- [ ] Streamlit dashboard: add screen name selector for multi-screen runs
+
+## April 7 — Problems Log
+
+| Problem | Cause | Resolution |
+|---------|-------|------------|
+| GPT-5 hangs on all testcase runs | API not responding with 26 tools — confirmed via 120s timeout test | Switched to GPT-5.1 (same price, works) |
+| GPT-5.1 parallel tool calls | taps all elements simultaneously, breaks everything | Fixed with parallel_tool_calls=False |
+| Pass 1 on MORE failed twice ($0.70 wasted) | Agent clicked header image → opened email, lost context | Added "DO NOT TOUCH" list to prompt, used gpt-oss-120b for poc |
+| MORE testcase: 5/10 skipped | Tool limitations (dismiss without selection, date change) | Known limitation — tools need enhancement |
+| Compaction too aggressive for poc | Agent forgot which fields it already filled | Increased COMPACT_AFTER_TURNS for poc, then reverted for testcase |
+| gpt-oss-120b also hung once | Likely transient network/API issue | Resolved on retry |

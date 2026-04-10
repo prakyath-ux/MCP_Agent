@@ -1,0 +1,18 @@
+
+
+# ── Quick smoke test (safe_test = observe only, 5 turns, zero risk) ──
+python run.py safe_test --model gpt-5.1
+python run.py safe_test --model openai/gpt-oss-120b --provider groq
+python run.py safe_test --model openai/gpt-oss-120b --provider openrouter
+
+# ── Explore + fill a specific screen ──
+python run.py poc iTeller --model gpt-5.1
+python run.py poc LOAN --model openai/gpt-oss-120b -p groq
+
+# ── Run test cases on a screen ──
+python run.py testcase iTeller --model gpt-5.1
+python run.py testcase LOAN -m openai/gpt-oss-120b -p openrouter
+python run.py testcase MORE -m gpt-5
+
+# ── See all options ──
+python run.py --help
