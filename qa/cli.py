@@ -147,7 +147,8 @@ async def _cmd_execute(args) -> None:
 
 
 async def _cmd_full(args) -> None:
-    """Run all 3 pipelines: explore → plan → execute."""
+    """Run all 3 pipelines: explore → plan → execute.
+    Skips explore if knowledge already exists."""
     from qa.pipelines.explore import run_explore
     from qa.pipelines.plan import run_plan
     from qa.pipelines.execute import run_execute
@@ -162,34 +163,46 @@ async def _cmd_full(args) -> None:
     print(f"  Model: {args.model}")
     print(f"{'='*60}")
 
-    # Pipeline 1: Explore
-    explore_result = await run_explore(ExploreInput(
-        app=app,
-        screens=screens,
-        model=args.model,
-        provider=args.provider,
-        budget=args.budget / 3,
-    ))
+    # Pipeline 1: Explore (skip if knowledge already exists)
+    store = KnowledgeStore()
+    existing_kb = store.load_by_name(args.target, args.platform)
+
+    if existing_kb and existing_kb.screens:
+        print(f"\n  Knowledge exists: {len(existing_kb.screens)} screen(s), {sum(len(s.l0) for s in existing_kb.screens)} elements")
+        print(f"  Skipping explore — using existing knowledge")
+        knowledge = existing_kb
+        explore_cost = 0.0
+    else:
+        explore_result = await run_explore(ExploreInput(
+            app=app,
+            screens=screens,
+            model=args.model,
+            provider=getattr(args, "provider", ""),
+            budget=args.budget / 3,
+        ))
+        knowledge = explore_result.knowledge
+        explore_cost = explore_result.cost_usd
 
     # Pipeline 2: Plan
     plan_result = await run_plan(PlanInput(
-        knowledge=explore_result.knowledge,
+        knowledge=knowledge,
+        screen_names=screens,
         model=args.model,
-        provider=args.provider,
+        provider=getattr(args, "provider", ""),
     ))
 
     # Pipeline 3: Execute
     exec_result = await run_execute(ExecuteInput(
         app=app,
         test_cases=plan_result.test_cases,
-        knowledge=explore_result.knowledge,
+        knowledge=knowledge,
         screens=screens,
         model=args.model,
-        provider=args.provider,
+        provider=getattr(args, "provider", ""),
         budget=args.budget * 2 / 3,
     ))
 
-    total_cost = explore_result.cost_usd + plan_result.cost_usd + exec_result.cost_usd
+    total_cost = explore_cost + plan_result.cost_usd + exec_result.cost_usd
     print(f"\n{'='*60}")
     print(f"  FULL SUITE COMPLETE")
     print(f"  Explore: ${explore_result.cost_usd:.4f} ({explore_result.turns_used} turns)")
