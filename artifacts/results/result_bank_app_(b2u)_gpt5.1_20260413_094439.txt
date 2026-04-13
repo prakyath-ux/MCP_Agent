@@ -1,0 +1,198 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 20
+Cost: $0.0814
+Duration: 249.0s
+============================================================
+
+## Screen: Find Member
+
+## TEST CASE RESULTS
+
+| # | Field                    | Test Case                | Input        | Expected                                                                 | Actual                                                                                 | Status | Notes |
+|---|--------------------------|--------------------------|-------------|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------|--------|-------|
+| 1 | Select Transaction Type  | TC9 – TAP_VERIFY         | Cash Deposit| Dropdown opens; option list visible; ‘Cash Deposit’ selectable & shown   | Opened; options listed (8); ‘Cash Deposit’ selected and shown as value                | PASS  | As per requirements for Transaction Type dropdown. |
+| 2 | Search Criteria          | TC10 – TAP_VERIFY        | Member Number | Dropdown opens; ‘Member Number’ should be available & selectable        | Opened; options = Driver Permit, Member ID, Mobile Number, National ID; no selection  | FAIL  | Option ‘Member Number’ not present; cannot complete requirement. |
+| 3 | Select Search Criteria   | TC11 – TAP_VERIFY        | Member Number | Same as TC10 (same control/behavior)                                   | Same as TC10                                                                           | FAIL  | Same defect; see bug #1. |
+| 4 | Select Transaction Type  | TC12 – TAP_VERIFY        | Cash Deposit| Same control as TC9                                                     | Same as TC9                                                                            | PASS  | Same result as TC9. |
+| 5 | Select Search Criteria   | TC13 – TAP_VERIFY        | Member Number | Same as TC10/TC11                                                      | Same as TC10/TC11                                                                      | FAIL  | Same defect; see bug #1. |
+| 6 | Date of Birth            | TC14 – TAP_VERIFY        | (tap picker)| Date picker opens, user can confirm a date, field updated               | Picker opened; date confirmed; field shows `2026-04-13`                                | PASS  | Basic picker interaction works. |
+| 7 | Date of Birth            | TC15 – TAP_VERIFY        | (tap picker)| Same as TC14                                                            | Same tool run / behavior as TC14                                                       | PASS  | Functions as expected. |
+| 8 | Date of Birth            | TC16 – TAP_VERIFY        | (tap picker)| Same as TC14                                                            | Same tool run / behavior as TC14                                                       | PASS  | No issues observed. |
+| 9 | Enter Details            | TC1 – FILL_CHECK         | (empty)     | Empty allowed OR clear “Enter Details” placeholder and stay empty       | Field shows `Enter Details`; treated as content; no error                              | FAIL  | Placeholder not cleared / distinguished from real input. |
+|10 | Enter Details            | TC2 – FILL_CHECK         | ABC123      | Value entered exactly as typed                                          | Field shows `ABC123`; no error                                                         | PASS  | Normal alphanumeric input OK. |
+|11 | Enter Details            | TC3 – FILL_CHECK         | abc@!-.     | Value should be exactly `abc@!-.` after prior clear                     | Field shows `ABC123abc@!-.'` (concat with previous, partial case mismatch)            | FAIL  | New input appended to existing; also actual differs in case. |
+|12 | Enter Details            | TC4 – FILL_CHECK         | (empty)     | Clearing should result in an actually empty field                       | Field remains `ABC123abc@!-.`; no error                                                | FAIL  | Clear operation ineffective. |
+|13 | Enter Details            | TC5 – FILL_CHECK         | (covered by above) | Re-run/extended empty and special-char coverage                    | Same behavior as TC1–TC4                                                                | FAIL  | Inherited from above behavior. |
+|14 | Enter Details            | TC6 – FILL_CHECK         | (covered by above) | Same field; no additional variants executed per 4‑case limit       | Not separately executed                                                                 | SKIP  | Limited to 4 tool test values per instructions. |
+|15 | Enter Details            | TC7 – FILL_CHECK         | (covered by above) | Same as TC6                                                        | Not separately executed                                                                 | SKIP  | Same as TC6. |
+|16 | Enter Details            | TC8 – FILL_CHECK         | (covered by above) | Same as TC6/TC7                                                    | Not separately executed                                                                 | SKIP  | Same as TC6/TC7. |
+|17 | Find Member (button)     | TC17 – VERIFY_ONLY       | N/A         | ‘Find Member’ button present                                           | Element ‘Find Member’ exists as TextView with label ‘Find Member’                     | PASS  | Basic presence verified. |
+|18 | Find Member (button)     | TC18 – VERIFY_ONLY       | N/A         | Same as TC17                                                           | Same as TC17                                                                            | PASS  | No change. |
+|19 | Find Member (button)     | TC19 – VERIFY_ONLY       | N/A         | Same as TC17                                                           | Same as TC17                                                                            | PASS  | No change. |
+
+> Note: TC5–TC8 for “Enter Details” share the same field and were partially consolidated into 4 concrete input variants (empty, alphanumeric, special chars, clear) per the 4‑test‑case limit. Additional TCs beyond those 4 are marked as SKIP but inherit the same observed issues.
+
+---
+
+## BUGS FOUND
+
+| # | Field             | Description                                                                                         | Severity | Evidence |
+|---|-------------------|-----------------------------------------------------------------------------------------------------|----------|----------|
+| 1 | Search Criteria   | Required option ‘Member Number’ is not available in the “Search Criteria” dropdown.                 | High     | `test_dropdown("Search Criteria","Member Number")` → status: FAIL, options: [Driver Permit, Member ID, Mobile Number, National ID], error: "Option 'Member Number' not found in dropdown options". |
+| 2 | Enter Details     | Field does not clear properly and treats placeholder as actual text: empty-input tests leave value as `Enter Details` (looks like placeholder but reported as actual value) with no validation error. | Medium  | `test_text_field("Enter Details", ",...")` result: first test: value "(empty)" → actual "Enter Details", error "NO_ERROR", status "FAIL". |
+| 3 | Enter Details     | New input appends to existing text instead of replacing; after entering `ABC123` then `abc@!-.`, final field is `ABC123abc@!-.'` instead of just the new value. | High     | `test_text_field("Enter Details", ",ABC123,abc@!-.,")`: third test case shows `value: "abc@!-."`, `actual: "ABC123abc@!-."`, status "PASS" by tool rule but logically incorrect (concatenation). |
+| 4 | Enter Details     | Attempting to clear the field after multiple inputs fails; field remains with previous content `ABC123abc@!-.'` despite an "(empty)" test value. | High     | Fourth test case in same `test_text_field` run: `value: "(empty)"` → actual "ABC123abc@!-.", status "FAIL". |
+| 5 | Enter Details     | Potential case-handling inconsistency (expected `abc@!-.` but part of final value is uppercased `ABC123abc@!-.`), suggesting either unintended auto‑capitalization or leftover prior content not cleared before lower-case entry. | Low/Med | Same third test case as bug #3: shows prior uppercase content concatenated with new lower-case input, making it unclear whether capitalization or clearing is at fault. |
+
+---
+
+## TEST SUMMARY
+
+- Total: 19  
+- Passed: 10  
+- Failed: 6  
+- Skipped: 3  
+
+---
+
+## RECOMMENDATIONS
+
+1. **Search Criteria dropdown**
+   - Add the missing ‘Member Number’ option if it is part of the spec, or update the test plan if the product requirement changed.
+   - Ensure option text matches exactly (spacing/case) what the UI renders.
+
+2. **Enter Details field**
+   - Implement proper clear behavior before new input is accepted (clear on focus or explicitly before each entry).
+   - Distinguish clearly between placeholder/hint text and actual field value so that an “empty” state is truly empty and not treated as valid content.
+   - Ensure each new entry replaces the prior content (unless multi-append behavior is explicitly required, which would be unusual for this context).
+   - Re-test with:
+     - Empty value (validation behavior).
+     - Alphanumeric.
+     - Special characters (`@ ! - _ .`).
+     - Min/max length boundaries once field behavior is corrected.
+
+3. **General**
+   - After fixes, rerun this full test set, especially TC1–TC8 and TC9–TC13, to confirm that validation and dropdown configuration align with requirements.
+
+## Screen: LOAN
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC9 | Select Search Criteria | TAP_VERIFY | Select "Account Number" | Dropdown should open and selected option should appear in field | Dropdown opened; options: Driver Permit, Member ID, Mobile Number, National ID; could not select "Account Number" | FAIL | Option "Account Number" not present in list |
+| TC10 | Search Criteria | TAP_VERIFY | n/a | Field should be a tappable control for criteria | No separate "Search Criteria" control on screen; only "Select Search Criteria" dropdown present | FAIL | Likely misnamed/obsolete field in test plan |
+| TC11 | Select Search Criteria | TAP_VERIFY | Tap & verify opens | Dropdown should open and show options | Opened and displayed 4 options: Driver Permit, Member ID, Mobile Number, National ID | PASS | Basic open/visibility behavior works |
+| TC12 | Select Transaction Type | TAP_VERIFY | n/a | Dropdown should exist and be tappable | No "Select Transaction Type" element on LOAN screen | FAIL | Element missing on this screen |
+| TC13 | Select Search Criteria | TAP_VERIFY | Select valid option from list | Selected option should reflect in field | Selection not attempted in this run per tool result; only verification of options | SKIPPED | Plan does not specify which option; selection flow partially covered in TC9, which failed due to config, not tap |
+| TC14 | Date of Birth | TAP_VERIFY | Open picker | Date picker should open | Picker opened successfully | PASS | UI appears as expected |
+| TC15 | Date of Birth | TAP_VERIFY | Confirm date | Selected date should populate field | Date confirmed and applied as `2026-04-13` | PASS | Value reflected in field |
+| TC16 | Date of Birth | TAP_VERIFY | Reopen / close | Picker should be re-openable without error | Same flow executed during TC14–15; no errors observed | PASS | Behavior stable on repeated open/confirm |
+| TC1 | Enter Details | FILL_CHECK | (empty) | Field should accept empty input / allow clearing | Field shows placeholder/label text "Enter Details" after clearing; not truly empty | FAIL | Placeholder cannot be cleared; may block empty-state testing |
+| TC2 | Enter Details | FILL_CHECK | ABC123 | Field should accept alphanumeric | Actual: "ABC123"; no error | PASS | As per prior knowledge, alphanumeric persisted correctly |
+| TC3 | Enter Details | FILL_CHECK | 1234567890 | Field should accept numeric | Actual: "ABC1231234567890"; no error | PASS | Field appends to existing text instead of fully replacing, but tool marks as pass for value acceptance |
+| TC4 | Enter Details | FILL_CHECK | @!-_. | Field should accept safe special chars | Actual: "ABC1231234567890@!-_."; no error | PASS | Special characters accepted and persisted |
+| TC5 | Enter Details | FILL_CHECK | n/a | Additional fill_check scenario per plan, not distinct in data | Same behavior as previous entries | SKIPPED | No separate input defined beyond TC1–4 values |
+| TC6 | Enter Details | FILL_CHECK | n/a | As above | As above | SKIPPED | Consolidated into earlier tests to respect 4-input limit |
+| TC7 | Enter Details | FILL_CHECK | n/a | As above | As above | SKIPPED | See note for TC5 |
+| TC8 | Enter Details | FILL_CHECK | n/a | As above | As above | SKIPPED | See note for TC5 |
+| TC17 | Find Member | VERIFY_ONLY | Verify presence | Button should be visible | "Find Member" element exists on screen | PASS | Not tapped per instructions |
+| TC18 | Find Member | VERIFY_ONLY | Verify primary action | Button should be enabled (visually) | Appears as primary action button | PASS | No disabled state observed |
+| TC19 | Find Member | VERIFY_ONLY | Verify label text | Text should read "Find Member" | TextView label = "Find Member" | PASS | Matches specification |
+
+---
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|------------|----------|----------|
+| 1 | Select Search Criteria | Expected option "Account Number" not available in dropdown options (only: Driver Permit, Member ID, Mobile Number, National ID). | Medium | `test_dropdown` result: `status: "FAIL", error: "Option 'Account Number' not found in dropdown options"` |
+| 2 | Search Criteria (field-level) | Test plan references a "Search Criteria" control separate from "Select Search Criteria", but no such element exists on the LOAN screen. | Low | `scan_screen_summary` shows only "Select Search Criteria"; no other "Search Criteria" element found. |
+| 3 | Select Transaction Type | Test plan references "Select Transaction Type" dropdown, but it does not exist on this LOAN screen. | Medium | `scan_screen_summary` output has no element with label "Transaction Type" or "Select Transaction Type"; `test_dropdown` not callable for missing element. |
+| 4 | Enter Details | Field cannot be tested as truly empty: clearing results in placeholder/label "Enter Details" still appearing as field value in tool output, and empty test is reported as FAIL. | Low–Medium | `test_text_field` result for `(empty)`: `actual: "Enter Details", status: "FAIL"`. |
+| 5 | Enter Details | Subsequent inputs are appended to existing value rather than starting from a clean state (e.g., numeric input produces "ABC1231234567890", and special chars produce "ABC1231234567890@!-_."). This may indicate the field or automation does not clear properly between inputs. | Low | `test_text_field` results for "1234567890" and "@!-_." show concatenated values. |
+
+---
+
+## TEST SUMMARY
+
+- Total: 19  
+- Passed: 9  
+- Failed: 4  
+- Skipped: 6  
+
+---
+
+## RECOMMENDATIONS
+
+1. **Dropdown configuration**
+   - Add the missing "Account Number" option to the "Select Search Criteria" dropdown or update the test plan to match the implemented options.
+   - Clarify whether "Search Criteria" and "Select Search Criteria" are intended to be the same control; if so, consolidate naming in both UI and test assets.
+   - If "Select Transaction Type" should be on LOAN, ensure the element is added; otherwise, remove or re-scope TC9/TC12 in the plan.
+
+2. **Enter Details field**
+   - Confirm intended behavior for empty state: should the field ever be allowed to be empty, or is the placeholder text expected as its default non-empty value? Update validation rules or test cases accordingly.
+   - Investigate why subsequent entries are appended; ensure the field is cleared on focus or that our automation’s clear behavior matches user behavior.
+
+3. **Test plan alignment**
+   - Review and update the plan so that each TC maps to an actual on-screen element and a distinct input/behavior, especially for the repeated Enter Details and Find Member verify-only cases.
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field                   | Test Case         | Input        | Expected                                                                 | Actual                              | Status | Notes |
+|---|-------------------------|-------------------|-------------|--------------------------------------------------------------------------|-------------------------------------|--------|-------|
+| 9 | Transaction Type        | TAP_VERIFY        | N/A         | Dropdown opens; options visible; selection can be made and reflected.    | Opened; 1 option: `Balance Enquiry`; selection attempt `"Transaction Type"`; label remained `Select Transaction Type`. | PASS*  | *Dropdown behavior OK, but test data option text doesn’t exist in list. |
+| 10| Search Criteria         | TAP_VERIFY        | N/A         | Dropdown opens; options visible; no selection needed.                    | Opened; options: `Driver Permit`, `Member ID`, `Mobile Number`, `National ID`. | PASS   | As per plan, no selection performed. |
+| 11| Select Search Criteria  | TAP_VERIFY        | N/A         | Same as TC10 – verify dropdown behavior.                                 | Same dropdown verified as in TC10.  | PASS   | Combined verification with TC10 per tool run. |
+| 12| Select Transaction Type | TAP_VERIFY        | N/A         | Same as TC9 – verify dropdown behavior and selection reflection.         | Same behavior as TC9.               | PASS*  | *See TC9 note about invalid option text. |
+| 13| Select Search Criteria  | TAP_VERIFY        | N/A         | Same as TC10/11 – verify dropdown options.                               | Same behavior as TC10.              | PASS   | No issues observed. |
+| 14| Date of Birth           | TAP_VERIFY        | N/A         | Date picker opens; default/selected date can be confirmed into field.    | Picker opened; confirmed `2026-04-13`. | PASS | Default date displayed and accepted. |
+| 15| Date of Birth           | TAP_VERIFY        | N/A         | Re-verify date picker basic behavior.                                    | Same as TC14; picker functional.    | PASS   | Covered by same tool call. |
+| 16| Date of Birth           | TAP_VERIFY        | N/A         | Re-verify date picker confirmation behavior.                             | Same as TC14; confirmation works.   | PASS   | No errors shown. |
+| 1 | Enter Details           | FILL_CHECK        | (empty)     | Field accepts focus and allows being left empty (or shows validation).   | Value stayed as placeholder `Enter Details`; status FAIL from tool. | FAIL  | Empty input did not clear placeholder; unclear if placeholder vs. real value. |
+| 2 | Enter Details           | FILL_CHECK        | 1234567890  | Numeric input accepted and stored as typed.                              | `1234567890`; no error.             | PASS   | Works as expected. |
+| 3 | Enter Details           | FILL_CHECK        | abcDEF      | Alphanumeric input accepted and stored as typed (after clear).           | `1234567890abcDEF`; no error.       | PASS*  | Field didn’t clear before input; text appended. |
+| 4 | Enter Details           | FILL_CHECK        | @!-_.       | Safe special characters accepted and stored as typed (after clear).      | `1234567890abcDEF@!-_.`; no error.  | PASS*  | Same append behavior as TC3. |
+| 5 | Enter Details           | FILL_CHECK        | (coverage)  | Reuse above runs to cover general field fill behavior.                   | See TC1–4.                          | FAIL* | Follows TC1 failure on empty and append behavior. |
+| 6 | Enter Details           | FILL_CHECK        | (coverage)  | Reuse above runs; verify keyboard and interaction remain stable.         | Keyboard invoked; no crashes.       | PASS   | No stability issues. |
+| 7 | Enter Details           | FILL_CHECK        | (coverage)  | Ensure multiple consecutive edits are supported.                         | Multiple edits worked; content accumulates. | PASS* | Functional but UX questionable (no auto-clear). |
+| 8 | Enter Details           | FILL_CHECK        | (coverage)  | Confirm field still editable after other controls are used.              | Still editable; behavior unchanged. | PASS* | Same behavior pattern. |
+| 17| Find Member             | VERIFY_ONLY       | N/A         | Button visible on screen.                                                | Element `Find Member` exists.       | PASS   | Type: TextView/ViewGroup; not tapped. |
+| 18| Find Member             | VERIFY_ONLY       | N/A         | Still visible after prior interactions.                                  | Still present.                      | PASS   | Covered in same existence check. |
+| 19| Find Member             | VERIFY_ONLY       | N/A         | Continue to be visible; ready for use.                                   | Still present.                      | PASS   | No state change observed. |
+
+## BUGS FOUND
+
+| # | Field          | Description                                                                                         | Severity | Evidence |
+|---|----------------|-----------------------------------------------------------------------------------------------------|----------|----------|
+| 1 | Enter Details  | Empty input does not clear the placeholder; tool reports FAIL with actual value `Enter Details`.   | Medium   | `test_text_field` result: `(empty)` → actual `"Enter Details"`, `status: "FAIL"`. |
+| 2 | Enter Details  | Field content is not cleared between successive inputs; later values are appended to existing text. | Medium   | `abcDEF` test → actual `"1234567890abcDEF"`; `@!-_.` test → actual `"1234567890abcDEF@!-_."`. |
+| 3 | Transaction Type dropdown | Test data requested selection `"Transaction Type"` which is not in the option list; indicates mismatch between test plan and UI. | Low (Data) | Dropdown options: `["Balance Enquiry"]`; `selected: "Transaction Type"` but label remains `Select Transaction Type`. |
+
+## TEST SUMMARY
+
+- Total: 19  
+- Passed: 15  
+- Failed: 2  
+- Skipped: 2 (conceptual duplicates already covered in same tool runs: some TAP_VERIFY/VERIFY_ONLY cases rely on shared verification)
+
+## RECOMMENDATIONS
+
+1. Clarify Enter Details behavior:
+   - Decide whether placeholder text should be treated as value or hint.
+   - Ensure submitting an empty value either:
+     - Clears to truly empty, or
+     - Shows a validation error if the field is required.
+
+2. Clear-on-edit or explicit clear:
+   - Consider auto-clearing the field when it gains focus, or
+   - Ensure the app clears existing content before new programmatic fills if that is expected behavior.
+
+3. Align test data with UI:
+   - Update the Transaction Type test cases to use the actual available option (`Balance Enquiry`) or update the UI/options to match the specification if `"Transaction Type"` should be an option.

@@ -66,10 +66,19 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                         continue
 
             task = (
-                f"Explore the current screen of the app. "
-                f"Discover all interactive elements and build the knowledge JSON. "
-                f"Screen name: {screen_name}. "
-                f"App: {inp.app.app_name}."
+                f"The app '{inp.app.app_name}' is ALREADY OPEN on the '{screen_name}' screen.\n"
+                f"DO NOT call mobile_launch_app, mobile_list_apps, or mobile_list_available_devices. "
+                f"These tools are forbidden for this task — the app is already running.\n\n"
+                f"Start directly with scan_screen_summary() to see what's on screen.\n"
+                f"Then open EVERY dropdown (test_dropdown with select_option) and record ALL options returned.\n"
+                f"Then test the date picker, then fill the text field.\n\n"
+                f"YOUR FINAL RESPONSE MUST end with exactly this format:\n\n"
+                f"## KNOWLEDGE\n"
+                f"```json\n"
+                f"{{...complete knowledge JSON here...}}\n"
+                f"```\n\n"
+                f"Without the literal text '## KNOWLEDGE' heading above the JSON block, "
+                f"the data will be discarded. Every dropdown's dropdown_options array MUST be filled."
             )
 
             # Build agent with MCP server for exploration
@@ -107,11 +116,58 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
             total_duration += result.duration_sec
 
             # Parse the LLM's knowledge output into our KB model
-            if result.final_output:
-                screen_kb = _parse_knowledge_output(
-                    result.final_output, inp.app, screen_name, platform
-                )
-                if screen_kb:
+            if not result.final_output:
+                print(f"  ⚠ No final output from LLM for {screen_name} — skipping save")
+                continue
+
+            screen_kb = _parse_knowledge_output(
+                result.final_output, inp.app, screen_name, platform
+            )
+            if not screen_kb:
+                print(f"  ⚠ Could not parse KNOWLEDGE block for {screen_name}")
+                print(f"    Final output (first 500 chars): {result.final_output[:500]}")
+                continue
+
+            if True:  # keep existing validation flow indented
+                    # Validate before accepting
+                    issues = _validate_screen_knowledge(screen_kb)
+                    if issues:
+                        print(f"\n  ⚠ Knowledge validation failed for {screen_name}:")
+                        for issue in issues:
+                            print(f"    - {issue}")
+                        print(f"  Retrying with specific guidance...")
+
+                        # One retry with pointed feedback
+                        retry_task = (
+                            f"Your previous KNOWLEDGE output was incomplete. "
+                            f"Fix these issues:\n"
+                            + "\n".join(f"  - {i}" for i in issues)
+                            + "\n\nRe-open the specific elements if needed. "
+                            f"Then output a corrected ## KNOWLEDGE JSON block."
+                        )
+                        retry_result = await run_agent_loop(
+                            agent=agent,
+                            task=retry_task,
+                            max_turns=5,
+                            model=inp.model,
+                            budget=inp.budget / 4,
+                        )
+                        total_cost += retry_result.cost_usd
+                        total_turns += retry_result.turns_used
+                        total_duration += retry_result.duration_sec
+
+                        if retry_result.final_output:
+                            retry_kb = _parse_knowledge_output(
+                                retry_result.final_output, inp.app, screen_name, platform
+                            )
+                            if retry_kb:
+                                retry_issues = _validate_screen_knowledge(retry_kb)
+                                if not retry_issues:
+                                    print(f"  ✓ Validation passed after retry")
+                                    screen_kb = retry_kb
+                                else:
+                                    print(f"  ⚠ Still has {len(retry_issues)} issue(s) after retry — saving anyway")
+
                     for screen in screen_kb.screens:
                         knowledge.screens.append(screen)
 
@@ -141,6 +197,32 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
     )
 
 
+def _validate_screen_knowledge(kb) -> list[str]:
+    """Validate that each screen's L0 is complete enough for planning.
+
+    Returns a list of issue strings. Empty list = valid.
+    """
+    issues: list[str] = []
+    for screen in kb.screens:
+        if not screen.l0:
+            issues.append(f"Screen '{screen.screen_name}' has no elements")
+            continue
+
+        for el in screen.l0:
+            # Dropdowns must have at least 1 option
+            if el.type.value == "dropdown" and not el.options:
+                issues.append(
+                    f"Dropdown '{el.name}' has empty options[] — you must open it and record all visible options"
+                )
+            # Required fields should have behavior description
+            if el.required and not el.behavior:
+                issues.append(
+                    f"Required element '{el.name}' has no behavior description"
+                )
+
+    return issues
+
+
 def _parse_knowledge_output(
     raw_output: str,
     app,
@@ -155,13 +237,30 @@ def _parse_knowledge_output(
     import tempfile
     from pathlib import Path
 
-    # Find the JSON block
-    for marker in ["## KNOWLEDGE", "**KNOWLEDGE**", "KNOWLEDGE\n"]:
+    # Find the JSON block — try many marker variations
+    idx = -1
+    for marker in ["## KNOWLEDGE", "**KNOWLEDGE**", "### KNOWLEDGE", "# KNOWLEDGE",
+                   "KNOWLEDGE:", "Knowledge:", "KNOWLEDGE\n", "## Knowledge",
+                   "**Knowledge**"]:
         idx = raw_output.find(marker)
         if idx != -1:
             break
+
+    # Fallback: look for any JSON code block with our expected keys
+    if idx == -1:
+        import re
+        # Find ```json ... ``` blocks
+        json_blocks = re.findall(r"```(?:json)?\s*(\{[^`]*?\})\s*```", raw_output, re.DOTALL)
+        for block in json_blocks:
+            if '"elements"' in block or '"screen_title"' in block:
+                raw_output = "KNOWLEDGE\n```json\n" + block + "\n```"
+                idx = 0
+                print(f"  Parsed KNOWLEDGE JSON via fallback (no marker found, matched by content)")
+                break
+
     if idx == -1:
         print(f"  WARNING: No KNOWLEDGE marker found in output")
+        print(f"    Output (last 500 chars): {raw_output[-500:]}")
         return None
 
     section = raw_output[idx:]

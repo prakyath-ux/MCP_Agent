@@ -28,14 +28,29 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         print("  ERROR: No L0 elements found in knowledge base")
         return PlanOutput(model=inp.model)
 
-    # Filter out non-testable elements (nav tabs, back buttons, headers, decorative)
+    # Filter out non-testable elements (nav tabs, back buttons, headers, decorative, labels)
     skip_types = {"nav_tab", "other"}
-    skip_names = {"back", "backbutton", "headerimage", "texture_view"}
-    l0_filtered = [
-        el for el in l0_index
-        if el.type.value not in skip_types
-        and el.name.lower().replace(" ", "") not in skip_names
-    ]
+    skip_name_keywords = {
+        "back", "backbutton", "headerimage", "headercontainer", "texture_view",
+        "screen title", "title", "label", "tab label", "nav text", "header",
+    }
+
+    def _is_testable(el) -> bool:
+        if el.type.value in skip_types:
+            return False
+        name_lower = el.name.lower()
+        # Skip elements whose name contains label/title/header keywords
+        for kw in skip_name_keywords:
+            if kw in name_lower:
+                # But keep actual fields like "Enter Details" (text_input with real purpose)
+                # Rule: if it's a dropdown/date_picker, always keep
+                if el.type.value in {"dropdown", "date_picker"}:
+                    return True
+                # Otherwise, this is a label/header text — skip
+                return False
+        return True
+
+    l0_filtered = [el for el in l0_index if _is_testable(el)]
 
     if not l0_filtered:
         print("  ERROR: No testable elements after filtering")

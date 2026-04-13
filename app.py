@@ -266,10 +266,25 @@ def _take_adb_screenshot() -> bytes | None:
 def _run_agent_subprocess(cmd: str, cwd: str) -> subprocess.Popen:
     venv_python = str(ROOT / "venv" / "bin" / "python")
     full_cmd = cmd.replace("python ", f"{venv_python} ", 1)
+    # start_new_session so we can kill the whole process tree (including npx MCP children)
     return subprocess.Popen(
         full_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        cwd=cwd, text=True, bufsize=1,
+        cwd=cwd, text=True, bufsize=1, start_new_session=True,
     )
+
+
+def _kill_process_tree(process: subprocess.Popen) -> None:
+    """Kill the subprocess and all its children (npx, node, adb, etc.)."""
+    import os
+    import signal
+    try:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        process.wait(timeout=3)
+    except (ProcessLookupError, subprocess.TimeoutExpired):
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 # ── Session State ────────────────────────────────────────────────────────────
@@ -429,11 +444,24 @@ def page_new_run():
 
 
 def _run_active():
+    import threading
+    from queue import Queue, Empty
+
     cmd = st.session_state.run_cmd
     cwd = st.session_state.run_cwd
     platform = st.session_state.get("run_platform", "mobile")
 
     st.markdown('<div class="section-header">Running Agent</div>', unsafe_allow_html=True)
+
+    # Kill button at the top — always accessible
+    if st.button("⛔ Kill Run", key="kill_btn", type="secondary"):
+        proc = st.session_state.get("_run_process")
+        if proc and proc.poll() is None:
+            _kill_process_tree(proc)
+        st.session_state.running = False
+        st.session_state.pop("_run_process", None)
+        st.warning("Run killed.")
+        st.rerun()
 
     if platform == "mobile":
         col_term, col_screen = st.columns([1.2, 1])
@@ -456,25 +484,59 @@ def _run_active():
 
     status_text.markdown(f"**Running...**")
     process = _run_agent_subprocess(cmd, cwd)
+    st.session_state["_run_process"] = process
 
-    output_lines = []
+    # Background thread reads stdout into a queue — non-blocking
+    output_queue: Queue = Queue()
+
+    def _reader():
+        try:
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                if line:
+                    output_queue.put(line)
+            remaining = process.stdout.read()
+            if remaining:
+                for rem in remaining.splitlines():
+                    output_queue.put(rem)
+            output_queue.put(None)  # sentinel
+        except Exception as exc:
+            output_queue.put(f"[reader error: {exc}]")
+            output_queue.put(None)
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
+    output_lines: list[str] = []
     last_screenshot_time = time.time()
+    skip_keywords = ["USAGE SUMMARY", "Real cost", "No-cache cost", "Savings:", "Cost:", "cost:", "Budget:"]
+    done = False
 
     try:
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line:
-                stripped = line.rstrip()
-                # Hide cost/usage lines from client view
-                skip_keywords = ["USAGE SUMMARY", "Real cost", "No-cache cost", "Savings:", "Cost:", "cost:", "Budget:"]
+        while not done:
+            # Drain queue — non-blocking
+            got_new = False
+            while True:
+                try:
+                    line = output_queue.get_nowait()
+                except Empty:
+                    break
+                if line is None:
+                    done = True
+                    break
+                stripped = str(line).rstrip()
                 if any(kw in stripped for kw in skip_keywords):
                     continue
                 output_lines.append(stripped)
+                got_new = True
+
+            if got_new:
                 progress_bar.progress(min(len(output_lines) / 100, 0.95))
                 terminal_output.code("\n".join(output_lines[-25:]), language="text")
 
+            # Update screenshot
             if screenshot_placeholder and platform == "mobile":
                 now = time.time()
                 if now - last_screenshot_time > 2.0:
@@ -483,12 +545,17 @@ def _run_active():
                         screenshot_placeholder.image(img, width=380)
                     last_screenshot_time = now
 
-        remaining = process.stdout.read()
-        if remaining:
-            for rem_line in remaining.splitlines():
-                if not any(kw in rem_line for kw in ["USAGE SUMMARY", "Real cost", "No-cache", "Savings:", "Cost:"]):
-                    output_lines.append(rem_line)
-            terminal_output.code("\n".join(output_lines[-30:]), language="text")
+            # Check if kill was requested
+            if not st.session_state.get("running", True):
+                if process.poll() is None:
+                    _kill_process_tree(process)
+                break
+
+            # Check if subprocess died
+            if process.poll() is not None and output_queue.empty():
+                done = True
+
+            time.sleep(0.3)
 
     except Exception as e:
         st.error(f"Error: {e}")
@@ -496,6 +563,8 @@ def _run_active():
     progress_bar.progress(1.0)
     if process.returncode == 0:
         status_text.markdown("**Run completed successfully.**")
+    elif process.returncode is None:
+        status_text.markdown("**Run was killed.**")
     else:
         status_text.markdown(f"**Run finished with exit code {process.returncode}.**")
 
@@ -505,6 +574,7 @@ def _run_active():
             screenshot_placeholder.image(img, width=380)
 
     st.session_state.running = False
+    st.session_state.pop("_run_process", None)
 
     st.markdown("---")
     col_a, col_b = st.columns(2)
@@ -541,7 +611,24 @@ def page_past_runs():
 
 def _render_run_list(platform: str):
     runs = list_runs("results")
-    filtered = [r for r in runs if platform in r.name.lower() or platform in str(r.parent).lower()]
+
+    def _matches_platform(path: Path) -> bool:
+        # Old-style paths have "mobile" or "web" in the path
+        path_str = str(path).lower()
+        if platform in path_str:
+            return True
+        # New qa pipeline result files — read "Platform:" line from header
+        try:
+            for line in path.read_text().splitlines()[:10]:
+                if line.lower().startswith("platform:"):
+                    return platform in line.lower()
+        except Exception:
+            pass
+        # Fallback: mobile pipeline results live under artifacts/results (no platform in name)
+        # Treat as mobile by default since that's our primary platform
+        return platform == "mobile"
+
+    filtered = [r for r in runs if _matches_platform(r)]
 
     if not filtered:
         st.info(f"No {platform} runs found yet. Start a new run first.")

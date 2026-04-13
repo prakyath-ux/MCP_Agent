@@ -119,6 +119,7 @@ async def run_agent_loop(
     final_output = ""
     agent_done = False
     phase_switched = False
+    recent_tools: list[str] = []  # Track last N tool names for loop detection
 
     for turn_num in range(1, max_turns + 1):
 
@@ -140,6 +141,37 @@ async def run_agent_loop(
         print(f" done ({t_elapsed:.1f}s)")
         if t_elapsed > 30:
             print(f"  ⚠ SLOW RESPONSE: {t_elapsed:.1f}s — likely API latency")
+
+        # ── Loop detection ────────────────────────────────────
+        # Extract tool name from this turn's output
+        turn_tool = ""
+        for item in result.raw_responses[-1].output if result.raw_responses else []:
+            name = getattr(item, "name", None)
+            if name:
+                turn_tool = name
+                break
+        if turn_tool:
+            recent_tools.append(turn_tool)
+            # Check if last 4 calls were the same tool
+            if len(recent_tools) >= 4 and len(set(recent_tools[-4:])) == 1:
+                repeat_tool = recent_tools[-1]
+                print(f"\n  ⚠ LOOP DETECTED: '{repeat_tool}' called 4 times in a row")
+                print(f"  Injecting nudge to break the loop...")
+                # Force agent to produce final output
+                input_items = [
+                    *result.to_input_list(),
+                    {
+                        "role": "user",
+                        "content": (
+                            f"STOP. You've called {repeat_tool} {len(recent_tools[-4:])} times "
+                            "in a row without making progress. Do NOT call any more tools. "
+                            "Produce your FINAL OUTPUT (KNOWLEDGE JSON, TEST REPORT, or whatever "
+                            "the task asked for) in THIS turn. No more tool calls."
+                        ),
+                    },
+                ]
+                recent_tools = []  # Reset so we don't re-trigger immediately
+                continue
 
         # Check for final output
         if result.final_output and result.final_output != "__TURN_LIMIT__":

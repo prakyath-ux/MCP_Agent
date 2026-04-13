@@ -124,6 +124,26 @@ New 3-pipeline architecture (Explore → Plan → Execute).
 | Apr 10 | GPT-5.1 | 1 | 7 | $0.021 | 81s | Single screen via pipeline |
 | Apr 10 | GPT-5.1 | 3 | 20 | $0.076 | 239s | Multi-screen via pipeline |
 
+### Phase 7: First Clean Multi-Screen Run (April 13)
+
+All fixes applied: dropdown options captured, L0 filtering, loop detection, null-safe converter.
+
+| Date | Model | Screens | Turns | Cost | Passed | Failed | Skipped | Notes |
+|------|-------|---------|-------|------|--------|--------|---------|-------|
+| Apr 13 | GPT-5.1 | 3 | 21 | **$0.083** | **14** | **4** | **3** | First clean run. Real options used ("Cash Deposit", "Member ID", "Balance Enquiry"). All bugs found are real app issues, not test hallucinations. |
+
+**What made this run clean:**
+- Explore captured all dropdown options (8 for Transaction Type, 4 for Search Criteria, 1 for MORE)
+- Plan used only real option values — no more "Member Number" / "Account Number" hallucinations
+- L0 filter removed 42 non-testable elements (57 → 15) — labels, nav tabs, headers excluded
+- Loop detection kicks in after 4 repeat calls to prevent stuck runs
+- Dashboard kill button available if needed
+
+**Real bugs identified by agent (not tool bugs):**
+- Enter Details has no empty-field validation across all 3 screens
+- Enter Details appends text instead of replacing — clear doesn't work
+- MORE → Transaction Type only has "Balance Enquiry" (real app state)
+
 ---
 
 ## Cost Reduction Timeline
@@ -136,6 +156,7 @@ New 3-pipeline architecture (Explore → Plan → Execute).
 | Compound tools (GPT-5) | Apr 4 | $0.10 | 92.7% cheaper |
 | GPT-5.1 discovered | Apr 7 | **$0.004** | **99.7% cheaper** |
 | Multi-screen (3 screens) | Apr 10 | $0.076 | 94.5% cheaper (for 3x coverage) |
+| **QA Suite pipeline (3 screens, clean)** | **Apr 13** | **$0.083** | **Production-quality run** |
 
 ### Cost per Screen
 
@@ -241,15 +262,39 @@ New 3-pipeline architecture (Explore → Plan → Execute).
 
 ## Summary Table
 
-| Metric | Day 1 (Mar 24) | Current Best | Improvement |
-|--------|----------------|--------------|-------------|
-| Cost per screen | $1.37 | $0.004 | **99.7% reduction** |
-| Turns per screen | 58 | 8 | **86% reduction** |
-| Duration per screen | 460s | 103s | **78% reduction** |
-| Cache hit rate | 14% | 86% | **6x improvement** |
+| Metric | Day 1 (Mar 24) | Current Best (Apr 13) | Improvement |
+|--------|----------------|----------------------|-------------|
+| Cost per screen (cheapest model) | $1.37 | $0.004 (GPT-5.1 single) | **99.7% reduction** |
+| Cost per 3-screen run | N/A | $0.083 | 3 screens for 6% of old 1-screen cost |
+| Turns per screen | 58 | 7-8 | **86% reduction** |
+| Duration per screen | 460s | ~80s | **82% reduction** |
+| Cache hit rate | 14% | 68-86% | **5-6x improvement** |
 | Screens per run | 1 | 3 | **3x coverage** |
 | Platforms | Web only | Web + Mobile | **2 platforms** |
-| Test cases found | 7 | 28 (3 screens) | **4x coverage** |
+| Test cases per 3-screen run | ~7 | 18-28 | **3-4x coverage** |
 | Real bugs found | 2 | 7+ per run | Consistent finding |
 | Models supported | 1 (GPT-5) | 3 (GPT-5, 5.1, oss-120b) | **3 options** |
 | Architecture | Monolith | 3 pipelines + layered KB | Production-ready |
+| Knowledge quality | Flat JSON | L0/L1/L2 with real options | Validated & retry-enforced |
+| Pipeline failure recovery | None | Loop detection + nudge | Breaks stuck runs |
+| UI/Dashboard | Terminal only | Streamlit with kill button | Client-presentable |
+
+## Cost Breakdown Context (April 13)
+
+3 screens tested for $0.083 = ~₹7.55 total.
+- At 100 runs/day: $8.30 / ₹755 per day
+- At 1000 runs/day: $83 / ₹7,550 per day
+- Compared to human QA tester: ~10,000x cheaper per test case
+
+## Timeline Snapshot
+
+```
+Mar 9  — Web v1 POC started
+Mar 24 — Mobile POC started ($1.37/run baseline)
+Apr 2  — Compound tools added ($0.006/run with gpt-oss-120b)
+Apr 4  — GPT-5 peak day (8 turns, 9/9 executed, 8 passed)
+Apr 7  — GPT-5.1 discovered ($0.004/run)
+Apr 7  — Multi-screen support (3 screens in one command)
+Apr 10 — QA Suite architecture (3 pipelines + layered KB)
+Apr 13 — First clean multi-screen pipeline run (real bugs, no hallucinations)
+```

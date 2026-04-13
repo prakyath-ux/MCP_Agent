@@ -1,0 +1,163 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 21
+Cost: $0.0831
+Duration: 238.7s
+============================================================
+
+## Screen: iTELLER
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | Enter Details (iTELLER) | FILL_CHECK | *empty* | Validation error or prevention of submission because required | Placeholder text “Enter Details” remained; no validation or error shown | FAIL | Field did not clear or show any required-field error on empty input. |
+| TC2 | Enter Details (iTELLER) | FILL_CHECK | TEST12345 | Value accepted; no validation error shown | Field value displayed as “TEST12345” with no errors | PASS | Behavior matches expectation. |
+| TC3 | Enter Details (iTELLER) | FILL_CHECK | test_01-AB! | Value accepted; no unexpected validation error | Field contained concatenated text “TEST12345test_01-AB!” with no errors | PASS* | Input accepted without error, but text was appended to existing content instead of replacing it. |
+| TC4 | Select Transaction Type (iTELLER) | TAP_VERIFY | Cash Deposit | Dropdown opens; “Cash Deposit” selectable and remains displayed | Dropdown opened; “Cash Deposit” successfully selected and verified as current value | PASS | All 8 options visible; selection persisted. |
+| TC5 | Select Search Criteria (iTELLER) | TAP_VERIFY | Member ID | Dropdown opens; “Member ID” selectable and remains displayed | Dropdown opened; “Member ID” successfully selected and verified as current value | PASS | 4 options visible; selection persisted. |
+| TC6 | Date of Birth (iTELLER) | TAP_VERIFY | 2026-04-13 | Date picker opens; selecting 2026-04-13 populates field in ISO and closes picker | Picker opened; date confirmed as “2026-04-13”; picker closed | PASS | ISO format (yyyy-MM-dd) as expected. |
+| TC7 | Find Member (iTELLER) | VERIFY_ONLY | N/A | Button visible, enabled, ready | “Find Member” text element found and visible | PASS | Verified presence; not tapped to avoid navigation. |
+
+(LOAN and MORE test cases could not be executed because navigation tabs must not be tapped per instructions; only the iTELLER screen was in scope and already open.)
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | Enter Details (iTELLER) | Required-field behavior: when tested with empty input, the field retained placeholder “Enter Details” and no validation error or required indicator appeared. This contradicts the requirement that the field is required. | HIGH | TC1 – `value="(empty)"`, `actual="Enter Details"`, `error="NO_ERROR"`, `status="FAIL"`. |
+| 2 | Enter Details (iTELLER) | Input replacement behavior: when entering `test_01-AB!` after `TEST12345`, the field content became `TEST12345test_01-AB!` instead of replacing the previous value. This can confuse users and conflict with expectations of single-entry fields. | MED | TC3 – `value="test_01-AB!"`, `actual="TEST12345test_01-AB!"`, `error="NO_ERROR"`, `status="PASS" (data accepted but behavior anomalous)`. |
+
+## TEST SUMMARY
+
+- Total: 7  
+- Passed: 5  
+- Failed: 1  
+- Skipped: 1 (behavioral anomaly noted as bug though test expectation on “no error” passed)  
+
+## RECOMMENDATIONS
+
+1. **Fix required validation on Enter Details (iTELLER)**  
+   - Ensure that on empty input, the field shows a clear validation message (e.g., “This field is required”) or blocks submission with an inline error.
+   - Confirm that placeholder text is not treated as a valid value.
+
+2. **Ensure text replacement on re-entry**  
+   - Update the Enter Details field behavior so each new entry replaces the previous content (or is properly cleared before new typing), particularly when run through automated flows.
+
+3. **Post-fix regression**  
+   - Re-run TC1–TC3 after fixes to confirm:
+     - Empty input yields error.
+     - Single alphanumeric and mixed-character values are accepted as standalone values, without unintended concatenation.
+
+## Screen: LOAN
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC11 | LOAN - Select Search Criteria (dropdown) | TAP_VERIFY | Member ID | Dropdown opens; “Member ID” remains selected. | Dropdown opened; options: Driver Permit, Member ID, Mobile Number, National ID; “Member ID” selected and verified. | PASS | Behavior matches prior knowledge and expectations. |
+| TC12 | LOAN - Date of Birth (date picker) | TAP_VERIFY | 2026-04-13 | Picker opens; selecting 2026-04-13 populates field and closes picker. | Picker opened; date confirmed and returned as `2026-04-13` in ISO format. | PASS | Matches prior behavior description. |
+| TC8 | LOAN - Enter Details (text input) | FILL_CHECK | *empty* | Required field should show validation error or prevent submission. | After clearing, field placeholder/label “Enter Details” shown; no validation error or required-field indication reported by tool. | FAIL | Required-field handling appears missing or not surfaced as an error. |
+| TC9 | LOAN - Enter Details (text input) | FILL_CHECK | 1234567890 | Numeric value accepted; no validation error. | “1234567890” accepted with no error. | PASS | As expected. |
+| TC10 | LOAN - Enter Details (text input) | FILL_CHECK | 98765-AB_01. | Value accepted; no unexpected validation error. | Input resulted in combined value “123456789098765-AB_01.” with no error. | PASS (with concern) | Tool indicates concatenation across tests; field itself did not raise validation errors, but clearing between tests may not be working perfectly. |
+| TC13 | LOAN - Find Member (button) | VERIFY_ONLY | N/A | Visible, enabled, ready for interaction. | Element “Find Member” exists as TextView; visible on screen. | PASS | Per instructions, button not tapped, so enabled state is inferred from presence/visibility only. |
+
+iTELLER and MORE screen cases (TC1–TC7, TC14–TC20) were **not executed** in this run because the app is currently on the LOAN screen and navigation tabs/buttons must not be used per instructions.
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| B1 | LOAN - Enter Details | Required validation does not trigger for empty input. The field is marked required, but clearing it results only in the placeholder/label text with no validation error message or indication that the field is required. | HIGH | `test_text_field` result for value “(empty)”: `actual: "Enter Details"`, `error: "NO_ERROR"`, `status: "FAIL"`. This directly contradicts TC8’s expected behavior. |
+| B2 | LOAN - Enter Details (test harness / UX concern) | When testing multiple values sequentially, the final reported actual value for `98765-AB_01.` is `123456789098765-AB_01.` suggesting that text from a previous test value remained. While no validation error is shown (so business rules pass), this may indicate that the field is not being fully cleared between inputs, or the automation clear action is unreliable on this control. | MED | `test_text_field` result list: 2nd value “1234567890” → actual “1234567890” (PASS); 3rd value “98765-AB_01.” → actual “123456789098765-AB_01.” (still `NO_ERROR`). |
+
+## TEST SUMMARY
+
+- Total: 6  
+- Passed: 4  
+- Failed: 1  
+- Skipped: 1 (partial verification only – “Find Member” enabled state not fully asserted, and all non-LOAN TCs not executed due to navigation constraints)
+
+Unexecuted test cases due to current-screen and navigation restrictions:
+- iTELLER: TC1–TC7  
+- MORE: TC14–TC20  
+
+These require safely navigating to iTELLER and MORE (outside current constraints) before they can be run.
+
+## RECOMMENDATIONS
+
+1. **Fix required-field handling for LOAN → Enter Details**
+   - Implement or surface a clear validation message when the field is left empty (e.g., “Enter Details is required”) or block submission clearly.
+   - After fix, re-run at least the empty-value test for this field across all relevant screens (LOAN, iTELLER, MORE).
+
+2. **Investigate field clearing behavior**
+   - Confirm that the Enter Details field fully clears on focus/clear actions and does not append to previous content.
+   - Add explicit “clear” affordance or programmatic `setText("")` handling when the field is reused.
+
+3. **Plan separate runs for iTELLER and MORE flows**
+   - Using permitted navigation (outside this test’s constraints), open iTELLER and MORE and execute:
+     - Dropdowns: TC4, TC5, TC17, TC18  
+     - Date pickers: TC6, TC19  
+     - Text inputs: TC1–TC3, TC8–TC10 (already done here for LOAN only), TC14–TC16  
+     - Buttons: TC7, TC13, TC20  
+
+4. **Add explicit UI indicators for required fields**
+   - Consider using visual markers (e.g., asterisk, color, or helper text) plus an error message so both automation and users can reliably detect required-field violations.
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | Enter Details (MORE) | FILL_CHECK | *empty* | Required field; should show validation or prevent submission. | Tool could not clear placeholder: field shows `"Enter Details"` with `NO_ERROR`. | FAIL | Placeholder text is treated as actual value; no required-field handling observed. |
+| TC2 | Enter Details (MORE) | FILL_CHECK | TEST12345 | Value accepted; no validation error. | `"TEST12345"` entered; `NO_ERROR`. | PASS | Behaves as expected. |
+| TC3 | Enter Details (MORE) | FILL_CHECK | member_01-test! (stands in for `test_01-AB!`) | Value accepted; no unexpected error. | Underlying field text: `"TEST12345member_01-test!"`, `NO_ERROR`. | PASS* | Mixed concatenated value suggests the field was not cleared between values, but no validation error occurred. |
+| TC17 | Select Transaction Type (MORE) | TAP_VERIFY | Cash Deposit | “Cash Deposit” selectable and displayed. | Dropdown opened; options = `["Balance Enquiry"]`; “Cash Deposit” not present; no selection. | FAIL | Mismatch between test plan and actual options. |
+| TC17 (alt) | Select Transaction Type (MORE) | TAP_VERIFY | Balance Enquiry | “Balance Enquiry” selectable and displayed. | Dropdown opened; “Balance Enquiry” selected and verified as displayed. | PASS | Confirms real behavior/options. |
+| TC18 | Select Search Criteria (MORE) | TAP_VERIFY | Member ID | “Member ID” selectable and displayed. | Dropdown opened; “Member ID” selected and verified as displayed. | PASS | All expected options present: Driver Permit, Member ID, Mobile Number, National ID. |
+| TC19 | Date of Birth (MORE) | TAP_VERIFY | 2026-04-13 | Date picker opens; selecting 2026-04-13 populates field and closes picker. | Picker opened; date confirmed; tool reports `date_value = "2026-04-13"`. | PASS | Date returned in ISO format as expected. |
+| TC20 | Find Member (MORE) | VERIFY_ONLY | N/A | Button visible and enabled. | `Find Member` text element exists and is visible. | PASS | Enabled state assumed; button was not tapped per instructions. |
+
+iTELLER and LOAN screen cases (TC1–TC13 in the plan) were **not executable** in this run because navigation to those tabs is disallowed by instructions (no nav tab taps, no BACK), and the app was already on the MORE screen.
+
+---
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| B1 | Enter Details (MORE) | Required/empty-state handling appears incorrect: when testing an empty value, the field shows its placeholder text `"Enter Details"` as the actual content with `NO_ERROR`. This prevents detection of a truly empty state and likely allows “empty” submissions. | HIGH | `test_text_field` result for `(empty)`: `{"actual": "Enter Details", "error": "NO_ERROR", "status": "FAIL"}`. |
+| B2 | Select Transaction Type (MORE) | Test plan expects a “Cash Deposit” option, but the actual dropdown only contains `["Balance Enquiry"]`. Attempting to select “Cash Deposit” fails because the option does not exist. | MED | `test_dropdown` with `select_option="Cash Deposit"`: `{"status":"FAIL","opened":true,"options":["Balance Enquiry"],"error":"Option 'Cash Deposit' not found in dropdown options"}`. |
+| B3 | Enter Details (MORE) | Field content after sequential inputs is concatenated (`"TEST12345member_01-test!"`) instead of being cleared between values. While no validation error occurs, this indicates the field is not being reset when re-entering data, which could affect real usage (e.g., user edit flows). | LOW | `test_text_field` third value shows `{"value":"member_01-test!","actual":"TEST12345member_01-test!","error":"NO_ERROR","status":"PASS"}`. |
+
+---
+
+## TEST SUMMARY
+
+- Total: 8 (tests actually executed on MORE screen)
+- Passed: 5
+- Failed: 2
+- Skipped/Not run (due to navigation constraints): 1 within MORE (original Cash Deposit expectation) plus all 13 iTELLER/LOAN cases
+  - Not executed from plan: TC1–TC13 (iTELLER & LOAN screens)
+  - Within MORE: the “Cash Deposit” expectation in TC17 failed due to missing option; an alternate, actual-option test passed.
+
+---
+
+## RECOMMENDATIONS
+
+1. **Fix placeholder vs. value behavior** on the MORE → Enter Details field so that:
+   - The field can truly be empty (no placeholder as actual value).
+   - Required-field validation triggers when left empty.
+
+2. **Align dropdown options with requirements**:
+   - Either add “Cash Deposit” to MORE → Select Transaction Type, or update the requirements/test plan to reflect that only “Balance Enquiry” is supported on this screen.
+
+3. **Ensure field clearing between edits**:
+   - When the user re-enters data in Enter Details, the old content should be cleared (or properly selectable and replaceable), to avoid unintended concatenated values.
+
+4. **Future runs for iTELLER and LOAN**:
+   - Allow safe navigation to the iTELLER and LOAN tabs (or deep-link into those screens) so TC1–TC13 can be executed and validated.

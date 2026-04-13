@@ -12,6 +12,20 @@ from qa.models.knowledge import (
 from qa.knowledge.element_id import make_element_id
 
 
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _s(d: dict, key: str, default: str = "") -> str:
+    """Get string value safely — converts None to default."""
+    val = d.get(key, default)
+    return val if val is not None else default
+
+
+def _l(d: dict, key: str) -> list:
+    """Get list value safely — converts None to empty list."""
+    val = d.get(key, [])
+    return val if val is not None else []
+
+
 # ── Element type mapping ─────────────────────────────────────────────────────
 
 _TYPE_MAP = {
@@ -58,8 +72,8 @@ def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
     l2_elements: list[L2Element] = []
 
     for i, el in enumerate(data.get("elements", [])):
-        el_type = _map_type(el.get("type", "other"))
-        el_name = el.get("name", "") or el.get("label", "") or el.get("text", "")
+        el_type = _map_type(_s(el, "type", "other"))
+        el_name = _s(el, "name") or _s(el, "label") or _s(el, "text")
 
         if not el_name:
             continue
@@ -67,18 +81,14 @@ def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
         eid = make_element_id(screen_name, el_name, el_type.value)
 
         # L0 — planning index
-        options = []
-        if el_type == ElementType.DROPDOWN:
-            options = el.get("dropdown_options", [])
-            # Some mobile JSONs store behavior text like "opens a list with options: X, Y, Z"
-            # We don't parse that here — options come from Pass 1 interaction
+        options = _l(el, "dropdown_options") if el_type == ElementType.DROPDOWN else []
 
         l0_elements.append(L0Element(
             element_id=eid,
             name=el_name,
             type=el_type,
-            required=el.get("required", False),
-            behavior=el.get("behavior", ""),
+            required=bool(el.get("required", False)),
+            behavior=_s(el, "behavior"),
             options=options,
             interaction_order=i,
             default_value="",
@@ -89,18 +99,20 @@ def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
         # L1 — execution details
         locators: list[Locator] = []
 
+        # Normalize None → empty string for safety
+        label = _s(el, "label") or _s(el, "text")
+        identifier = _s(el, "identifier")
+
         # Label-based locator (most stable for mobile)
-        label = el.get("label", "") or el.get("text", "")
         if label:
             locators.append(Locator(strategy="label", value=label, confidence=0.9))
 
         # Identifier (resource-id)
-        identifier = el.get("identifier", "")
         if identifier and identifier != "android:id/text1":
             locators.append(Locator(strategy="accessibility_id", value=identifier, confidence=0.95))
 
         # Coordinates
-        center = el.get("center", {})
+        center = el.get("center") or {}
         if center:
             locators.append(Locator(
                 strategy="coordinates",
@@ -108,7 +120,6 @@ def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
                 confidence=0.7,
             ))
 
-        coords = el.get("coordinates", {})
         l1_elements.append(L1Element(
             element_id=eid,
             locators=locators,
@@ -121,21 +132,22 @@ def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
 
         # L2 — evidence
         runs = []
-        if el.get("value_entered"):
+        value_entered = _s(el, "value_entered")
+        if value_entered:
             runs.append(RunRecord(
-                date=meta.get("saved_at", datetime.now().isoformat()),
+                date=_s(meta, "saved_at", datetime.now().isoformat()),
                 model="",
-                value_entered=el.get("value_entered", ""),
-                accepted=el.get("accepted", False),
-                issues=el.get("issues") or None,
+                value_entered=value_entered,
+                accepted=bool(el.get("accepted", False)),
+                issues=_s(el, "issues") or None,
             ))
 
-        now_iso = meta.get("saved_at", datetime.now().isoformat())
+        now_iso = _s(meta, "saved_at", datetime.now().isoformat())
         l2_elements.append(L2Element(
             element_id=eid,
             runs=runs,
             change_log=[f"{now_iso[:10]}: discovered by explore pipeline"],
-            accessibility_issues=data.get("accessibility_issues", []),
+            accessibility_issues=_l(data, "accessibility_issues"),
             first_seen=now_iso,
             last_seen=now_iso,
         ))
@@ -181,8 +193,8 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
     all_elements = data.get("fields", []) + data.get("buttons", [])
 
     for i, el in enumerate(all_elements):
-        el_type = _map_type(el.get("type", "other"))
-        el_name = el.get("name", "")
+        el_type = _map_type(_s(el, "type", "other"))
+        el_name = _s(el, "name")
 
         if not el_name:
             continue
@@ -190,36 +202,36 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
         eid = make_element_id(screen_name, el_name, el_type.value)
 
         # L0
-        options = el.get("dropdown_options", [])
+        options = _l(el, "dropdown_options")
         l0_elements.append(L0Element(
             element_id=eid,
             name=el_name,
             type=el_type,
-            required=el.get("required", False),
-            behavior=el.get("behavior", ""),
+            required=bool(el.get("required", False)),
+            behavior=_s(el, "behavior"),
             options=options,
             interaction_order=i,
             default_value="",
-            validation_rules=el.get("validation_rules", ""),
+            validation_rules=_s(el, "validation_rules"),
             screen_name=screen_name,
         ))
 
         # L1 — web uses CSS > xpath > uid
         locators: list[Locator] = []
 
-        css = el.get("css_selector", "")
+        css = _s(el, "css_selector")
         if css:
             locators.append(Locator(strategy="css", value=css, confidence=1.0))
 
-        fallbacks = el.get("css_fallbacks", [])
-        for fb in fallbacks:
-            locators.append(Locator(strategy="css", value=fb, confidence=0.9))
+        for fb in _l(el, "css_fallbacks"):
+            if fb:
+                locators.append(Locator(strategy="css", value=fb, confidence=0.9))
 
-        xpath = el.get("xpath", "")
+        xpath = _s(el, "xpath")
         if xpath:
             locators.append(Locator(strategy="xpath", value=xpath, confidence=0.8))
 
-        uid = el.get("uid", "")
+        uid = _s(el, "uid")
         if uid:
             locators.append(Locator(strategy="uid", value=uid, confidence=0.5))
 
@@ -232,15 +244,16 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
 
         # L2
         runs = []
-        if el.get("value_entered"):
+        value_entered = _s(el, "value_entered")
+        if value_entered:
             runs.append(RunRecord(
-                date=meta.get("saved_at", datetime.now().isoformat()),
-                value_entered=str(el.get("value_entered", "")),
-                accepted=el.get("accepted", False),
-                issues=el.get("issues") or None,
+                date=_s(meta, "saved_at", datetime.now().isoformat()),
+                value_entered=value_entered,
+                accepted=bool(el.get("accepted", False)),
+                issues=_s(el, "issues") or None,
             ))
 
-        now_iso = meta.get("saved_at", datetime.now().isoformat())
+        now_iso = _s(meta, "saved_at", datetime.now().isoformat())
         l2_elements.append(L2Element(
             element_id=eid,
             runs=runs,

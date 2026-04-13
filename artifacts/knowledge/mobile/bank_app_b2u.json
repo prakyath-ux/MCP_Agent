@@ -8,86 +8,309 @@
   },
   "screens": [
     {
-      "screen_name": "Find Member",
-      "screen_url": "net.impacto.B2U/Find Member",
+      "screen_name": "iTELLER",
+      "screen_url": "net.impacto.B2U/iTELLER",
       "l0": [
         {
-          "element_id": "find_member:back:button",
-          "name": "Back",
+          "element_id": "iteller:backbutton:button",
+          "name": "backButton",
           "type": "button",
           "required": false,
-          "behavior": "closes the current screen",
+          "behavior": "Likely navigates back from the iTeller screen (not interacted with due to navigation restriction).",
           "options": [],
           "interaction_order": 0,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:transaction_type:dropdown",
-          "name": "Transaction Type",
-          "type": "dropdown",
-          "required": true,
-          "behavior": "opens a list of transaction types, selection updates the field",
+          "element_id": "iteller:headerimage:button",
+          "name": "headerImage",
+          "type": "button",
+          "required": false,
+          "behavior": "Header/logo image area at top of screen.",
           "options": [],
           "interaction_order": 1,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:search_criteria:dropdown",
-          "name": "Search Criteria",
-          "type": "dropdown",
-          "required": true,
-          "behavior": "opens a list of criteria, selection updates the field",
+          "element_id": "iteller:headercontainer:other",
+          "name": "headerContainer",
+          "type": "other",
+          "required": false,
+          "behavior": "Container for header title and image.",
           "options": [],
           "interaction_order": 2,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:enter_details:text_input",
-          "name": "Enter Details",
+          "element_id": "iteller:screen_title:text_input",
+          "name": "Screen Title",
           "type": "text_input",
-          "required": true,
-          "behavior": "standard text entry field, brings up on-screen keyboard",
+          "required": false,
+          "behavior": "Static text label indicating current module/screen name.",
           "options": [],
           "interaction_order": 3,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:date_of_birth:date_picker",
-          "name": "Date of Birth",
-          "type": "date_picker",
-          "required": false,
-          "behavior": "opens a calendar dialog when tapped",
+          "element_id": "iteller:select_transaction_type_label:text_input",
+          "name": "Select Transaction Type label",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Static label for the transaction type dropdown.",
           "options": [],
           "interaction_order": 4,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:find_member:button",
-          "name": "Find Member",
-          "type": "button",
-          "required": false,
-          "behavior": "submits the form",
-          "options": [],
+          "element_id": "iteller:select_transaction_type:dropdown",
+          "name": "Select Transaction Type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown opened successfully. All options were displayed. Selection of 'Cash Deposit' succeeded and was verified as the current value.",
+          "options": [
+            "ACH Transfers (TECU to Bank)",
+            "Cash Deposit",
+            "Cash Withdrawal",
+            "Cheque Deposit",
+            "Credit Card Deposit",
+            "LinCU Card Deposit",
+            "LinCU Transfer",
+            "Linx Deposit"
+          ],
           "interaction_order": 5,
           "default_value": "",
           "validation_rules": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:select_search_criteria_label:text_input",
+          "name": "Select Search Criteria label",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Static label for the search criteria dropdown.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:select_search_criteria:dropdown",
+          "name": "Select Search Criteria",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "First attempt to select 'Account Number' failed because it is not a listed option. Second attempt selecting 'Member ID' succeeded and was verified. Dropdown opens and shows four options.",
+          "options": [
+            "Driver Permit",
+            "Member ID",
+            "Mobile Number",
+            "National ID"
+          ],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:enter_details:text_input",
+          "name": "Enter Details",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Single-line text field. Accepted alphanumeric string 'TEST12345' on first attempt with no visible error.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:date_of_birth_label:text_input",
+          "name": "Date of Birth label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label for the Date of Birth date picker.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:date_of_birth:date_picker",
+          "name": "Date of Birth",
+          "type": "date_picker",
+          "required": false,
+          "behavior": "Tapping opened a date picker. A date was confirmed and the resulting value returned as '2026-04-13' (ISO format: yyyy-MM-dd). Picker then closed successfully.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:find_member_label:text_input",
+          "name": "Find Member label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Text label overlapping or adjacent to the Find Member button.",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:find_member:button",
+          "name": "Find Member",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary action button likely used to search for a member based on the selected transaction type, search criteria, and entered details. Verified to exist but not pressed to avoid navigation away from the current form.",
+          "options": [],
+          "interaction_order": 12,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:dashboard_tab_label:text_input",
+          "name": "DASHBOARD tab label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label associated with bottom navigation tab 'DASHBOARD'.",
+          "options": [],
+          "interaction_order": 13,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:dashboard:nav_tab",
+          "name": "DASHBOARD",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for Dashboard section.",
+          "options": [],
+          "interaction_order": 14,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:iteller_tab_label:text_input",
+          "name": "iTELLER tab label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label associated with bottom navigation tab 'iTELLER'.",
+          "options": [],
+          "interaction_order": 15,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:iteller_tab:nav_tab",
+          "name": "iTELLER tab",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for the iTeller module. This is the currently active screen.",
+          "options": [],
+          "interaction_order": 16,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:ibranch_tab_label:text_input",
+          "name": "iBRANCH tab label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label associated with bottom navigation tab 'iBRANCH'.",
+          "options": [],
+          "interaction_order": 17,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:ibranch:nav_tab",
+          "name": "iBRANCH",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for branch-related features.",
+          "options": [],
+          "interaction_order": 18,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:loan_tab_label:text_input",
+          "name": "LOAN tab label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label associated with bottom navigation tab 'LOAN'.",
+          "options": [],
+          "interaction_order": 19,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:loan:nav_tab",
+          "name": "LOAN",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for loan-related functionality.",
+          "options": [],
+          "interaction_order": 20,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:more_tab_label:text_input",
+          "name": "MORE tab label",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static text label associated with bottom navigation tab 'MORE'.",
+          "options": [],
+          "interaction_order": 21,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:more:nav_tab",
+          "name": "MORE",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab likely providing additional options/settings.",
+          "options": [],
+          "interaction_order": 22,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "iTELLER"
         }
       ],
       "l1": [
         {
-          "element_id": "find_member:back:button",
+          "element_id": "iteller:backbutton:button",
           "locators": [
+            {
+              "strategy": "label",
+              "value": "backButton",
+              "confidence": 0.9
+            },
             {
               "strategy": "accessibility_id",
               "value": "backButton",
@@ -106,15 +329,122 @@
           },
           "widget_type": "",
           "identifier": "backButton",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:transaction_type:dropdown",
+          "element_id": "iteller:headerimage:button",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "headerImage",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "headerImage",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "1026,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 1026,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "headerImage",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:headercontainer:other",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "headerContainer",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "headerContainer",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "headerContainer",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:screen_title:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "551,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 551,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:select_transaction_type_label:text_input",
           "locators": [
             {
               "strategy": "label",
               "value": "Select Transaction Type",
               "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "386,1189",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 386,
+            "y": 1189
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:select_transaction_type:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Transaction Type",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "Select Transaction Type",
+              "confidence": 0.95
             },
             {
               "strategy": "coordinates",
@@ -128,16 +458,44 @@
             "y": 1189
           },
           "widget_type": "",
-          "identifier": "",
-          "screen_name": "Find Member"
+          "identifier": "Select Transaction Type",
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:search_criteria:dropdown",
+          "element_id": "iteller:select_search_criteria_label:text_input",
           "locators": [
             {
               "strategy": "label",
               "value": "Select Search Criteria",
               "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "365,1336",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 365,
+            "y": 1336
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:select_search_criteria:dropdown",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Select Search Criteria",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "Select Search Criteria",
+              "confidence": 0.95
             },
             {
               "strategy": "coordinates",
@@ -151,11 +509,11 @@
             "y": 1336
           },
           "widget_type": "",
-          "identifier": "",
-          "screen_name": "Find Member"
+          "identifier": "Select Search Criteria",
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:enter_details:text_input",
+          "element_id": "iteller:enter_details:text_input",
           "locators": [
             {
               "strategy": "label",
@@ -163,22 +521,27 @@
               "confidence": 0.9
             },
             {
+              "strategy": "accessibility_id",
+              "value": "Enter Details",
+              "confidence": 0.95
+            },
+            {
               "strategy": "coordinates",
-              "value": "584,1490",
+              "value": "583,1490",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
-            "x": 584,
+            "x": 583,
             "y": 1490
           },
           "widget_type": "",
-          "identifier": "",
-          "screen_name": "Find Member"
+          "identifier": "Enter Details",
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:date_of_birth:date_picker",
+          "element_id": "iteller:date_of_birth_label:text_input",
           "locators": [
             {
               "strategy": "label",
@@ -187,21 +550,49 @@
             },
             {
               "strategy": "coordinates",
-              "value": "584,1432",
+              "value": "583,1646",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
-            "x": 584,
-            "y": 1432
+            "x": 583,
+            "y": 1646
           },
           "widget_type": "",
           "identifier": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
         },
         {
-          "element_id": "find_member:find_member:button",
+          "element_id": "iteller:date_of_birth:date_picker",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Date of Birth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "Date of Birth",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "583,1646",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 583,
+            "y": 1646
+          },
+          "widget_type": "",
+          "identifier": "Date of Birth",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:find_member_label:text_input",
           "locators": [
             {
               "strategy": "label",
@@ -210,50 +601,386 @@
             },
             {
               "strategy": "coordinates",
-              "value": "540,1765",
+              "value": "540,1978",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 540,
-            "y": 1765
+            "y": 1978
           },
           "widget_type": "",
           "identifier": "",
-          "screen_name": "Find Member"
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:find_member:button",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Find Member",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "Find Member",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,1978",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 1978
+          },
+          "widget_type": "",
+          "identifier": "Find Member",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:dashboard_tab_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "DASHBOARD",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "108,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 108,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:dashboard:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "DASHBOARD",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "DASHBOARD",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "108,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 108,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "DASHBOARD",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:iteller_tab_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "324,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 324,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:iteller_tab:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "iTELLER",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "324,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 324,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "iTELLER",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:ibranch_tab_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iBRANCH",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:ibranch:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iBRANCH",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "iBRANCH",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "iBRANCH",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:loan_tab_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "LOAN",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "756,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 756,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:loan:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "LOAN",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "LOAN",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "756,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 756,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "LOAN",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:more_tab_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "MORE",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "972,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 972,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "iTELLER"
+        },
+        {
+          "element_id": "iteller:more:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "MORE",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "MORE",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "972,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 972,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "MORE",
+          "screen_name": "iTELLER"
         }
       ],
       "l2": [
         {
-          "element_id": "find_member:back:button",
+          "element_id": "iteller:backbutton:button",
           "runs": [],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242205",
+          "last_seen": "2026-04-13T11:14:11.242205"
         },
         {
-          "element_id": "find_member:transaction_type:dropdown",
+          "element_id": "iteller:headerimage:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242271",
+          "last_seen": "2026-04-13T11:14:11.242271"
+        },
+        {
+          "element_id": "iteller:headercontainer:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242312",
+          "last_seen": "2026-04-13T11:14:11.242312"
+        },
+        {
+          "element_id": "iteller:screen_title:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242340",
+          "last_seen": "2026-04-13T11:14:11.242340"
+        },
+        {
+          "element_id": "iteller:select_transaction_type_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242368",
+          "last_seen": "2026-04-13T11:14:11.242368"
+        },
+        {
+          "element_id": "iteller:select_transaction_type:dropdown",
           "runs": [
             {
-              "date": "2026-04-04T11:44:49",
+              "date": "2026-04-13T11:14:11.242397",
               "model": "",
-              "value_entered": "ACH Transfers (TECU to Bank)",
-              "accepted": true,
-              "issues": null,
-              "error_text": "",
-              "duration_ms": 0
-            },
-            {
-              "date": "2026-04-04T11:44:49",
-              "model": "",
-              "value_entered": "ACH Transfers (TECU to Bank)",
+              "value_entered": "Cash Deposit",
               "accepted": true,
               "issues": null,
               "error_text": "",
@@ -261,31 +988,64 @@
             }
           ],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242414",
+          "last_seen": "2026-04-13T11:14:11.242414"
         },
         {
-          "element_id": "find_member:search_criteria:dropdown",
+          "element_id": "iteller:select_search_criteria_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242442",
+          "last_seen": "2026-04-13T11:14:11.242442"
+        },
+        {
+          "element_id": "iteller:select_search_criteria:dropdown",
           "runs": [
             {
-              "date": "2026-04-04T11:44:49",
+              "date": "2026-04-13T11:14:11.242468",
               "model": "",
-              "value_entered": "Driver Permit",
+              "value_entered": "Member ID",
               "accepted": true,
-              "issues": null,
+              "issues": "Misaligned expectations possible if test data assumes an 'Account Number' option, which is not present.",
               "error_text": "",
               "duration_ms": 0
-            },
+            }
+          ],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242475",
+          "last_seen": "2026-04-13T11:14:11.242475"
+        },
+        {
+          "element_id": "iteller:enter_details:text_input",
+          "runs": [
             {
-              "date": "2026-04-04T11:44:49",
+              "date": "2026-04-13T11:14:11.242500",
               "model": "",
-              "value_entered": "Driver Permit",
+              "value_entered": "TEST12345",
               "accepted": true,
               "issues": null,
               "error_text": "",
@@ -293,31 +1053,39 @@
             }
           ],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242507",
+          "last_seen": "2026-04-13T11:14:11.242507"
         },
         {
-          "element_id": "find_member:enter_details:text_input",
+          "element_id": "iteller:date_of_birth_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242529",
+          "last_seen": "2026-04-13T11:14:11.242529"
+        },
+        {
+          "element_id": "iteller:date_of_birth:date_picker",
           "runs": [
             {
-              "date": "2026-04-04T11:44:49",
+              "date": "2026-04-13T11:14:11.242556",
               "model": "",
-              "value_entered": "TestUserQA-MEMBER-001",
-              "accepted": true,
-              "issues": null,
-              "error_text": "",
-              "duration_ms": 0
-            },
-            {
-              "date": "2026-04-04T11:44:49",
-              "model": "",
-              "value_entered": "TestUserQA-MEMBER-001",
+              "value_entered": "2026-04-13",
               "accepted": true,
               "issues": null,
               "error_text": "",
@@ -325,40 +1093,196 @@
             }
           ],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242561",
+          "last_seen": "2026-04-13T11:14:11.242561"
         },
         {
-          "element_id": "find_member:date_of_birth:date_picker",
+          "element_id": "iteller:find_member_label:text_input",
           "runs": [],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242583",
+          "last_seen": "2026-04-13T11:14:11.242583"
         },
         {
-          "element_id": "find_member:find_member:button",
+          "element_id": "iteller:find_member:button",
           "runs": [],
           "change_log": [
-            "2026-04-04: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns are implemented as generic ViewGroups without explicit accessibility role",
-            "The back button lacks an accessibility label"
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
           ],
-          "first_seen": "2026-04-04T11:44:49",
-          "last_seen": "2026-04-04T11:44:49"
+          "first_seen": "2026-04-13T11:14:11.242606",
+          "last_seen": "2026-04-13T11:14:11.242606"
+        },
+        {
+          "element_id": "iteller:dashboard_tab_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242629",
+          "last_seen": "2026-04-13T11:14:11.242629"
+        },
+        {
+          "element_id": "iteller:dashboard:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242654",
+          "last_seen": "2026-04-13T11:14:11.242654"
+        },
+        {
+          "element_id": "iteller:iteller_tab_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242678",
+          "last_seen": "2026-04-13T11:14:11.242678"
+        },
+        {
+          "element_id": "iteller:iteller_tab:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242701",
+          "last_seen": "2026-04-13T11:14:11.242701"
+        },
+        {
+          "element_id": "iteller:ibranch_tab_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242731",
+          "last_seen": "2026-04-13T11:14:11.242731"
+        },
+        {
+          "element_id": "iteller:ibranch:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242759",
+          "last_seen": "2026-04-13T11:14:11.242759"
+        },
+        {
+          "element_id": "iteller:loan_tab_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242788",
+          "last_seen": "2026-04-13T11:14:11.242788"
+        },
+        {
+          "element_id": "iteller:loan:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242810",
+          "last_seen": "2026-04-13T11:14:11.242810"
+        },
+        {
+          "element_id": "iteller:more_tab_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242831",
+          "last_seen": "2026-04-13T11:14:11.242831"
+        },
+        {
+          "element_id": "iteller:more:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive elements (dropdown containers, date picker container, Find Member button, nav tabs, header image) expose only generic view or label names in the hierarchy; explicit contentDescription or resource-id values for assistive technologies are not evident from the scan.",
+            "Labels and controls (e.g., 'Select Transaction Type' label and its dropdown) appear as separate elements; it is unclear if they are programmatically associated for screen readers.",
+            "Back button and header image are only identified as generic ViewGroup elements without explicit accessible names in the summary, which may reduce discoverability for screen reader users.",
+            "Bottom navigation tabs appear as separate text and view elements, suggesting possible redundancy or unclear focus order for accessibility tools."
+          ],
+          "first_seen": "2026-04-13T11:14:11.242855",
+          "last_seen": "2026-04-13T11:14:11.242855"
         }
       ]
     },
@@ -371,9 +1295,45 @@
           "name": "backButton",
           "type": "button",
           "required": false,
-          "behavior": "Appears as a back icon in header",
+          "behavior": "Back navigation button in header. Per instructions, not tapped or tested.",
           "options": [],
           "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headertitleloan:text_input",
+          "name": "headerTitleLoan",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static header text indicating current module/screen.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headerimage:other",
+          "name": "headerImage",
+          "type": "other",
+          "required": false,
+          "behavior": "Header image/logo area. Not interacted with per instructions.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headercontainer:other",
+          "name": "headerContainer",
+          "type": "other",
+          "required": false,
+          "behavior": "Non-interactive layout container for header elements.",
+          "options": [],
+          "interaction_order": 3,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -382,10 +1342,15 @@
           "element_id": "loan:select_search_criteria:dropdown",
           "name": "Select Search Criteria",
           "type": "dropdown",
-          "required": false,
-          "behavior": "Dropdown opened and displayed 4 options; selection reflected on field",
-          "options": [],
-          "interaction_order": 1,
+          "required": true,
+          "behavior": "Dropdown opened successfully and displayed all available search criteria options. Selection of 'Member ID' was applied and verified.",
+          "options": [
+            "Driver Permit",
+            "Member ID",
+            "Mobile Number",
+            "National ID"
+          ],
+          "interaction_order": 4,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -394,10 +1359,10 @@
           "element_id": "loan:enter_details:text_input",
           "name": "Enter Details",
           "type": "text_input",
-          "required": false,
-          "behavior": "Accepted alphanumeric entry; value persisted",
+          "required": true,
+          "behavior": "Field accepted numeric input '1234567890' in a single attempt with no validation error reported.",
           "options": [],
-          "interaction_order": 2,
+          "interaction_order": 5,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -407,9 +1372,9 @@
           "name": "Date of Birth",
           "type": "date_picker",
           "required": false,
-          "behavior": "Date picker opened; Confirm applied date to field",
+          "behavior": "Tapping opened a date picker UI. A date was selected/confirmed and returned as '2026-04-13' in ISO format (YYYY-MM-DD). Picker then closed successfully.",
           "options": [],
-          "interaction_order": 3,
+          "interaction_order": 6,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -419,9 +1384,9 @@
           "name": "Find Member",
           "type": "button",
           "required": false,
-          "behavior": "Primary action button (not tapped in this pass)",
+          "behavior": "Primary action button for executing the member search based on selected criteria and entered details. Existence verified but not tapped to avoid navigation away.",
           "options": [],
-          "interaction_order": 4,
+          "interaction_order": 7,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -431,9 +1396,9 @@
           "name": "DASHBOARD",
           "type": "nav_tab",
           "required": false,
-          "behavior": "Bottom navigation tab",
+          "behavior": "Bottom navigation tab. Not tapped per instruction to avoid leaving current screen.",
           "options": [],
-          "interaction_order": 5,
+          "interaction_order": 8,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -443,9 +1408,9 @@
           "name": "iTELLER",
           "type": "nav_tab",
           "required": false,
-          "behavior": "Bottom navigation tab",
+          "behavior": "Bottom navigation tab. Not tapped per instruction to avoid leaving current screen.",
           "options": [],
-          "interaction_order": 6,
+          "interaction_order": 9,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -455,21 +1420,21 @@
           "name": "iBRANCH",
           "type": "nav_tab",
           "required": false,
-          "behavior": "Bottom navigation tab",
+          "behavior": "Bottom navigation tab. Not tapped per instruction to avoid leaving current screen.",
           "options": [],
-          "interaction_order": 7,
+          "interaction_order": 10,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
         },
         {
-          "element_id": "loan:loan:nav_tab",
-          "name": "LOAN",
+          "element_id": "loan:loan_tab:nav_tab",
+          "name": "LOAN (tab)",
           "type": "nav_tab",
           "required": false,
-          "behavior": "Bottom navigation tab (current section)",
+          "behavior": "Bottom navigation tab corresponding to the currently active Loan screen. Not tapped.",
           "options": [],
-          "interaction_order": 8,
+          "interaction_order": 11,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -479,33 +1444,9 @@
           "name": "MORE",
           "type": "nav_tab",
           "required": false,
-          "behavior": "Bottom navigation tab",
+          "behavior": "Bottom navigation tab. Not tapped per instruction to avoid leaving current screen.",
           "options": [],
-          "interaction_order": 9,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "LOAN"
-        },
-        {
-          "element_id": "loan:headerimage:button",
-          "name": "headerImage",
-          "type": "button",
-          "required": false,
-          "behavior": "Appears tappable (avatar/settings) in header",
-          "options": [],
-          "interaction_order": 10,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "LOAN"
-        },
-        {
-          "element_id": "loan:texture_view:other",
-          "name": "texture_view",
-          "type": "other",
-          "required": false,
-          "behavior": "Non-interactive display area",
-          "options": [],
-          "interaction_order": 11,
+          "interaction_order": 12,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "LOAN"
@@ -515,6 +1456,11 @@
         {
           "element_id": "loan:backbutton:button",
           "locators": [
+            {
+              "strategy": "label",
+              "value": "backButton",
+              "confidence": 0.9
+            },
             {
               "strategy": "accessibility_id",
               "value": "backButton",
@@ -533,6 +1479,85 @@
           },
           "widget_type": "",
           "identifier": "backButton",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headertitleloan:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Loan",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "551,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 551,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headerimage:other",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "headerImage",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "headerImage",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "1026,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 1026,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "headerImage",
+          "screen_name": "LOAN"
+        },
+        {
+          "element_id": "loan:headercontainer:other",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "headerContainer",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "accessibility_id",
+              "value": "headerContainer",
+              "confidence": 0.95
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "headerContainer",
           "screen_name": "LOAN"
         },
         {
@@ -568,13 +1593,13 @@
             },
             {
               "strategy": "coordinates",
-              "value": "584,1343",
+              "value": "583,1343",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
-            "x": 584,
+            "x": 583,
             "y": 1343
           },
           "widget_type": "",
@@ -591,13 +1616,13 @@
             },
             {
               "strategy": "coordinates",
-              "value": "584,1499",
+              "value": "583,1499",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
-            "x": 584,
+            "x": 583,
             "y": 1499
           },
           "widget_type": "",
@@ -637,14 +1662,14 @@
             },
             {
               "strategy": "coordinates",
-              "value": "108,2229",
+              "value": "108,2278",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 108,
-            "y": 2229
+            "y": 2278
           },
           "widget_type": "",
           "identifier": "",
@@ -660,14 +1685,14 @@
             },
             {
               "strategy": "coordinates",
-              "value": "324,2229",
+              "value": "324,2278",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 324,
-            "y": 2229
+            "y": 2278
           },
           "widget_type": "",
           "identifier": "",
@@ -683,21 +1708,21 @@
             },
             {
               "strategy": "coordinates",
-              "value": "540,2229",
+              "value": "540,2278",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 540,
-            "y": 2229
+            "y": 2278
           },
           "widget_type": "",
           "identifier": "",
           "screen_name": "LOAN"
         },
         {
-          "element_id": "loan:loan:nav_tab",
+          "element_id": "loan:loan_tab:nav_tab",
           "locators": [
             {
               "strategy": "label",
@@ -706,14 +1731,14 @@
             },
             {
               "strategy": "coordinates",
-              "value": "756,2229",
+              "value": "756,2278",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 756,
-            "y": 2229
+            "y": 2278
           },
           "widget_type": "",
           "identifier": "",
@@ -729,26 +1754,553 @@
             },
             {
               "strategy": "coordinates",
-              "value": "972,2229",
+              "value": "972,2278",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 972,
-            "y": 2229
+            "y": 2278
           },
           "widget_type": "",
           "identifier": "",
           "screen_name": "LOAN"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "loan:backbutton:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484114",
+          "last_seen": "2026-04-13T11:15:04.484114"
         },
         {
-          "element_id": "loan:headerimage:button",
+          "element_id": "loan:headertitleloan:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484168",
+          "last_seen": "2026-04-13T11:15:04.484168"
+        },
+        {
+          "element_id": "loan:headerimage:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484196",
+          "last_seen": "2026-04-13T11:15:04.484196"
+        },
+        {
+          "element_id": "loan:headercontainer:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484219",
+          "last_seen": "2026-04-13T11:15:04.484219"
+        },
+        {
+          "element_id": "loan:select_search_criteria:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-13T11:15:04.484243",
+              "model": "",
+              "value_entered": "Member ID",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484258",
+          "last_seen": "2026-04-13T11:15:04.484258"
+        },
+        {
+          "element_id": "loan:enter_details:text_input",
+          "runs": [
+            {
+              "date": "2026-04-13T11:15:04.484286",
+              "model": "",
+              "value_entered": "1234567890",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484291",
+          "last_seen": "2026-04-13T11:15:04.484291"
+        },
+        {
+          "element_id": "loan:date_of_birth:date_picker",
+          "runs": [
+            {
+              "date": "2026-04-13T11:15:04.484312",
+              "model": "",
+              "value_entered": "2026-04-13",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484317",
+          "last_seen": "2026-04-13T11:15:04.484317"
+        },
+        {
+          "element_id": "loan:find_member:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484339",
+          "last_seen": "2026-04-13T11:15:04.484339"
+        },
+        {
+          "element_id": "loan:dashboard:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484366",
+          "last_seen": "2026-04-13T11:15:04.484366"
+        },
+        {
+          "element_id": "loan:iteller:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484388",
+          "last_seen": "2026-04-13T11:15:04.484388"
+        },
+        {
+          "element_id": "loan:ibranch:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484412",
+          "last_seen": "2026-04-13T11:15:04.484412"
+        },
+        {
+          "element_id": "loan:loan_tab:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484435",
+          "last_seen": "2026-04-13T11:15:04.484435"
+        },
+        {
+          "element_id": "loan:more:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Some interactive elements (back button, header image/container) appear as generic ViewGroup without clear accessibility text beyond their IDs, which may hinder screen reader users.",
+            "Coordinates and view hierarchy suggest that nav tabs may rely primarily on visible text labels; verify that they have proper accessibility roles (tab/button) and focus order.",
+            "The relationship between 'Select Search Criteria' label and its dropdown control, and between 'Date of Birth' label and the date picker control, should be confirmed to be programmatically associated for assistive technologies."
+          ],
+          "first_seen": "2026-04-13T11:15:04.484460",
+          "last_seen": "2026-04-13T11:15:04.484460"
+        }
+      ]
+    },
+    {
+      "screen_name": "MORE",
+      "screen_url": "net.impacto.B2U/MORE",
+      "l0": [
+        {
+          "element_id": "more:backbutton:button",
+          "name": "backButton",
+          "type": "button",
+          "required": false,
+          "behavior": "Back navigation button in header. Not interacted with per instructions.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more_title:text_input",
+          "name": "More (title)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static screen title text in header.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:headerimage:other",
+          "name": "headerImage",
+          "type": "other",
+          "required": false,
+          "behavior": "Header image/logo. Not interacted with per instructions.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:headercontainer:other",
+          "name": "headerContainer",
+          "type": "other",
+          "required": false,
+          "behavior": "Layout container for header elements. Not directly interactive.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:select_transaction_type:dropdown",
+          "name": "Select Transaction Type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown opened successfully. Initial attempt to select 'Cash Deposit' failed because that option does not exist. Second attempt selecting 'Balance Enquiry' passed and value was verified as selected.",
+          "options": [
+            "Balance Enquiry"
+          ],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:select_search_criteria:dropdown",
+          "name": "Select Search Criteria",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown opened successfully. First selection attempt with 'Member Name' failed because option was not present. Second attempt selecting 'Member ID' passed and value was verified.",
+          "options": [
+            "Driver Permit",
+            "Member ID",
+            "Mobile Number",
+            "National ID"
+          ],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:enter_details:text_input",
+          "name": "Enter Details",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Single-line text field. Filled once with 'TEST12345'. Tool reported FILLED with NO_ERROR, indicating input accepted without validation error.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:date_of_birth_label:text_input",
+          "name": "Date of Birth (label)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Static label for the Date of Birth picker.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:date_of_birth:date_picker",
+          "name": "Date of Birth",
+          "type": "date_picker",
+          "required": false,
+          "behavior": "Tapping opened a date picker. Picker UI appeared, a date was confirmed, and tool returned date_value '2026-04-13' in ISO format (YYYY-MM-DD) before closing.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:find_member_text:text_input",
+          "name": "Find Member (text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Visible button text label for primary action. Verified to exist by verify_elements_exist.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:find_member:button",
+          "name": "Find Member",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary form submission/search button. Existence verified, but button was not tapped to avoid navigation away from current form.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:dashboard_nav_text:text_input",
+          "name": "DASHBOARD (nav text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Bottom navigation label for DASHBOARD tab.",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:dashboard:nav_tab",
+          "name": "DASHBOARD",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for DASHBOARD. Not tapped per instructions to avoid navigation.",
+          "options": [],
+          "interaction_order": 12,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:iteller_nav_text:text_input",
+          "name": "iTELLER (nav text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Bottom navigation label for iTELLER tab.",
+          "options": [],
+          "interaction_order": 13,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:iteller:nav_tab",
+          "name": "iTELLER",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for iTELLER. Not tapped per instructions.",
+          "options": [],
+          "interaction_order": 14,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:ibranch_nav_text:text_input",
+          "name": "iBRANCH (nav text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Bottom navigation label for iBRANCH tab.",
+          "options": [],
+          "interaction_order": 15,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:ibranch:nav_tab",
+          "name": "iBRANCH",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for iBRANCH. Not tapped per instructions.",
+          "options": [],
+          "interaction_order": 16,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:loan_nav_text:text_input",
+          "name": "LOAN (nav text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Bottom navigation label for LOAN tab.",
+          "options": [],
+          "interaction_order": 17,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:loan:nav_tab",
+          "name": "LOAN",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for LOAN. Not tapped per instructions.",
+          "options": [],
+          "interaction_order": 18,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more_nav_text:text_input",
+          "name": "MORE (nav text)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Bottom navigation label for MORE tab (current screen).",
+          "options": [],
+          "interaction_order": 19,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more:nav_tab",
+          "name": "MORE",
+          "type": "nav_tab",
+          "required": false,
+          "behavior": "Bottom navigation tab for MORE, representing the currently active section. Not tapped to avoid navigation.",
+          "options": [],
+          "interaction_order": 20,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "MORE"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "more:backbutton:button",
           "locators": [
             {
-              "strategy": "accessibility_id",
+              "strategy": "label",
+              "value": "backButton",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "65,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 65,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more_title:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "More",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "551,179",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 551,
+            "y": 179
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:headerimage:other",
+          "locators": [
+            {
+              "strategy": "label",
               "value": "headerImage",
-              "confidence": 0.95
+              "confidence": 0.9
             },
             {
               "strategy": "coordinates",
@@ -762,312 +2314,32 @@
             "y": 179
           },
           "widget_type": "",
-          "identifier": "headerImage",
-          "screen_name": "LOAN"
+          "identifier": "",
+          "screen_name": "MORE"
         },
         {
-          "element_id": "loan:texture_view:other",
+          "element_id": "more:headercontainer:other",
           "locators": [
             {
-              "strategy": "accessibility_id",
-              "value": "net.impacto.B2U:id/texture_view",
-              "confidence": 0.95
+              "strategy": "label",
+              "value": "headerContainer",
+              "confidence": 0.9
             },
             {
               "strategy": "coordinates",
-              "value": "540,653",
+              "value": "540,179",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 540,
-            "y": 653
+            "y": 179
           },
           "widget_type": "",
-          "identifier": "net.impacto.B2U:id/texture_view",
-          "screen_name": "LOAN"
-        }
-      ],
-      "l2": [
-        {
-          "element_id": "loan:backbutton:button",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:select_search_criteria:dropdown",
-          "runs": [
-            {
-              "date": "2026-04-06T13:26:52.134165",
-              "model": "",
-              "value_entered": "Member ID",
-              "accepted": true,
-              "issues": null,
-              "error_text": "",
-              "duration_ms": 0
-            }
-          ],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:enter_details:text_input",
-          "runs": [
-            {
-              "date": "2026-04-06T13:26:52.134165",
-              "model": "",
-              "value_entered": "M123456789",
-              "accepted": true,
-              "issues": null,
-              "error_text": "",
-              "duration_ms": 0
-            }
-          ],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:date_of_birth:date_picker",
-          "runs": [
-            {
-              "date": "2026-04-06T13:26:52.134165",
-              "model": "",
-              "value_entered": "2026-04-06",
-              "accepted": true,
-              "issues": null,
-              "error_text": "",
-              "duration_ms": 0
-            }
-          ],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:find_member:button",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:dashboard:nav_tab",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:iteller:nav_tab",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:ibranch:nav_tab",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:loan:nav_tab",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:more:nav_tab",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:headerimage:button",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        },
-        {
-          "element_id": "loan:texture_view:other",
-          "runs": [],
-          "change_log": [
-            "2026-04-06: discovered by explore pipeline"
-          ],
-          "accessibility_issues": [
-            "Unlabeled header buttons (backButton, headerImage) lack content descriptions",
-            "Clickable ViewGroups rely on adjacent TextViews for names; role not exposed as button",
-            "Bottom nav items expose duplicate accessible elements (TextView + View) with same name",
-            "Non-informative labels for containers (texture_view) may be ignored by assistive tech"
-          ],
-          "first_seen": "2026-04-06T13:26:52.134165",
-          "last_seen": "2026-04-06T13:26:52.134165"
-        }
-      ]
-    },
-    {
-      "screen_name": "MORE",
-      "screen_url": "net.impacto.B2U/MORE",
-      "l0": [
-        {
-          "element_id": "more:select_transaction_type:dropdown",
-          "name": "Select Transaction Type",
-          "type": "dropdown",
-          "required": true,
-          "behavior": "Opens a picker with one option; selection updates label.",
-          "options": [],
-          "interaction_order": 0,
-          "default_value": "",
-          "validation_rules": "",
+          "identifier": "",
           "screen_name": "MORE"
         },
-        {
-          "element_id": "more:select_search_criteria:dropdown",
-          "name": "Select Search Criteria",
-          "type": "dropdown",
-          "required": true,
-          "behavior": "Opens a picker with four options; no selection made during test.",
-          "options": [],
-          "interaction_order": 1,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "MORE"
-        },
-        {
-          "element_id": "more:enter_details:text_input",
-          "name": "Enter Details",
-          "type": "text_input",
-          "required": true,
-          "behavior": "Taps field, brings up keyboard, accepts typed text.",
-          "options": [],
-          "interaction_order": 2,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "MORE"
-        },
-        {
-          "element_id": "more:date_of_birth:date_picker",
-          "name": "Date of Birth",
-          "type": "date_picker",
-          "required": true,
-          "behavior": "Opens native date picker; default date displayed.",
-          "options": [],
-          "interaction_order": 3,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "MORE"
-        },
-        {
-          "element_id": "more:find_member:button",
-          "name": "Find Member",
-          "type": "button",
-          "required": false,
-          "behavior": "Standard button; present on screen.",
-          "options": [],
-          "interaction_order": 4,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "MORE"
-        }
-      ],
-      "l1": [
         {
           "element_id": "more:select_transaction_type:dropdown",
           "locators": [
@@ -1078,17 +2350,17 @@
             },
             {
               "strategy": "coordinates",
-              "value": "516,1204",
+              "value": "516,1203",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 516,
-            "y": 1204
+            "y": 1203
           },
           "widget_type": "",
-          "identifier": "android:id/text1",
+          "identifier": "",
           "screen_name": "MORE"
         },
         {
@@ -1101,17 +2373,17 @@
             },
             {
               "strategy": "coordinates",
-              "value": "516,1380",
+              "value": "516,1379",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 516,
-            "y": 1380
+            "y": 1379
           },
           "widget_type": "",
-          "identifier": "android:id/text1",
+          "identifier": "",
           "screen_name": "MORE"
         },
         {
@@ -1132,6 +2404,29 @@
           "last_known_coordinates": {
             "x": 583,
             "y": 1548
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:date_of_birth_label:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Date of Birth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "583,1704",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 583,
+            "y": 1704
           },
           "widget_type": "",
           "identifier": "",
@@ -1161,6 +2456,29 @@
           "screen_name": "MORE"
         },
         {
+          "element_id": "more:find_member_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "Find Member",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,1978",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 1978
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
           "element_id": "more:find_member:button",
           "locators": [
             {
@@ -1170,14 +2488,244 @@
             },
             {
               "strategy": "coordinates",
-              "value": "540,1979",
+              "value": "540,1978",
               "confidence": 0.7
             }
           ],
           "retry_strategy": "standard",
           "last_known_coordinates": {
             "x": 540,
-            "y": 1979
+            "y": 1978
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:dashboard_nav_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "DASHBOARD",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "108,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 108,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:dashboard:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "DASHBOARD",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "108,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 108,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:iteller_nav_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "324,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 324,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:iteller:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iTELLER",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "324,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 324,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:ibranch_nav_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iBRANCH",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:ibranch:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "iBRANCH",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "540,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 540,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:loan_nav_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "LOAN",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "756,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 756,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:loan:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "LOAN",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "756,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 756,
+            "y": 2229
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more_nav_text:text_input",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "MORE",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "972,2278",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 972,
+            "y": 2278
+          },
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "MORE"
+        },
+        {
+          "element_id": "more:more:nav_tab",
+          "locators": [
+            {
+              "strategy": "label",
+              "value": "MORE",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "coordinates",
+              "value": "972,2229",
+              "confidence": 0.7
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": {
+            "x": 972,
+            "y": 2229
           },
           "widget_type": "",
           "identifier": "",
@@ -1186,48 +2734,116 @@
       ],
       "l2": [
         {
+          "element_id": "more:backbutton:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212206",
+          "last_seen": "2026-04-13T11:16:33.212206"
+        },
+        {
+          "element_id": "more:more_title:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212260",
+          "last_seen": "2026-04-13T11:16:33.212260"
+        },
+        {
+          "element_id": "more:headerimage:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212284",
+          "last_seen": "2026-04-13T11:16:33.212284"
+        },
+        {
+          "element_id": "more:headercontainer:other",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212301",
+          "last_seen": "2026-04-13T11:16:33.212301"
+        },
+        {
           "element_id": "more:select_transaction_type:dropdown",
           "runs": [
             {
-              "date": "2026-04-06T15:22:00.138766",
+              "date": "2026-04-13T11:16:33.212320",
               "model": "",
               "value_entered": "Balance Enquiry",
               "accepted": true,
-              "issues": null,
+              "issues": "Dropdown only provides a single option 'Balance Enquiry'. Attempt to select non-existent option 'Cash Deposit' failed as expected.",
               "error_text": "",
               "duration_ms": 0
             }
           ],
           "change_log": [
-            "2026-04-06: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
-            "Date picker label is present but not explicitly linked to picker control."
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
           ],
-          "first_seen": "2026-04-06T15:22:00.138766",
-          "last_seen": "2026-04-06T15:22:00.138766"
+          "first_seen": "2026-04-13T11:16:33.212329",
+          "last_seen": "2026-04-13T11:16:33.212329"
         },
         {
           "element_id": "more:select_search_criteria:dropdown",
-          "runs": [],
+          "runs": [
+            {
+              "date": "2026-04-13T11:16:33.212349",
+              "model": "",
+              "value_entered": "Member ID",
+              "accepted": true,
+              "issues": "Attempt to select non-existent option 'Member Name' failed as expected. Only the four listed options are available.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
           "change_log": [
-            "2026-04-06: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
-            "Date picker label is present but not explicitly linked to picker control."
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
           ],
-          "first_seen": "2026-04-06T15:22:00.138766",
-          "last_seen": "2026-04-06T15:22:00.138766"
+          "first_seen": "2026-04-13T11:16:33.212353",
+          "last_seen": "2026-04-13T11:16:33.212353"
         },
         {
           "element_id": "more:enter_details:text_input",
           "runs": [
             {
-              "date": "2026-04-06T15:22:00.138766",
+              "date": "2026-04-13T11:16:33.212369",
               "model": "",
-              "value_entered": "Test123",
+              "value_entered": "TEST12345",
               "accepted": true,
               "issues": null,
               "error_text": "",
@@ -1235,22 +2851,37 @@
             }
           ],
           "change_log": [
-            "2026-04-06: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
-            "Date picker label is present but not explicitly linked to picker control."
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
           ],
-          "first_seen": "2026-04-06T15:22:00.138766",
-          "last_seen": "2026-04-06T15:22:00.138766"
+          "first_seen": "2026-04-13T11:16:33.212373",
+          "last_seen": "2026-04-13T11:16:33.212373"
+        },
+        {
+          "element_id": "more:date_of_birth_label:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212392",
+          "last_seen": "2026-04-13T11:16:33.212392"
         },
         {
           "element_id": "more:date_of_birth:date_picker",
           "runs": [
             {
-              "date": "2026-04-06T15:22:00.138766",
+              "date": "2026-04-13T11:16:33.212410",
               "model": "",
-              "value_entered": "2026-04-06",
+              "value_entered": "2026-04-13",
               "accepted": true,
               "issues": null,
               "error_text": "",
@@ -1258,32 +2889,188 @@
             }
           ],
           "change_log": [
-            "2026-04-06: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
-            "Date picker label is present but not explicitly linked to picker control."
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
           ],
-          "first_seen": "2026-04-06T15:22:00.138766",
-          "last_seen": "2026-04-06T15:22:00.138766"
+          "first_seen": "2026-04-13T11:16:33.212413",
+          "last_seen": "2026-04-13T11:16:33.212413"
+        },
+        {
+          "element_id": "more:find_member_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212431",
+          "last_seen": "2026-04-13T11:16:33.212431"
         },
         {
           "element_id": "more:find_member:button",
           "runs": [],
           "change_log": [
-            "2026-04-06: discovered by explore pipeline"
+            "2026-04-13: discovered by explore pipeline"
           ],
           "accessibility_issues": [
-            "Dropdowns lack distinct accessibility labels; rely on visible text only.",
-            "Date picker label is present but not explicitly linked to picker control."
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
           ],
-          "first_seen": "2026-04-06T15:22:00.138766",
-          "last_seen": "2026-04-06T15:22:00.138766"
+          "first_seen": "2026-04-13T11:16:33.212451",
+          "last_seen": "2026-04-13T11:16:33.212451"
+        },
+        {
+          "element_id": "more:dashboard_nav_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212468",
+          "last_seen": "2026-04-13T11:16:33.212468"
+        },
+        {
+          "element_id": "more:dashboard:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212487",
+          "last_seen": "2026-04-13T11:16:33.212487"
+        },
+        {
+          "element_id": "more:iteller_nav_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212504",
+          "last_seen": "2026-04-13T11:16:33.212504"
+        },
+        {
+          "element_id": "more:iteller:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212519",
+          "last_seen": "2026-04-13T11:16:33.212519"
+        },
+        {
+          "element_id": "more:ibranch_nav_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212534",
+          "last_seen": "2026-04-13T11:16:33.212534"
+        },
+        {
+          "element_id": "more:ibranch:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212549",
+          "last_seen": "2026-04-13T11:16:33.212549"
+        },
+        {
+          "element_id": "more:loan_nav_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212566",
+          "last_seen": "2026-04-13T11:16:33.212566"
+        },
+        {
+          "element_id": "more:loan:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212582",
+          "last_seen": "2026-04-13T11:16:33.212582"
+        },
+        {
+          "element_id": "more:more_nav_text:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212652",
+          "last_seen": "2026-04-13T11:16:33.212652"
+        },
+        {
+          "element_id": "more:more:nav_tab",
+          "runs": [],
+          "change_log": [
+            "2026-04-13: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [
+            "Several interactive ViewGroup elements (e.g., dropdowns, buttons, nav tabs) share the same textual labels as associated TextViews; without explicit accessibility identifiers this may cause screen reader ambiguity.",
+            "Coordinates and roles for some elements (e.g., headerContainer) suggest they may be focusable containers without clear accessible names, which could hinder navigation for assistive technologies.",
+            "The date picker control shares its label ('Date of Birth') with a TextView at the same coordinates; if these are separate elements, screen readers may announce the label twice."
+          ],
+          "first_seen": "2026-04-13T11:16:33.212679",
+          "last_seen": "2026-04-13T11:16:33.212679"
         }
       ]
     }
   ],
-  "created_at": "2026-04-04T11:44:49",
-  "updated_at": "2026-04-10T11:20:49.616005",
-  "version": 4
+  "created_at": "2026-04-13T11:12:48.427989",
+  "updated_at": "2026-04-13T11:16:33.231286",
+  "version": 1
 }
