@@ -1,0 +1,39 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 4
+Cost: $0.0148
+Duration: 32.5s
+============================================================
+
+## Screen: iTELLER
+
+## TEST CASE RESULTS
+
+| # | Field                     | Test Case | Input         | Expected                                                                                                                                                                  | Actual                                                                                                                                                                                                                         | Status | Notes                                                                                                    |
+|---|---------------------------|-----------|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|----------------------------------------------------------------------------------------------------------|
+| 1 | Select Transaction Type   | TC1       | Cash Deposit  | Dropdown opens; all listed options visible; user can select "Cash Deposit" and it appears as the current value on the field.                                            | Dropdown opened successfully. Options shown: ACH Transfers (TECU to Bank), Cash Withdrawal, Cheque Deposit, Credit Card Deposit, LinCU Card Deposit, LinCU Transfer, Linx Deposit, Select Transaction Type. Selected Cash Deposit; verified as current value. | PASS   | Label now shows "Cash Deposit" as selected value after test.                                            |
+| 2 | Select Search Criteria    | TC2       | Member ID     | Dropdown opens; all listed options visible; user can select "Member ID" and it appears as the current value on the field.                                               | Dropdown opened successfully. Options shown: Driver Permit, Mobile Number, National ID, Select Search Criteria. Selected Member ID; verified as current value.                                                                 | PASS   | Label now shows "Member ID" as selected value after test.                                               |
+
+
+## BUGS FOUND
+
+| # | Field                   | Description                                                                                               | Severity | Evidence |
+|---|-------------------------|-----------------------------------------------------------------------------------------------------------|----------|----------|
+| – | –                       | No new bugs were observed for the covered test cases.                                                    | –        | –        |
+
+
+## TEST SUMMARY
+
+- Total: 2  
+- Passed: 2  
+- Failed: 0  
+- Skipped: 0  
+
+
+## RECOMMENDATIONS
+
+- Add negative/path variation tests in a future cycle (e.g., selecting alternative options, canceling dropdown without selection) to further validate dropdown robustness.  
+- Confirm with product/UX whether the presence of “Select Transaction Type” / “Select Search Criteria” as selectable options (rather than placeholders only) is intended behavior.

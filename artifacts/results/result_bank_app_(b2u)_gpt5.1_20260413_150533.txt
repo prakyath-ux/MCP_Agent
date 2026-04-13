@@ -1,0 +1,35 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 3
+Cost: $0.0109
+Duration: 21.3s
+============================================================
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field         | Test Case                   | Input          | Expected                                                                                                        | Actual                                                                                          | Status | Notes |
+|---|---------------|-----------------------------|----------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|--------|-------|
+| 1 | Date of Birth | Open and select from picker | Select 2026-04-13 | Date picker opens, user selects **2026-04-13**, picker closes, field populated with **2026-04-13** (ISO) | Date picker opened successfully, a date was confirmed, tool returned `date_value` **2026-04-13** | PASS   | Date format matches ISO `YYYY-MM-DD`. Picker interaction behaved as specified. |
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| – | –     | None found in this test case. | – | – |
+
+## TEST SUMMARY
+
+- Total: 1  
+- Passed: 1  
+- Failed: 0  
+- Skipped: 0  
+
+## RECOMMENDATIONS
+
+- No defects for the Date of Birth picker in this scenario.  
+- For broader coverage, consider additional test cases later (e.g., min/max date limits, invalid future/past dates, locale/format variations), but they were not in scope for this plan.

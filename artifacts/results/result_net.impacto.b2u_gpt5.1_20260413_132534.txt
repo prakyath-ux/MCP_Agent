@@ -1,0 +1,36 @@
+EXECUTION REPORT
+============================================================
+App: net.impacto.B2U
+Platform: mobile
+Model: gpt-5.1
+Turns: 4
+Cost: $0.0091
+Duration: 24.7s
+============================================================
+
+## Screen: LOAN
+
+## TEST CASE RESULTS
+
+| # | Field                     | Test Case        | Input      | Expected                                                                                                  | Actual                                                                                          | Status | Notes |
+|---|---------------------------|------------------|-----------|----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|--------|-------|
+| 1 | Select Search Criteria    | TAP_VERIFY       | Member ID | Tapping field opens dropdown, shows options, allows selecting “Member ID”, and displays/retains choice. | Dropdown opened; 4 options shown (`Driver Permit`, `Member ID`, `Mobile Number`, `National ID`); “Member ID” selected and verified in field. | PASS   | Behavior matches prior knowledge and test plan. |
+| 2 | Find Member (button)     | EXISTENCE_CHECK  | N/A       | Primary action button should be present on LOAN screen.                                                  | `Find Member` TextView/button found and visible.                                                | PASS   | Not tapped, per instructions to avoid navigation. |
+
+## BUGS FOUND
+
+| # | Field                  | Description | Severity | Evidence |
+|---|------------------------|-------------|----------|----------|
+| – | –                      | None found in scope of this test case. | – | – |
+
+## TEST SUMMARY
+
+- Total: 2  
+- Passed: 2  
+- Failed: 0  
+- Skipped: 0  
+
+## RECOMMENDATIONS
+
+- No issues observed with the `Select Search Criteria` dropdown when selecting `Member ID`.
+- In a broader test cycle, add cases for selecting each other option (`Driver Permit`, `Mobile Number`, `National ID`) and validating any downstream behavior after tapping `Find Member` (when navigation testing is allowed).

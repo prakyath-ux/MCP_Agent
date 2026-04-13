@@ -1,0 +1,35 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 4
+Cost: $0.0108
+Duration: 30.7s
+============================================================
+
+## Screen: iTELLER
+
+## TEST CASE RESULTS
+
+| # | Field                     | Test Case                             | Input        | Expected                                                                                                      | Actual                                                                                                         | Status | Notes |
+|---|---------------------------|----------------------------------------|-------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|--------|-------|
+| 1 | Select Transaction Type   | TAP_VERIFY – select “Cash Deposit”    | Cash Deposit| Dropdown opens; “Cash Deposit” can be selected and displayed as current value; no errors shown.             | Dropdown opened; 8 options listed; “Cash Deposit” was selected and verified as current value; no errors seen. | PASS   |      |
+| 2 | Select Search Criteria    | TAP_VERIFY – select “Member ID”       | Member ID   | Dropdown opens; “Member ID” can be selected and displayed as current value; no errors shown.                | Dropdown opened; 4 options listed; “Member ID” was selected and verified as current value; no errors seen.    | PASS   |      |
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| – | –     | None found in this test scope. | – | – |
+
+## TEST SUMMARY
+
+- Total: 2 | Passed: 2 | Failed: 0 | Skipped: 0
+
+## RECOMMENDATIONS
+
+- No functional issues observed for the tested dropdowns.  
+- For broader coverage, consider future tests for:
+  - Negative paths (e.g., canceling selection, rotating device mid-selection).
+  - Accessibility (screen reader labels for both dropdowns).

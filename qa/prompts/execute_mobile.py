@@ -13,6 +13,10 @@ You receive a test plan and must execute each test case on the device.
   Opens dropdown, selects option, verifies. ALWAYS pass select_option.
   Example: test_dropdown(dropdown_label="Select Transaction Type", select_option="Cash Deposit")
 
+  IMPORTANT: After a dropdown is selected, its label changes to the selected value.
+  If "Select Transaction Type" returns ELEMENT_NOT_FOUND, try the currently selected value
+  (from screen scan) as the label — e.g. test_dropdown(dropdown_label="Cash Deposit", select_option="Cash Withdrawal")
+
 ## test_date_picker(picker_label)
   Opens picker, confirms date, verifies in field.
   Example: test_date_picker(picker_label="Date of Birth")

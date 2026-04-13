@@ -1,0 +1,61 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 3
+Cost: $0.0160
+Duration: 18.5s
+============================================================
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | Enter Details | FILL_CHECK (required empty) | (empty) | Form shows validation error indicating Enter Details is required; value not accepted. | NOT RUN | BLOCKED | Device is currently on lock/AOD screen; MORE screen with the app is not accessible via allowed tools, so field-level validation could not be triggered. |
+| TC2 | Enter Details | FILL_CHECK (valid text) | TEST12345 | Value accepted without validation error; field retains entered text. | NOT RUN | BLOCKED | Could not reach the app’s MORE screen to focus and type into this field. |
+| TC3 | Enter Details | FILL_CHECK (email-like text) | test_user-01@abc.com | Value accepted (or appropriate validation message if format-restricted); no crash or unexpected behavior. | NOT RUN | BLOCKED | Same as above: app UI not available from current device state. |
+| TC4 | Select Transaction Type | TAP_VERIFY | Balance Enquiry | Tapping opens dropdown; selecting "Balance Enquiry" sets it as the selected value and closes dropdown. | NOT RUN | BLOCKED | No app dropdown elements found; only system lock-screen elements are present. |
+| TC5 | Select Search Criteria | TAP_VERIFY | Member ID | Tapping opens dropdown; selecting "Member ID" sets it as the selected value and closes dropdown. | NOT RUN | BLOCKED | Required dropdown not present on current (lock) screen. |
+| TC6 | Select Search Criteria | TAP_VERIFY | Mobile Number | Tapping opens dropdown; selecting "Mobile Number" sets it as the selected value and closes dropdown. | NOT RUN | BLOCKED | Same as TC5. |
+| TC7 | Date of Birth | TAP_VERIFY (date picker) | 2026-04-13 | Tapping opens date picker; selecting/confirming sets field to "2026-04-13" in ISO format and closes picker. | NOT RUN | BLOCKED | Date picker control not reachable; app screen not visible. |
+| TC8 | Find Member | VERIFY_ONLY | N/A | "Find Member" button is visible, enabled, and ready for interaction on the MORE screen. | NOT RUN | BLOCKED | Only system UI elements (time, date, notifications, keyguard root) are detected; no “Find Member” button element is available. |
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| – | – | No application-under-test bugs can be confirmed because the device is on the lock / Always-On Display screen and the MORE screen of the app is not accessible using the permitted tools. | – | `scan_screen_summary` shows only system UI IDs such as `com.android.systemui:id/keyguard_root_view`, time/date text, and notifications; no app elements like "Select Transaction Type", "Enter Details", or "Find Member" are present. |
+
+## TEST SUMMARY
+
+- Total: 8  
+- Passed: 0  
+- Failed: 0  
+- Skipped: 0  
+- **Blocked / Not Run due to environment**: 8  
+
+## RECOMMENDATIONS
+
+1. **Unlock / bring app to foreground**  
+   - The current `scan_screen_summary` output indicates the device is on a keyguard / Always-On Display screen, not inside the app.  
+   - Please unlock the device and reopen the target app on the MORE screen, then re-run this test plan.
+
+2. **Maintain app session between runs**  
+   - Ensure the device does not auto-lock or return to AOD during execution (e.g., increase screen timeout or keep device awake) so the tools can see and interact with:  
+     - Dropdowns: “Select Transaction Type”, “Select Search Criteria”  
+     - Text field: “Enter Details”  
+     - Date picker: “Date of Birth”  
+     - Button: “Find Member”
+
+3. **Re-execution plan once environment is ready**  
+   - After the MORE screen is visible, I will execute in the mandated order:  
+     1) `scan_screen_summary`  
+     2) `test_dropdown` for “Select Transaction Type” and “Select Search Criteria” (for both requested options)  
+     3) `test_date_picker` for “Date of Birth”  
+     4) `test_text_field` for “Enter Details” with values: `""`, `TEST12345`, `test_user-01@abc.com` (within the 4-tests-per-field limit)  
+     5) `verify_elements_exist` for “Find Member”  
+
+Once the device is unlocked and the MORE screen is confirmed to be active, I can perform the full execution and provide concrete pass/fail results.

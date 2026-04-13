@@ -1,0 +1,36 @@
+EXECUTION REPORT
+============================================================
+App: net.impacto.B2U
+Platform: mobile
+Model: gpt-5.1
+Turns: 4
+Cost: $0.0101
+Duration: 25.7s
+============================================================
+
+## Screen: LOAN
+
+## TEST CASE RESULTS
+
+| # | Field                    | Test Case                               | Input         | Expected                                                                                         | Actual                                                                                               | Status | Notes                                                                                  |
+|---|--------------------------|-----------------------------------------|--------------|-------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|--------|----------------------------------------------------------------------------------------|
+| 1 | Select Search Criteria   | TC1 – TAP_VERIFY select "Member ID"     | Member ID     | Dropdown opens; option "Member ID" selectable and persists on field.                           | Dropdown opened successfully; options listed; "Member ID" selected and verified on the field.       | PASS   | Behavior matches expected; selection persisted as "Member ID".                        |
+| 2 | Select Search Criteria   | TC2 – TAP_VERIFY select "Driver Permit" | Driver Permit | Dropdown opens; option "Driver Permit" selectable and displayed correctly on the field.        | Tool returned `ELEMENT_NOT_FOUND: 'Select Search Criteria'` when attempting second selection.       | FAIL   | Likely state/locator issue after first selection; dropdown label still visible on UI. |
+
+## BUGS FOUND
+
+| # | Field                  | Description                                                                                                   | Severity | Evidence                                                                                                     |
+|---|------------------------|---------------------------------------------------------------------------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------|
+| 1 | Select Search Criteria | After a successful selection of "Member ID", subsequent interaction by label "Select Search Criteria" fails with `ELEMENT_NOT_FOUND`, even though the control is still present on screen. | MEDIUM   | TC2: `status: "SKIP", error: "ELEMENT_NOT_FOUND: 'Select Search Criteria'"` while UI summary still shows the dropdown view group and label. |
+
+## TEST SUMMARY
+
+- Total: 2  
+- Passed: 1  
+- Failed: 1  
+- Skipped: 0  
+
+## RECOMMENDATIONS
+
+- Investigate how the dropdown is labeled/identified after a selection is made. Ensure the accessibility label or test ID for the dropdown container remains stable so subsequent interactions (e.g., changing criteria from "Member ID" to "Driver Permit") are possible.
+- Add regression tests around changing search criteria multiple times in one session to confirm the control remains interactable by its label or by a stable identifier.

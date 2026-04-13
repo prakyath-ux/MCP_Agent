@@ -35,6 +35,9 @@ class TestCase(BaseModel):
 class PlanInput(BaseModel):
     knowledge: KnowledgeBase
     screen_names: list[str] = Field(default_factory=list)   # Empty = all screens
+    element_filter: str = ""                                 # "dropdown" | "date_picker" | "text_input" | element name substring
+    test_values_hint: list[str] = Field(default_factory=list)  # Specific values the LLM should prefer
+    avoid_recent_values: bool = False                          # If True, suggest NOT using values from last L2 run
     max_cases_per_field: int = 3
     max_total_cases: int = 30
     model: str = "gpt-5.1"

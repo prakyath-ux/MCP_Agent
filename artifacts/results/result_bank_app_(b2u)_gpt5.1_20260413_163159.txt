@@ -1,0 +1,32 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 3
+Cost: $0.0070
+Duration: 19.4s
+============================================================
+
+## Screen: LOAN
+
+## TEST CASE RESULTS
+
+| # | Field                    | Test Case    | Input      | Expected                                                                                                   | Actual                                                                                                  | Status | Notes |
+|---|--------------------------|-------------|-----------|-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|--------|-------|
+| 1 | Select Search Criteria   | TAP_VERIFY  | Member ID | On tap, dropdown opens, user selects "Member ID"; selection is applied and displayed with no error.      | Dropdown opened, showed 4 options; "Member ID" was selected and verified as the displayed value.        | PASS   | As per plan: options = Driver Permit, Member ID, Mobile Number, National ID. |
+
+## BUGS FOUND
+
+| # | Field                  | Description | Severity | Evidence |
+|---|------------------------|-------------|----------|----------|
+| - | -                      | None found  | -        | -        |
+
+## TEST SUMMARY
+
+- Total: 1 | Passed: 1 | Failed: 0 | Skipped: 0
+
+## RECOMMENDATIONS
+
+- No changes required for the "Select Search Criteria" dropdown; behavior matches requirements for selecting "Member ID".  
+- In future cycles, consider adding negative/edge tests (e.g., open/close without selection, re-selecting different options) if required by scope.

@@ -52,6 +52,19 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
 
     l0_filtered = [el for el in l0_index if _is_testable(el)]
 
+    # Apply element_filter (scoped execution — "dropdown", "Transaction Type", etc.)
+    if inp.element_filter:
+        filter_lower = inp.element_filter.lower().strip()
+        scoped = [
+            el for el in l0_filtered
+            if filter_lower in el.type.value.lower() or filter_lower in el.name.lower()
+        ]
+        if scoped:
+            print(f"  Scoped to filter '{inp.element_filter}': {len(l0_filtered)} → {len(scoped)} element(s)")
+            l0_filtered = scoped
+        else:
+            print(f"  ⚠ Filter '{inp.element_filter}' matched 0 elements — keeping all {len(l0_filtered)} testable elements")
+
     if not l0_filtered:
         print("  ERROR: No testable elements after filtering")
         return PlanOutput(model=inp.model)
@@ -74,12 +87,34 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
     model_settings = build_model_settings(inp.model)
     print(f"  Provider: {provider_label}")
 
+    # Build value hints
+    value_hint = ""
+    if inp.test_values_hint:
+        value_hint = (
+            f"\n\nUSER REQUESTED THESE SPECIFIC VALUES: {', '.join(inp.test_values_hint)}\n"
+            f"Use these EXACT values in your test cases. Match them to the appropriate elements."
+        )
+    elif inp.avoid_recent_values:
+        # Look at L2 history to find recently used values
+        recent_values: list[str] = []
+        for screen in inp.knowledge.screens:
+            for l2_el in screen.l2:
+                for run in l2_el.runs[-2:]:  # last 2 runs
+                    if run.value_entered:
+                        recent_values.append(run.value_entered)
+        if recent_values:
+            value_hint = (
+                f"\n\nAVOID THESE RECENTLY USED VALUES (user wants different data): {', '.join(set(recent_values))}\n"
+                f"Pick OTHER options from each dropdown's options list."
+            )
+
     task = (
         f"Here is the L0 knowledge index for the application:\n\n"
         f"{l0_json}\n\n"
         f"Generate a test plan with {inp.max_total_cases} or fewer test cases, "
         f"max {inp.max_cases_per_field} per field. "
         f"Output ONLY the ## TEST PLAN section."
+        f"{value_hint}"
     )
 
     agent = Agent(

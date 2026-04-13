@@ -52,6 +52,9 @@ class ExecuteInput(BaseModel):
     knowledge: KnowledgeBase
     auto_explore: bool = False      # If True, run Pipeline 1 first when no knowledge
     screens: list[str] = Field(default_factory=list)    # Which screens to test
+    element_filter: str = ""                             # "dropdown" | "date_picker" | element name substring
+    test_values_hint: list[str] = Field(default_factory=list)  # Specific values to test with
+    avoid_recent_values: bool = False                          # Use values not seen in recent L2 history
     model: str = "gpt-5.1"
     provider: str = "openai_chat"
     max_turns_per_screen: int = 15

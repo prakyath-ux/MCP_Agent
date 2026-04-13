@@ -1,0 +1,38 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 3
+Cost: $0.0092
+Duration: 13.6s
+============================================================
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field        | Test Case                                            | Input | Expected                                                                                          | Actual                                           | Status | Notes |
+|---|-------------|-------------------------------------------------------|-------|--------------------------------------------------------------------------------------------------|--------------------------------------------------|--------|-------|
+| 1 | Find Member | TC1 – Verify button visible, enabled, correctly labeled on screen load | N/A   | “Find Member” button should be present, visible, and enabled on the MORE screen on load. | Element with label “Find Member” was NOT_FOUND via verify_elements_exist after scan_screen_summary. | FAILED | Could not locate any element labeled “Find Member” on the current screen state. |
+
+## BUGS FOUND
+
+| # | Field        | Description                                                                                          | Severity | Evidence |
+|---|-------------|------------------------------------------------------------------------------------------------------|----------|----------|
+| 1 | Find Member | Primary action button “Find Member” is not found on the MORE screen in the current build/state, so visibility and label cannot be verified. | HIGH     | `scan_screen_summary` shows no “Find Member” element; `verify_elements_exist("Find Member")` returns `NOT_FOUND`. |
+
+## TEST SUMMARY
+
+- Total: 1  
+- Passed: 0  
+- Failed: 1  
+- Skipped: 0  
+
+## RECOMMENDATIONS
+
+- Confirm that the current screen is indeed the expected “MORE / Find Member” variant; if there are multiple MORE sub-screens, ensure navigation to the one containing the Find Member form.
+- Developers/QA should verify that:
+  - The “Find Member” button is rendered on this screen.
+  - Its accessibility label/text matches exactly “Find Member” (or update the test plan if the label has intentionally changed).
+- Once the button is present, rerun TC1 to validate visibility, enabled state, and label.

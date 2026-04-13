@@ -47,6 +47,10 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
         from qa.pipelines.plan import run_plan
         plan_result = await run_plan(PlanInput(
             knowledge=knowledge,
+            screen_names=inp.screens,
+            element_filter=inp.element_filter,
+            test_values_hint=inp.test_values_hint,
+            avoid_recent_values=inp.avoid_recent_values,
             model=inp.model,
             provider=inp.provider,
         ))
@@ -99,6 +103,12 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
                     if not nav_ok:
                         print(f"  Could not navigate to {screen_name} — skipping")
                         continue
+
+            # Always navigate to the named screen (even for single-screen runs)
+            # This ensures the correct screen is active when screen_name is specified
+            if screen_name and screen_name != "default":
+                await adapter.dismiss_keyboard()
+                await adapter.navigate_to_screen(screen_name)
 
             # Get L0 for this screen (for context)
             l0_index = knowledge.get_l0_index(screen_name)

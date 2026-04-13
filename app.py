@@ -11,6 +11,11 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 
+from dotenv import load_dotenv
+load_dotenv()
+
+from qa.knowledge.store import KnowledgeStore
+
 # ── Paths ────────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent
 QA_RESULTS = ROOT / "artifacts" / "results"
@@ -342,38 +347,42 @@ def page_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # Action buttons
-    col1, col2, col3 = st.columns(3, gap="medium")
+    # Main actions — two big primary buttons
+    col1, col2 = st.columns(2, gap="medium")
     with col1:
         if st.button("New Run", use_container_width=True, type="primary"):
             st.session_state.page = "new_run"
             st.rerun()
     with col2:
-        if st.button("Past Runs", use_container_width=True):
-            st.session_state.page = "past_runs"
-            st.rerun()
-    with col3:
-        if st.button("Knowledge Base", use_container_width=True):
-            st.session_state.page = "knowledge"
+        if st.button("💬 Chat with Agent", use_container_width=True, type="primary"):
+            st.session_state.page = "chat"
             st.rerun()
 
-    # Recent runs
+    # Past runs — small secondary button
+    st.markdown("")
+    spacer, col_past = st.columns([3, 1])
+    with col_past:
+        if st.button("Past Runs →", use_container_width=True):
+            st.session_state.page = "past_runs"
+            st.rerun()
+
+    # Recent runs — collapsed by default
     if result_files:
-        st.markdown('<div class="section-header">Recent Runs</div>', unsafe_allow_html=True)
-        for path in result_files[:5]:
-            header = parse_run_header(path.read_text())
-            model = header.get("Model", "")
-            turns = header.get("Turns", header.get("Total Turns", ""))
-            dur = header.get("Duration", header.get("Total Duration", ""))
-            st.markdown(f"""
-            <div class="run-item">
-                <div>
-                    <div class="title">{friendly_name(path)}</div>
-                    <div class="meta">{model}  ·  {turns} turns  ·  {dur}</div>
+        with st.expander(f"Browse Recent Runs ({len(result_files)} total)", expanded=False):
+            for path in result_files[:10]:
+                header = parse_run_header(path.read_text())
+                model = header.get("Model", "")
+                turns = header.get("Turns", header.get("Total Turns", ""))
+                dur = header.get("Duration", header.get("Total Duration", ""))
+                st.markdown(f"""
+                <div class="run-item">
+                    <div>
+                        <div class="title">{friendly_name(path)}</div>
+                        <div class="meta">{model}  ·  {turns} turns  ·  {dur}</div>
+                    </div>
+                    <div class="badge">Completed</div>
                 </div>
-                <div class="badge">Completed</div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 
 # ── PAGE: New Run ────────────────────────────────────────────────────────────
@@ -800,6 +809,319 @@ def page_knowledge():
                     st.warning(f"Could not parse {f.name}")
 
 
+# ── PAGE: Chat ───────────────────────────────────────────────────────────────
+
+def page_chat():
+    render_header()
+
+    st.markdown('<div class="breadcrumb"><a href="#">Home</a> / <strong>Chat with Agent</strong></div>', unsafe_allow_html=True)
+
+    if st.button("Back"):
+        st.session_state.page = "home"
+        st.rerun()
+
+    # ── Context setup (one-time per session) ─────────────────────
+    if "chat_context" not in st.session_state:
+        st.session_state.chat_context = None
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+
+    if st.session_state.chat_context is None:
+        st.markdown('<div class="section-header">Setup — Tell me about the app</div>', unsafe_allow_html=True)
+        st.caption("One-time setup. After this, you can chat in plain English to test your app.")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            ctx_app_name = st.text_input("App Name", value="Bank App (B2U)")
+            ctx_platform = st.selectbox("Platform", ["mobile", "web"])
+            ctx_target = st.text_input("Package / URL", value="net.impacto.B2U", help="Package name (mobile) or URL (web)")
+        with col2:
+            ctx_device = ""
+            if ctx_platform == "mobile":
+                ctx_device = st.text_input("Device ID", value="RZCXA21GV9P")
+            ctx_model = st.selectbox("Model", ["gpt-5.1", "gpt-5", "openai/gpt-oss-120b"])
+
+        st.markdown("")
+        if st.button("Start Chat", type="primary", use_container_width=True):
+            st.session_state.chat_context = {
+                "app_name": ctx_app_name,
+                "platform": ctx_platform,
+                "target": ctx_target,
+                "device": ctx_device,
+                "model": ctx_model,
+            }
+
+            # Load knowledge to greet user with what we know
+            store = KnowledgeStore()
+            kb = store.load_by_name(ctx_target, ctx_platform) or store.load_by_name(ctx_app_name, ctx_platform)
+            if kb and kb.screens:
+                screens_str = ", ".join(kb.screen_names())
+                greeting = (
+                    f"Hi! I'm ready to test **{ctx_app_name}** on **{ctx_platform}**.\n\n"
+                    f"I have knowledge of these screens: **{screens_str}**.\n\n"
+                    f"You can ask me things like:\n"
+                    f"- *Test all dropdowns on iTELLER*\n"
+                    f"- *Run tests on the Date of Birth field*\n"
+                    f"- *Test the LOAN screen*\n\n"
+                    f"What would you like me to do?"
+                )
+            else:
+                greeting = (
+                    f"Hi! I'm ready for **{ctx_app_name}** on **{ctx_platform}**.\n\n"
+                    f"⚠ I don't have knowledge of this app yet. "
+                    f"You'll need to run *explore* first or just say *explore the app*."
+                )
+
+            st.session_state.chat_messages = [
+                {"role": "assistant", "content": greeting}
+            ]
+            st.rerun()
+        return
+
+    # ── Active chat ──────────────────────────────────────────────
+    ctx = st.session_state.chat_context
+
+    # Context bar
+    st.markdown(f"""
+    <div style="background:#fff;border:1px solid #e8e8f0;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:0.85rem;color:#555;">
+            <strong style="color:#1a1a2e;">{ctx['app_name']}</strong>
+            <span style="color:#888;"> · {ctx['platform']} · {ctx['model']}</span>
+            {' · ' + ctx['device'] if ctx['device'] else ''}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_clear, col_change = st.columns([1, 1])
+    with col_clear:
+        if st.button("Clear Chat", use_container_width=True):
+            st.session_state.chat_messages = []
+            st.rerun()
+    with col_change:
+        if st.button("Change App", use_container_width=True):
+            st.session_state.chat_context = None
+            st.session_state.chat_messages = []
+            st.rerun()
+
+    st.markdown('<div class="section-header">Chat</div>', unsafe_allow_html=True)
+
+    # Display conversation
+    for msg in st.session_state.chat_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Input
+    if user_input := st.chat_input("Tell me what to test..."):
+        st.session_state.chat_messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = _handle_chat_message(user_input, ctx)
+            st.markdown(response)
+        st.session_state.chat_messages.append({"role": "assistant", "content": response})
+
+
+def _summarize_run(report_text: str, user_request: str) -> str:
+    """Use an LLM to write a brief, useful summary of a test run for the chat."""
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        excerpt = report_text[:8000]
+        prompt = (
+            f"The user asked: \"{user_request}\"\n\n"
+            f"Here is the QA test execution report:\n\n{excerpt}\n\n"
+            f"Write a clear summary for the user in 2-3 short paragraphs separated by blank lines. "
+            f"Paragraph 1: what was tested and overall outcome. "
+            f"Paragraph 2: specific fields that passed or failed, with values used and error symptoms. "
+            f"Paragraph 3 (optional): notable bugs or app issues worth flagging. "
+            f"Be specific with field names. Conversational tone, no headers, no bullet lists. "
+            f"Use blank lines between paragraphs for readability."
+        )
+        resp = client.chat.completions.create(
+            model="gpt-5.1",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as e:
+        return f"_(summary unavailable: {e})_"
+
+
+def _handle_chat_message(user_input: str, ctx: dict) -> str:
+    """Parse user intent and execute the appropriate pipeline."""
+    import asyncio
+    from qa.chat.intent import parse_intent, ChatAction
+    from qa.knowledge.store import KnowledgeStore
+
+    # Load current KB
+    store = KnowledgeStore()
+    kb = store.load_by_name(ctx["target"], ctx["platform"]) or store.load_by_name(ctx["app_name"], ctx["platform"])
+
+    # Parse intent
+    intent = asyncio.run(parse_intent(
+        user_message=user_input,
+        knowledge=kb,
+        chat_history=st.session_state.chat_messages[-6:],
+        model=ctx["model"],
+    ))
+
+    # Handle each action
+    if intent.action == ChatAction.CLARIFY:
+        return f"{intent.response_text}\n\n**{intent.clarification_question}**"
+
+    if intent.action == ChatAction.LIST_SCREENS:
+        if not kb or not kb.screens:
+            return "I don't have any knowledge about this app yet. Try asking me to *explore the app*."
+        lines = [f"## Known Screens for {kb.app.app_name}\n"]
+        for s in kb.screens:
+            testable = [el for el in s.l0 if el.type.value not in ("nav_tab", "other") and "label" not in el.name.lower()]
+            lines.append(f"### {s.screen_name}")
+            for el in testable:
+                opts = f" (options: {', '.join(el.options[:3])}{'...' if len(el.options) > 3 else ''})" if el.options else ""
+                lines.append(f"- **{el.name}** — {el.type.value}{opts}")
+            lines.append("")
+        return "\n".join(lines)
+
+    if intent.action == ChatAction.ANSWER:
+        return intent.response_text or "I'm here to help test your app. What would you like me to test?"
+
+    # EXPLORE or EXECUTE — build the CLI command
+    cmd_parts = ["python", "-m", "qa.cli"]
+    if intent.action == ChatAction.EXPLORE:
+        cmd_parts.append("explore")
+    else:
+        cmd_parts.extend(["execute", "--auto-explore"])
+
+    cmd_parts.extend([
+        ctx["target"],
+        "-p", ctx["platform"],
+        "-a", f'"{ctx["app_name"]}"',
+        "-m", ctx["model"],
+    ])
+    if ctx["device"]:
+        cmd_parts.extend(["-d", ctx["device"]])
+    if intent.screens:
+        cmd_parts.extend(["-s", ",".join(intent.screens)])
+    if intent.element_filter:
+        cmd_parts.extend(["-f", f'"{intent.element_filter}"'])
+    if getattr(intent, "test_values", []):
+        cmd_parts.extend(["--values", f'"{",".join(intent.test_values)}"'])
+    if getattr(intent, "use_different_values", False):
+        cmd_parts.append("--avoid-recent")
+
+    cmd = " ".join(cmd_parts)
+
+    import threading
+    from queue import Queue, Empty
+
+    # Run the command — stream output and (for mobile) live phone screenshot side-by-side
+    is_mobile = ctx.get("platform") == "mobile"
+    if is_mobile:
+        col_term, col_screen = st.columns([2, 1])
+        with col_term:
+            output_box = st.empty()
+        with col_screen:
+            screenshot_box = st.empty()
+            initial_img = _take_adb_screenshot()
+            if initial_img:
+                screenshot_box.image(initial_img, width=320)
+    else:
+        output_box = st.empty()
+        screenshot_box = None
+
+    process = _run_agent_subprocess(cmd, str(ROOT))
+    output_lines: list[str] = []
+    skip_keywords = ["USAGE SUMMARY", "Real cost", "No-cache cost", "Savings:", "Cost:", "cost:", "Budget:"]
+
+    output_queue: Queue = Queue()
+
+    def _reader():
+        try:
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                if line:
+                    output_queue.put(line)
+            remaining = process.stdout.read()
+            if remaining:
+                for rem in remaining.splitlines():
+                    output_queue.put(rem)
+            output_queue.put(None)
+        except Exception as exc:
+            output_queue.put(f"[reader error: {exc}]")
+            output_queue.put(None)
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
+    last_screenshot_time = time.time()
+    done = False
+    while not done:
+        got_new = False
+        while True:
+            try:
+                line = output_queue.get_nowait()
+            except Empty:
+                break
+            if line is None:
+                done = True
+                break
+            stripped = str(line).rstrip()
+            if any(kw in stripped for kw in skip_keywords):
+                continue
+            output_lines.append(stripped)
+            got_new = True
+
+        if got_new:
+            output_box.code("\n".join(output_lines[-20:]), language="text")
+
+        if screenshot_box is not None:
+            now = time.time()
+            if now - last_screenshot_time > 0.5:
+                img = _take_adb_screenshot()
+                if img:
+                    screenshot_box.image(img, width=320)
+                last_screenshot_time = now
+
+        if process.poll() is not None and output_queue.empty():
+            done = True
+
+        time.sleep(0.1)
+
+    if screenshot_box is not None:
+        final_img = _take_adb_screenshot()
+        if final_img:
+            screenshot_box.image(final_img, width=320)
+
+    # Find the latest result file
+    result_msg = ""
+    if intent.action == ChatAction.EXECUTE:
+        results_dir = ROOT / "artifacts" / "results"
+        if results_dir.exists():
+            latest = max(results_dir.glob("result_*.txt"), key=lambda p: p.stat().st_mtime, default=None)
+            if latest:
+                # Parse summary
+                from_text = latest.read_text()
+                test_df = parse_test_results(from_text)
+                if test_df is not None:
+                    counts = count_statuses(test_df)
+                    summary = _summarize_run(from_text, user_input)
+                    result_msg = (
+                        f"\n\n## ✓ Done\n"
+                        f"- **Passed:** {counts['PASS']}  •  **Failed:** {counts['FAIL']}  •  **Skipped:** {counts['SKIP']}\n\n"
+                        f"{summary}\n\n"
+                        f"_Full report saved — check **Past Runs** for details._"
+                    )
+
+    return (
+        f"{intent.response_text}\n\n"
+        f"```bash\n{cmd}\n```\n"
+        f"{result_msg}"
+    )
+
+
 # ── Router ───────────────────────────────────────────────────────────────────
 
 page = st.session_state.page
@@ -808,4 +1130,5 @@ match page:
     case "new_run": page_new_run()
     case "past_runs": page_past_runs()
     case "knowledge": page_knowledge()
+    case "chat": page_chat()
     case _: page_home()

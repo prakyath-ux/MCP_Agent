@@ -1,0 +1,50 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 7
+Cost: $0.0252
+Duration: 81.6s
+============================================================
+
+## Screen: MORE
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | Select Transaction Type | TAP_VERIFY | Balance Enquiry | Dropdown opens, option “Balance Enquiry” can be selected and retained. | Dropdown opened; options: [Balance Enquiry]; selected and verified as “Balance Enquiry”. | PASS | Behavior matches prior knowledge and plan. |
+| TC2 | Select Search Criteria | TAP_VERIFY | Member ID | Dropdown opens, option “Member ID” can be selected and retained. | Dropdown opened; options: [Driver Permit, Member ID, Mobile Number, National ID]; selected and verified as “Member ID”. | PASS | All expected options visible; correct option retained. |
+| TC6 | Date of Birth | TAP_VERIFY | 2026-04-13 | Date picker opens; selecting 2026-04-13 closes picker and populates field. | Picker opened; date confirmed; tool-reported `date_value` = 2026-04-13 (YYYY-MM-DD). | PASS | Date selection flow works as expected; format is ISO. |
+| TC3 | Enter Details | FILL_CHECK | "" (empty) | On validation/submit, field should be highlighted or show required-field error. | Tool shows value “(empty)” with placeholder “Enter Details”, `error` = NO_ERROR. | FAIL | No immediate error surfaced just by leaving it empty; may rely on form-level validation. |
+| TC4 | Enter Details | FILL_CHECK | TEST12345 | Value accepted without validation error; field shows TEST12345. | `actual` = TEST12345, `error` = NO_ERROR. | PASS | Meets expectation. |
+| TC5 | Enter Details | FILL_CHECK | test_user-01@ | Value with allowed specials accepted; displayed correctly. | `actual` = TEST12345test_user-01@, `error` = NO_ERROR. | PARTIAL FAIL | No error, but previous text not cleared—field concatenated to existing value. |
+| TC7 | Find Member (button) | VERIFY_ONLY | N/A | Button visible, enabled, tappable. | `verify_elements_exist`: “Find Member” TextView EXISTS; button container present on screen. | PASS | Presence and visibility confirmed; not tapped to avoid navigation. |
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| B1 | Enter Details | Empty required field does not surface any inline error or highlight when left blank (at least at field level). Test tool reports `NO_ERROR` for an empty input, suggesting missing per-field required validation feedback. | MEDIUM | `test_text_field` result for value “(empty)”: `actual` = “Enter Details” (placeholder), `error` = `NO_ERROR`, `status` = FAIL vs. TC3 expectation. |
+| B2 | Enter Details | Field content is not cleared between inputs, causing new text to append to existing content (e.g., “TEST12345test_user-01@”) rather than replacing it. This breaks TC5 expectation that “test_user-01@” is what the field displays. | MEDIUM | `test_text_field` result: for value “test_user-01@”, `actual` = “TEST12345test_user-01@”; `error` = `NO_ERROR`. Shows concatenation behavior. |
+
+## TEST SUMMARY
+
+- Total: 7  
+- Passed: 4  
+- Failed: 2  
+- Skipped: 1 (partially failing TC5 counted under F/Partial; no separate skip, but behavior did not fully meet expectation)
+
+## RECOMMENDATIONS
+
+1. **Enter Details – required validation (TC3/B1)**  
+   - Implement clear required-field validation on submit (and/or on blur) so that when the user leaves this mandatory field empty, a visible error message or highlight appears.  
+   - Ensure the API/validation layer and UI messaging are aligned with this behavior.
+
+2. **Enter Details – clearing vs. appending text (TC5/B2)**  
+   - Ensure that when the user edits this field (especially when starting a new search), prior text is either auto-cleared on focus or that the cursor starts in an empty field after relevant actions.  
+   - Confirm that automation behavior matches real UX: if the intended UX is to overwrite, update the control or form logic so tool and manual usage both yield the field containing only the last entered value.
+
+3. **Regression/flow checks (future)**  
+   - When allowed, add tests that actually tap “Find Member” with different combinations (valid and invalid) to verify that empty-field validation appears at form-submit time and to ensure that concatenation does not leak into backend queries.

@@ -39,6 +39,7 @@ def main() -> None:
     p_plan.add_argument("--provider", default="")
     p_plan.add_argument("--max-cases", type=int, default=30)
     p_plan.add_argument("--screens", "-s", default="", help="Comma-separated screen names")
+    p_plan.add_argument("--filter", "-f", default="", help="Scope to element type or name")
 
     # ── execute ──────────────────────────────────────────────
     p_exec = sub.add_parser("execute", help="Pipeline 3: Execute test cases")
@@ -47,6 +48,9 @@ def main() -> None:
     p_exec.add_argument("--app-name", "-a", default="")
     p_exec.add_argument("--device", "-d", default="")
     p_exec.add_argument("--screens", "-s", default="", help="Comma-separated screen names")
+    p_exec.add_argument("--filter", "-f", default="", help="Scope to element type or name (e.g., 'dropdown', 'Transaction Type')")
+    p_exec.add_argument("--values", default="", help="Comma-separated test values to use (e.g., 'Cash Withdrawal,Driver Permit')")
+    p_exec.add_argument("--avoid-recent", action="store_true", help="Avoid values used in recent runs")
     p_exec.add_argument("--auto-explore", action="store_true", help="Run explore first if no knowledge")
     p_exec.add_argument("--model", "-m", default="gpt-5.1")
     p_exec.add_argument("--provider", default="")
@@ -113,6 +117,7 @@ async def _cmd_plan(args) -> None:
     inp = PlanInput(
         knowledge=kb,
         screen_names=screens,
+        element_filter=getattr(args, "filter", ""),
         max_total_cases=args.max_cases,
         model=args.model,
         provider=args.provider,
@@ -131,11 +136,16 @@ async def _cmd_execute(args) -> None:
     store = KnowledgeStore()
     kb = store.load_by_name(app.app_name, app.platform.value) or KnowledgeBase(app=app)
 
+    test_values = [v.strip() for v in getattr(args, "values", "").split(",") if v.strip()]
+
     inp = ExecuteInput(
         app=app,
         knowledge=kb,
         auto_explore=args.auto_explore,
         screens=screens,
+        element_filter=getattr(args, "filter", ""),
+        test_values_hint=test_values,
+        avoid_recent_values=getattr(args, "avoid_recent", False),
         model=args.model,
         provider=args.provider,
         max_turns_per_screen=args.max_turns,

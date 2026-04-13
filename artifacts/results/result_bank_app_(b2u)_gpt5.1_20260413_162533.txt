@@ -1,0 +1,47 @@
+EXECUTION REPORT
+============================================================
+App: Bank App (B2U)
+Platform: mobile
+Model: gpt-5.1
+Turns: 5
+Cost: $0.0182
+Duration: 56.9s
+============================================================
+
+## Screen: iTELLER
+
+## TEST CASE RESULTS
+
+| # | Field          | Test Case | Input        | Expected                                                                                          | Actual                                                                                     | Status | Notes |
+|---|----------------|----------|-------------|--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|--------|-------|
+| 1 | Enter Details  | TC1      | (empty)     | Error displayed indicating Enter Details is required; field not accepted                         | Placeholder text “Enter Details” remained; no validation or error shown                   | FAIL   | Field appears to accept empty value (no required-field validation triggered at this stage). |
+| 2 | Enter Details  | TC2      | ABC987      | Value accepted with no error; field stores and displays input correctly                         | “ABC987” displayed in field with no error                                                 | PASS   | Matches expected behavior. |
+| 3 | Enter Details  | TC3      | Test_01-@!  | Value accepted or appropriate validation message if special characters not allowed; no app crash | Field ended with concatenated value “ABC987Test_01-@!” and no error; app remained stable | PASS*  | Input with allowed special chars did not crash. However, previous value was not cleared, so concatenation occurred. |
+
+\*PASS for stability/special-char handling; note about concatenation behavior.
+
+---
+
+## BUGS FOUND
+
+| # | Field         | Description                                                                                       | Severity | Evidence |
+|---|---------------|---------------------------------------------------------------------------------------------------|----------|----------|
+| 1 | Enter Details | Required-field validation not enforced when field is left empty; no error shown, form appears to allow empty state. | HIGH     | TC1: Input “(empty)” → actual value shows as placeholder “Enter Details”, `error: "NO_ERROR"`, `status: "FAIL"`. |
+| 2 | Enter Details | Field content not cleared between inputs in this session; second non-empty test resulted in concatenated text (“ABC987Test_01-@!”) rather than replacing prior value. | MEDIUM  | TC3: Input “Test_01-@!” → actual “ABC987Test_01-@!” with `error: "NO_ERROR"`. |
+
+---
+
+## TEST SUMMARY
+
+- Total: 3  
+- Passed: 2  
+- Failed: 1  
+- Skipped: 0  
+
+---
+
+## RECOMMENDATIONS
+
+1. Implement required-field validation for Enter Details so that an empty submission triggers an inline error and blocks progression.
+2. Ensure the Enter Details field clears or replaces the previous value on new entry (or verify that the test harness, not the app, is responsible for the concatenation and adjust accordingly).
+3. Keep current handling of underscore, hyphen, and `@ !` characters, as they are accepted without crashing; clarify functional requirements on which characters are allowed and whether any should be rejected with a user-facing message.
