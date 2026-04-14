@@ -1,0 +1,603 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECHU",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - TECHU",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_techu:global_unknown_submit_button_likely_hidden_or_offscreen:button",
+          "name": "Global unknown submit button (likely hidden or offscreen)",
+          "type": "button",
+          "required": false,
+          "behavior": "Generic submit button discovered in DOM; not visible in accessibility snapshot and not interacted with.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "Visible button labeled 'camera Add profile picture'. Not clicked in this session to avoid triggering file chooser; underlying input[type=file] not inspected.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Profile photo appears optional at this stage; no asterisk indicator.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Filled via direct fill on accessibility node (uid=1_18). Field accepted value '123'; no inline validation message surfaced immediately in the snapshot after entry. Validation (if any) likely happens on blur or on form submission.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required (indicated by '*'). Expected to accept alphabetic names, but current interaction did not surface any format restriction when given numeric characters.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Field present with placeholder 'Enter email address'. Not filled in this run due to tool failures; no validation behavior observed directly.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Required (indicated by '*'). Likely expects valid email format, but this was not confirmed with a bad value due to failure of fill_field_and_verify.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:middle_name_optional:text_input",
+          "name": "Middle Name (optional)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional free-text name field. Not modified in this run so as not to add noise without validation tooling.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Optional (explicit label). Probably accepts alphabetic text; no max length or character restrictions observed.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Textbox labeled 'Mobile Number*' with adjacent static country code '+1868' and a flag image for Trinidad & Tobago. Not filled in this run.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required (indicated by '*'). Likely numeric-only with possible length constraint, but this was not empirically tested.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Required surname field with asterisk indicator. Not filled in this run.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required. Expected to accept alphabetic characters; behavior with digits/symbols not yet confirmed.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Button labeled 'Select Branch' acts as a custom dropdown trigger. On click (uid=1_34), a popup menu appears with a search textbox and a list of available branches.",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - PT. FORTIN BRANCH",
+            "900 - TECU Business Development Unit",
+            "600 - TISL",
+            "601 - TISL Branch 1"
+          ],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "Required (indicated by '*'). User must choose one of the listed branches; default state is 'Select Branch'. Search field at top ('Search...') suggests filtering is available when options are numerous.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:branch_search:text_input",
+          "name": "Branch Search",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Appears only after clicking 'Select Branch'. Textbox with placeholder 'Search...' located at top of dropdown/popup list. Intended for filtering branch options as the user types. Not exercised in this run.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "Optional field. Likely accepts arbitrary text and filters branch list dynamically; no errors expected.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation/action button intended to save current application data and leave the flow. Not clicked per instructions, to avoid leaving page.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "No field-level validation observed; likely triggers form-level validation and backend save.",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary call-to-action to proceed to next step of the multi-step application (Contact Info, Documents, Additional Details, etc.). Not clicked to avoid navigation away.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "Likely enforces required fields (First Name, Email ID, Mobile Number, Last Name, Branch) before allowing progression.",
+          "screen_name": "New Member Application - TECHU"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_techu:global_unknown_submit_button_likely_hidden_or_offscreen:button",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "button[type=\"submit\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[@type=\"submit\"]",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:add_profile_picture:file_upload",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_14",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_18",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_21",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:middle_name_optional:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_23",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_28",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_31",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "button[normalize-space()='Select Branch']",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Branch\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_34",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:branch_search:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[placeholder='Search...']",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Search...']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "2_0",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_35",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        },
+        {
+          "element_id": "new_member_application_techu:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_36",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECHU"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_techu:global_unknown_submit_button_likely_hidden_or_offscreen:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642539",
+          "last_seen": "2026-04-14T11:06:10.642539"
+        },
+        {
+          "element_id": "new_member_application_techu:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642642",
+          "last_seen": "2026-04-14T11:06:10.642642"
+        },
+        {
+          "element_id": "new_member_application_techu:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:06:10.642666",
+              "model": "",
+              "value_entered": "123",
+              "accepted": true,
+              "issues": "Could not use compound fill_field_and_verify tool due to underlying evaluate_script parameter error; therefore detailed validation error text (if any) on blur is unknown.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642674",
+          "last_seen": "2026-04-14T11:06:10.642674"
+        },
+        {
+          "element_id": "new_member_application_techu:email_id:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642692",
+          "last_seen": "2026-04-14T11:06:10.642692"
+        },
+        {
+          "element_id": "new_member_application_techu:middle_name_optional:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642709",
+          "last_seen": "2026-04-14T11:06:10.642709"
+        },
+        {
+          "element_id": "new_member_application_techu:mobile_number:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642727",
+          "last_seen": "2026-04-14T11:06:10.642727"
+        },
+        {
+          "element_id": "new_member_application_techu:last_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642743",
+          "last_seen": "2026-04-14T11:06:10.642743"
+        },
+        {
+          "element_id": "new_member_application_techu:branch:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642764",
+          "last_seen": "2026-04-14T11:06:10.642764"
+        },
+        {
+          "element_id": "new_member_application_techu:branch_search:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642777",
+          "last_seen": "2026-04-14T11:06:10.642777"
+        },
+        {
+          "element_id": "new_member_application_techu:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642795",
+          "last_seen": "2026-04-14T11:06:10.642795"
+        },
+        {
+          "element_id": "new_member_application_techu:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:06:10.642815",
+          "last_seen": "2026-04-14T11:06:10.642815"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-14T11:05:28.907404",
+  "updated_at": "2026-04-14T11:06:14.162904",
+  "version": 1
+}

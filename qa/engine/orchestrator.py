@@ -1,6 +1,7 @@
 # qa/engine/orchestrator.py — Unified turn loop for all pipelines
 
 import json
+import asyncio
 import time
 from dataclasses import dataclass, field
 
@@ -47,6 +48,14 @@ class TurnLogger(RunHooks):
         details = getattr(usage, "input_tokens_details", None)
         if details:
             t_cached = getattr(details, "cached_tokens", 0) or 0
+
+        # gpt-5/gpt-5.1 generate invisible reasoning tokens billed at the output
+        # rate but not included in usage.output_tokens. Pull them out of details
+        # and add to the output count so cost tracking matches the OpenAI bill.
+        out_details = getattr(usage, "output_tokens_details", None)
+        if out_details:
+            reasoning = getattr(out_details, "reasoning_tokens", 0) or 0
+            t_output += reasoning
 
         self.budget.record_turn(t_input, t_output, t_cached)
         cache_pct = (t_cached / t_input * 100) if t_input > 0 else 0
@@ -129,13 +138,35 @@ async def run_agent_loop(
         t_start = time.time()
         print(f"\n  ⏱ Turn {turn_num}: sending to API...", end="", flush=True)
 
-        result = await Runner.run(
-            starting_agent=agent,
-            input=input_items,
-            max_turns=1,
-            hooks=logger,
-            error_handlers={"max_turns": _on_max_turns},
-        )
+        try:
+            result = await asyncio.wait_for(
+                Runner.run(
+                    starting_agent=agent,
+                    input=input_items,
+                    max_turns=1,
+                    hooks=logger,
+                    error_handlers={"max_turns": _on_max_turns},
+                ),
+                timeout=120.0,
+            )
+        except asyncio.TimeoutError:
+            t_elapsed = time.time() - t_start
+            print(f" TIMEOUT after {t_elapsed:.1f}s — aborting run")
+            # Salvage: if we don't have a final output yet, assemble a partial
+            # report from the turn log so the user gets SOMETHING for their N
+            # completed tool calls.
+            if not final_output and turn_log:
+                lines = [
+                    "## RUN TIMED OUT",
+                    f"OpenAI API stalled at turn {turn_num} — final report could not be generated.",
+                    f"Below is the raw transcript of {len(turn_log)} completed tool calls.",
+                    "",
+                    "## TURN LOG",
+                ]
+                for t in turn_log:
+                    lines.append(f"- Turn {t.get('turn')}: {t.get('action','?')} → {str(t.get('output',''))[:200]}")
+                final_output = "\n".join(lines)
+            break
 
         t_elapsed = time.time() - t_start
         print(f" done ({t_elapsed:.1f}s)")
@@ -150,10 +181,28 @@ async def run_agent_loop(
             if name:
                 turn_tool = name
                 break
+        # Track every turn so we can dump a partial transcript on timeout.
+        turn_log.append({
+            "turn": turn_num,
+            "action": turn_tool or "text_output",
+            "output": (result.final_output or "")[:400] if not turn_tool else "",
+        })
         if turn_tool:
             recent_tools.append(turn_tool)
-            # Check if last 4 calls were the same tool
-            if len(recent_tools) >= 4 and len(set(recent_tools[-4:])) == 1:
+            # Tools that are legitimately called many times in a row during
+            # productive exploration (different targets each time). Skip loop
+            # detection for these — we trust max_turns to bound them.
+            ACTION_TOOLS = {
+                "fill", "click", "type", "select_option", "check", "uncheck",
+                "press_key", "upload_file", "wait_for", "hover",
+                # Web: evaluate_script IS the primary test-case action tool.
+                # 4 in a row = 4 test cases running, not a stuck loop.
+                "evaluate_script",
+            }
+            # Check if last 4 calls were the same tool (excluding action tools)
+            if (len(recent_tools) >= 4
+                and len(set(recent_tools[-4:])) == 1
+                and turn_tool not in ACTION_TOOLS):
                 repeat_tool = recent_tools[-1]
                 print(f"\n  ⚠ LOOP DETECTED: '{repeat_tool}' called 4 times in a row")
                 print(f"  Injecting nudge to break the loop...")

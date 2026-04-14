@@ -215,7 +215,10 @@ async def _cmd_full(args) -> None:
     total_cost = explore_cost + plan_result.cost_usd + exec_result.cost_usd
     print(f"\n{'='*60}")
     print(f"  FULL SUITE COMPLETE")
-    print(f"  Explore: ${explore_result.cost_usd:.4f} ({explore_result.turns_used} turns)")
+    if existing_kb and existing_kb.screens:
+        print(f"  Explore: skipped (KB already existed)")
+    else:
+        print(f"  Explore: ${explore_result.cost_usd:.4f} ({explore_result.turns_used} turns)")
     print(f"  Plan:    ${plan_result.cost_usd:.4f}")
     print(f"  Execute: ${exec_result.cost_usd:.4f} ({exec_result.turns_used} turns)")
     print(f"  Total:   ${total_cost:.4f}")

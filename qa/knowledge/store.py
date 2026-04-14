@@ -27,6 +27,16 @@ class KnowledgeStore:
             print(f"  WARNING: Not saving empty knowledge base to {path}")
             return path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Archive the previous version (if any) before overwriting.
+        # Keeps a timestamped copy in history/ so you can compare runs.
+        if path.exists():
+            history_dir = path.parent / "history"
+            history_dir.mkdir(exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            archive = history_dir / f"{path.stem}_{ts}.json"
+            archive.write_bytes(path.read_bytes())
+
         kb.updated_at = datetime.now().isoformat()
         path.write_text(kb.model_dump_json(indent=2))
         return path

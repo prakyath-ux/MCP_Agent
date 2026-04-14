@@ -1,0 +1,107 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 19
+Cost: $0.1208
+Duration: 92.9s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | Empty required | "" | Error shown for required field | NO_ERROR | FAIL | No inline validation error detected when First Name left empty. |
+| 2 | First Name | Valid name | "Lydia" | No error | NO_ERROR | PASS | Accepts alphabetic input, no error. |
+| 3 | First Name | Hyphenated name | "Lydia-Anne" | No error | NO_ERROR | PASS | Hyphenated name accepted without error. |
+| 4 | Email ID | Empty required | "" | Error shown for required field | NO_ERROR | FAIL | No inline validation error detected when Email left empty. |
+| 5 | Email ID | Valid email | "tqtester1@example.com" | No error | NO_ERROR | PASS | Syntactically valid email accepted. |
+| 6 | Email ID | Plus + special char in local part | "user.name+test!@example.com" | Either accepted or “invalid email” error (depending on rules) | NO_ERROR | PASS | Address with plus and exclamation accepted; no error surfaced. |
+| 7 | Middle Name (optional) | Empty optional | "" | No error | NO_ERROR | PASS | Optional field correctly allows empty value. |
+| 8 | Middle Name (optional) | Alphabetic | "Anne" | No error | NO_ERROR | PASS | Alphabetic middle name accepted. |
+| 9 | Middle Name (optional) | With punctuation | "A._" | No error (unless restricted) | NO_ERROR | PASS | Punctuation accepted; no error. |
+|10| Mobile Number | Empty required | "" | Error shown for required field | NO_ERROR | FAIL | No inline validation error detected when Mobile Number left empty. |
+|11| Mobile Number | Valid length | "1234567890" | No error | NO_ERROR | PASS | 10-digit number accepted; no error. |
+|12| Mobile Number | Too short | "12345" | Error shown for invalid length | NO_ERROR | FAIL | No inline validation for short/invalid mobile length. |
+|13| Last Name | Empty required | "" | Error shown for required field | NO_ERROR | FAIL | No inline validation error detected when Last Name left empty. |
+|14| Last Name | Alphabetic | "Walters" | No error | NO_ERROR | PASS | Valid last name accepted. |
+|15| Last Name | With apostrophe + trailing hyphen | "O'BRIEN-" | Either accepted or specific character rule | NO_ERROR | PASS | Name with apostrophe and hyphen accepted. |
+|16| Branch | Select & verify | "100 - TECU - MARABELLA BRANCH" | Trigger label updates to selected branch text | TRIGGER_NOW\|text=Select Branch | FAIL | Option click reported, but trigger label did not update; dropdown selection not reflected. |
+|17| Add profile picture | Tap verify | Tap "Add profile picture" | Button exists; tap possible | N/A (not executed – spec requires evaluate_script only) | SKIP | Could not simulate tap meaningfully via evaluate_script without side effects; not executed. |
+|18| Save & Exit | Verify only | N/A | Button exists with correct label; not clicked | EXISTS\|text=Save & Exit | PASS | Button present with expected label; not clicked. |
+|19| Save & Continue | Verify only | N/A | Button exists with correct label; not clicked | EXISTS\|text=Save & Continue | PASS | Button present with expected label; not clicked. |
+
+> Note on TC18–19 actuals: Derived from element inspection per instructions; interaction done via the VERIFY_ONLY pattern, not clicks.
+
+---
+
+## BUGS FOUND
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | First Name | Required validation not enforced inline when field is left empty. | Medium | Using evaluate_script to set `input[name="firstName"]` to empty string triggered no `.error` / helper text; result `"NO_ERROR"`. |
+| 2 | Email ID | Required validation not enforced inline when field is left empty. | Medium | Using evaluate_script to set `input[name="email"]` to empty string returned `"NO_ERROR"` (no error element found). |
+| 3 | Mobile Number | Required validation not enforced inline when field is left empty. | High | Using evaluate_script on `input[name="primaryMobileNo"]` with empty value returned `"NO_ERROR"`, despite field marked required. |
+| 4 | Mobile Number | No visible validation for clearly invalid (too short) mobile number. | High | Setting `input[name="primaryMobileNo"]` to `"12345"` (short length) yielded `"NO_ERROR"`; no inline feedback on invalid length. |
+| 5 | Last Name | Required validation not enforced inline when field is left empty. | Medium | Using evaluate_script to clear `input[name="lastName"]` returned `"NO_ERROR"`; no error element detected. |
+| 6 | Branch | Dropdown selection not reflected in trigger label after option click. | High | First evaluate_script call clicked option containing "100 - TECU - MARABELLA BRANCH" (`\"CLICKED|...100 - TECU - MARABELLA BRANCH...\"`), but second call reported `\"TRIGGER_NOW|text=Select Branch\"` — label did not change. |
+
+If TC17 (Add profile picture) is expected to be validated in this run, also track:
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 7 | Add profile picture | Upload/tap flow not testable via required evaluate_script-only approach for file interaction. | Low | Button exists, but flow depends on hidden file input; current mandate disallows actual file chooser interaction, so behavior not verified. |
+
+---
+
+## TEST SUMMARY
+- Total: 19
+- Passed: 9
+- Failed: 6
+- Skipped: 1
+- Blocked: 0
+
+---
+
+## RECOMMENDATIONS
+
+1. **Inline required-field validation**
+   - Implement or surface inline error states (with `.MuiFormHelperText-root.Mui-error` or similar) for:
+     - First Name (empty)
+     - Email ID (empty)
+     - Mobile Number (empty)
+     - Last Name (empty)
+   - Ensure errors appear on blur or on form submit, but remain visible for accessibility (ideally `role="alert"` or `aria-live` region).
+
+2. **Mobile number validation**
+   - Enforce minimum/maximum length and valid pattern for `primaryMobileNo`.
+   - On invalid formats (e.g., too short like `"12345"`), show a clear message such as “Enter a valid 7‑digit mobile number” (or whatever the expected rule is).
+   - Confirm masking/formatting does not suppress validation events.
+
+3. **Branch dropdown behavior**
+   - Investigate why selecting `"100 - TECU - MARABELLA BRANCH"` does not update the trigger label (stays “Select Branch”).
+   - Common causes:
+     - Click handler attached only to certain option container; the text node click might not trigger selection.
+     - State not bound correctly to the trigger button label.
+   - Fix so that after selection the button text reliably reflects the chosen branch and remains so on blur.
+
+4. **Email validation robustness**
+   - Currently, even addresses with `+` and `!` in the local part are accepted without error.
+   - If business rules require stricter validation, refine the pattern and ensure appropriate error messages. If such addresses are valid per requirements, document this explicitly.
+
+5. **Profile picture upload (future testing)**
+   - For TC17, once file upload via automation is allowed:
+     - Expose the underlying `<input type="file">` for easier automated access.
+     - Provide clear UI feedback after a file is chosen (thumbnail or filename + accessible status text).
+
+6. **Accessibility considerations**
+   - Ensure all error messages for the above fields are:
+     - Programmatically associated with inputs via `aria-describedby`.
+     - Announced via `role="alert"` or `aria-live="assertive"`.
+   - Confirm the Branch dropdown uses appropriate ARIA roles (`button`, `listbox`, `option`) and updates `aria-expanded`/`aria-activedescendant` when opened and when an option is selected.
+
+7. **Areas for deeper testing**
+   - Cross-field validations (e.g., duplicate mobile/email, format vs. country code).
+   - Behavior on actual submission (not covered here per navigation restriction) to confirm server-side validations mirror and reinforce the client-side rules.
+   - State persistence when navigating away and back via “Save & Exit” / “Save & Continue” once allowed to be clicked in a broader test cycle.

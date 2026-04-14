@@ -14,10 +14,11 @@ class TestCasePriority(str, Enum):
 
 
 class TestApproach(str, Enum):
-    FILL_CHECK = "fill_check"       # Set value, verify acceptance/error
-    TAP_VERIFY = "tap_verify"       # Tap element, verify response
-    VERIFY_ONLY = "verify_only"     # Check existence/state only
-    SKIP = "skip"                   # Cannot be tested
+    FILL_CHECK = "fill_check"           # Set value on input, verify acceptance/error
+    TAP_VERIFY = "tap_verify"           # Tap element, verify response
+    VERIFY_ONLY = "verify_only"         # Check existence/state only
+    SELECT_AND_VERIFY = "select_verify" # Open dropdown, click option, verify selection updated
+    SKIP = "skip"                       # Cannot be tested
 
 
 class TestCase(BaseModel):

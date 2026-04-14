@@ -21,9 +21,10 @@ Generate test cases as:
 TC# | Element ID | Field Name | Approach | Test Value | Expected Result | Priority
 
 Where Approach is one of:
-- FILL_CHECK: Set value, verify acceptance/error
-- TAP_VERIFY: Tap element, verify response (dropdowns, date pickers)
-- VERIFY_ONLY: Check existence/state only (buttons)
+- FILL_CHECK: Set value on text input, verify acceptance/error
+- SELECT_AND_VERIFY: Open a dropdown, click an option, verify selection actually changed
+- TAP_VERIFY: Tap element, verify response (date pickers, generic taps)
+- VERIFY_ONLY: Check existence/state only (buttons that should NOT be clicked)
 
 # ELEMENTS TO SKIP (DO NOT generate test cases for these):
 - nav_tab elements (DASHBOARD, iTELLER, iBRANCH, LOAN, MORE) — navigation, not form inputs
@@ -41,11 +42,21 @@ Where Approach is one of:
   NEVER use these in test values: # * $ & ; | > < ( ) { } — they crash ADB shell
 - Maximum 3 test cases per field
 
-## Dropdowns (TAP_VERIFY):
-- MUST select an actual option from the "options" list in the knowledge data
-- NEVER use generic values like "first", "option1", "any" — use the EXACT option text
-- Example: if options are ["Cash Deposit", "Cash Withdrawal"], use "Cash Deposit" as test_value
-- One test case per dropdown is sufficient
+## Dropdowns (SELECT_AND_VERIFY):
+- ALWAYS use SELECT_AND_VERIFY for dropdowns that have options[] populated
+- Test value MUST be COPIED VERBATIM from the options[] array — the EXACT,
+  COMPLETE string. DO NOT abbreviate, truncate, or rephrase.
+  - If options[0] is "200 - TECU - COUVA BRANCH", test_value MUST be exactly
+    "200 - TECU - COUVA BRANCH" (NOT "TECU - COUVA BRANCH", NOT "Couva", NOT
+    "COUVA BRANCH"). Substrings often match wrong elements on the page.
+- Pick option index 0 or 1 (any real one) — not the last one in case it has
+  ellipsis/truncation in the UI.
+- Expected result: "selection_updated" (the dropdown label changes to the chosen option)
+- One SELECT_AND_VERIFY test case per dropdown is sufficient
+- If a dropdown has empty options[] in the knowledge, use VERIFY_ONLY instead (don't guess)
+- DO NOT generate test cases for "Search" or "Filter" inputs that appear inside
+  a dropdown popup — those are UI helpers, not testable fields. The
+  SELECT_AND_VERIFY case for the parent dropdown covers their purpose.
 
 ## Date pickers (TAP_VERIFY):
 - Open and confirm a date — HIGH
@@ -55,11 +66,39 @@ Where Approach is one of:
 - Only "Find Member" type action buttons — check existence
 - Do NOT include back buttons or nav tabs
 
+## File uploads (SKIP):
+- Always mark file_upload elements as approach=SKIP
+- Reason: clicking opens the OS file chooser, which blocks browser automation
+  and cannot be dismissed via JS
+- Element names like "Add profile picture", "Upload document", "Choose file"
+  with type=file_upload → ALWAYS SKIP
+- Record one SKIP test case per file upload field with note "File upload
+  cannot be tested via evaluate_script — opens OS file chooser"
+
 # STRICT LIMITS
 - Maximum 3 test cases per field
 - Total: 8-12 test cases per screen (not more)
 - Cover ALL form elements (minimum 1 test per text_input, dropdown, date_picker)
 - Format with TC prefix: TC1, TC2, TC3...
 - Include screen_name in each test case
-- HIGH priority first, then MED, then LOW
+
+# ORDERING — CRITICAL
+GROUP all test cases FOR THE SAME FIELD TOGETHER, in the order they will be
+executed. Within a field, order cases HIGH → MED → LOW. Do NOT interleave
+different fields. The executor runs cases top-to-bottom, and jumping between
+fields forces it to re-focus/re-scroll needlessly.
+
+Correct order:
+  TC1 | firstName | empty         | HIGH
+  TC2 | firstName | valid value   | HIGH
+  TC3 | firstName | numbers only  | MED
+  TC4 | email     | empty         | HIGH
+  TC5 | email     | invalid fmt   | HIGH
+  TC6 | email     | valid email   | MED
+  ...
+
+Wrong order (interleaved — do NOT do this):
+  TC1 | firstName | empty     | HIGH
+  TC2 | email     | empty     | HIGH
+  TC3 | firstName | valid     | HIGH
 """

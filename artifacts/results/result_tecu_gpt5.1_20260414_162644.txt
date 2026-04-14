@@ -1,0 +1,92 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 24
+Cost: $0.1728
+Duration: 102.1s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+
+| # | Field        | Test Case              | Input            | Expected                | Actual                          | Status | Notes |
+|---|--------------|------------------------|------------------|-------------------------|----------------------------------|--------|-------|
+| 1 | First Name   | TC1 – Empty            | `""`             | error_shown (required) | `NO_ERROR`                      | FAIL   | Required field but no inline error when left empty. |
+| 2 | First Name   | TC2 – Valid alpha      | `Lydia`          | NO_ERROR                | `NO_ERROR`                      | PASS   | Accepts alphabetic input; auto-uppercase in UI. |
+| 3 | First Name   | TC3 – Alphanumeric     | `Lydia123`       | error_shown (if alpha) | `NO_ERROR`                      | FAIL   | Field appears to allow digits with no validation error. |
+| 4 | Email ID     | TC4 – Empty            | `""`             | error_shown (required) | `NO_ERROR`                      | FAIL   | No inline error when cleared, despite being required. |
+| 5 | Email ID     | TC5 – Valid email      | `tqtester1@example.com` | NO_ERROR        | `NO_ERROR`                      | PASS   | Valid email accepted; auto-uppercase in UI. |
+| 6 | Email ID     | TC6 – Invalid format   | `not-an-email`   | error_shown            | `"Please enter a valid email"`* | PASS   | Error text shown; snapshot shows invalid state and helper text. |
+| 7 | Middle Name  | TC7 – Empty            | `""`             | NO_ERROR (optional)    | `NO_ERROR`                      | PASS   | No error for empty optional field. |
+| 8 | Middle Name  | TC8 – Valid alpha      | `Anne`           | NO_ERROR                | `NO_ERROR`                      | PASS   | Alphabetic input allowed. |
+| 9 | Middle Name  | TC9 – Alphanumeric     | `Anne123`        | App-specific (usually error or accept) | `NO_ERROR`         | PASS   | Optional field; currently allows digits with no error. |
+|10 | Mobile No.   | TC10 – Empty           | `""`             | error_shown (required) | `NO_ERROR`                      | FAIL   | Required field but no inline error when left empty. |
+|11 | Mobile No.   | TC11 – Valid length    | `8685551234`     | NO_ERROR                | `NO_ERROR`                      | PASS   | Accepted; masked formatting handled by control. |
+|12 | Mobile No.   | TC12 – Too short       | `12345`          | error_shown            | `NO_ERROR`                      | FAIL   | No error for clearly short number; snapshot still shows `12345`. |
+|13 | Last Name    | TC13 – Empty           | `""`             | error_shown (required) | `NO_ERROR`                      | FAIL   | Required field but no inline error when cleared. |
+|14 | Last Name    | TC14 – Valid alpha     | `Walters`        | NO_ERROR                | `NO_ERROR`                      | PASS   | Alphabetic input accepted; auto-uppercase in UI. |
+|15 | Last Name    | TC15 – Alphanumeric    | `Walters123`     | error_shown (if alpha) | `NO_ERROR`                      | FAIL   | Field appears to allow digits with no validation error. |
+|16 | Branch       | TC16 – Select option   | `100 - TECU - MARABELLA BRANCH` | Selection persists, label updated | `"TRIGGER_NOW|text=100 - TECU - MARABELLA BRANCH"` | PASS | Dropdown opened, option clicked, button label updated to selected branch. |
+|17 | Save & Exit  | TC17 – Verify only     | N/A              | Button exists, correct label | `"EXISTS|text=Save & Exit"`    | PASS   | Button present; not clicked to avoid navigation. |
+|18 | Save & Continue | TC18 – Verify only  | N/A              | Button exists, correct label | `"EXISTS|text=Save & Continue"`| PASS   | Button present; not clicked to avoid navigation. |
+
+\*For TC6, the helper text `"Please enter a valid email"` is visible in the snapshot; the evaluate_script template targeted typical error containers and the snapshot confirms the expected validation message.
+
+---
+
+## BUGS FOUND
+
+| # | Field        | Description | Severity | Evidence |
+|---|--------------|-------------|----------|----------|
+| 1 | First Name   | Required validation not enforced on blur/field-level interaction; no inline error when the field is left empty. | Medium | TC1: Set `input[name="firstName"]` to `""`, dispatched `input` and `change`, blurred; JS returned `NO_ERROR` and no error helper element was present. Snapshot shows field labeled with `*` but no error message. |
+| 2 | First Name   | No validation preventing numeric characters if the business rule is “alphabetic only”. | Low/Medium (depending on spec) | TC3: Set `firstName` to `Lydia123`; script returned `NO_ERROR`, and no error/helper text element was detected. |
+| 3 | Email ID     | Required validation not enforced on field-level interaction; no inline error when the email is cleared. | Medium | TC4: Cleared `input[name="email"]` to `""`, fired `input`/`change`/blur; script returned `NO_ERROR` and no error helper element other than the global live-region alert. |
+| 4 | Mobile Number| Required validation not enforced on blur/field-level interaction; no inline error when the field is empty. | Medium | TC10: Set `input[name="primaryMobileNo"]` to `""`, dispatched events and blurred; returned `NO_ERROR`, no error message in field group though field is marked `*`. |
+| 5 | Mobile Number| No inline validation for too-short numbers; accepts obviously invalid length without error. | Medium | TC12: Set mobile to `12345`; returned `NO_ERROR`. Snapshot shows textbox value `"12345"` and no error/helper text related to mobile number. |
+| 6 | Last Name    | Required validation not enforced on blur/field-level interaction; no inline error when the field is empty. | Medium | TC13: Cleared `input[name="lastName"]`; result `NO_ERROR`. Snapshot shows required marker `*` but no error text. |
+| 7 | Last Name    | No validation preventing numeric characters if field is meant to be alphabetic-only. | Low/Medium (depending on spec) | TC15: Set `lastName` to `Walters123`; no error helper found; script returned `NO_ERROR`. |
+
+If the product requirements explicitly allow digits in name fields and only perform “required” checks at form submit (not per-field), then bugs #2 and #7 become “by design”, but the lack of any inline required error (#1, #3, #4, #6) is still notable for usability and accessibility.
+
+---
+
+## TEST SUMMARY
+
+- Total: 18
+- Passed: 9
+- Failed: 7
+- Skipped: 0
+- Blocked: 0
+
+---
+
+## RECOMMENDATIONS
+
+- **Enforce required validation consistently at field level**  
+  All fields marked with `*` (First Name, Email ID, Mobile Number, Last Name) should surface a clear inline error when left empty and blurred, not only on full-form submission. This helps users correct issues earlier and supports assistive technologies.
+
+- **Clarify and implement name field character rules**  
+  - If digits and other non-letter characters are not allowed in First/Last Name, add pattern validation and surface an error (e.g. “Only letters allowed”) for inputs like `Lydia123` and `Walters123`.  
+  - If such characters are acceptable (e.g. for suffixes or special cases), update requirements and any help text/placeholder to reflect that.
+
+- **Tighten mobile number validation**  
+  - Enforce minimum (and maximum) valid length based on the configured country format (+1868).  
+  - Add a dedicated inline error for lengths that are too short or too long (e.g. “Enter a 7‑digit mobile number” or similar, depending on expected mask).  
+  - Ensure the error is associated with the mobile input via `aria-describedby` for screen readers.
+
+- **Align required behavior for Email ID when empty**  
+  - Currently, invalid formats (e.g. `not-an-email`) correctly show “Please enter a valid email,” but fully empty values show no message.  
+  - Introduce a separate required-message (e.g. “Email is required”) when the field is blank, so users understand that email is mandatory, not just format-validated.
+
+- **Accessibility improvements**
+  - Ensure all inline error messages are programmatically associated to their respective inputs (e.g. via `id`/`aria-describedby`) and exposed through the live region only when they change, to avoid confusion in screen readers.  
+  - Confirm that required indicators (`*`) are also conveyed via `aria-required="true"` or similar, not just visually.  
+  - For the Branch dropdown, keep using proper roles (`button` + `listbox`/`option`) and verify keyboard interaction (Up/Down/Enter/Escape) is robust.
+
+- **Areas for deeper testing**
+  - **Submit-level validation:** Since this run avoided clicking “Save & Continue” and “Save & Exit,” run a separate flow where those are clicked to verify that form-level validation catches all missing/invalid values before navigation.  
+  - **Masking behavior for mobile number:** Explore how partial input, deletion, and paste operations interact with the mask and validation logic on different browsers and devices.  
+  - **Branch dropdown search:** Validate filtering behavior and keyboard/screen-reader support for the embedded “Search…” box and option list.

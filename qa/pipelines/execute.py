@@ -120,12 +120,24 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
             # Filter test cases for this screen
             screen_tcs = [tc for tc in test_cases if tc.screen_name == screen_name] or test_cases
 
+            if platform == Platform.MOBILE:
+                opening = (
+                    f"The app is already open on the {screen_name} screen. "
+                    f"Start by calling scan_screen_summary to see the current state."
+                )
+            else:  # WEB
+                opening = (
+                    f"The web page is already loaded at {inp.app.url or 'the target URL'}. "
+                    f"Start by calling scan_page_summary to see the current state. "
+                    f"Then run each test case in the plan via evaluate_script using "
+                    f"the templates documented in your instructions. SELECT_AND_VERIFY "
+                    f"cases for dropdowns are TWO evaluate_script calls (open+click, then verify) — "
+                    f"do NOT skip them."
+                )
             task = (
                 f"Here is the test plan:\n\n{plan_text}\n\n"
                 f"Knowledge for this screen:\n{l0_json}\n\n"
-                f"Execute ALL test cases on the device. "
-                f"The app is already open on the {screen_name} screen. "
-                f"Start by calling scan_screen_summary to see the current state."
+                f"Execute ALL test cases. {opening}"
             )
 
             mcp_server = adapter.get_mcp_server()
@@ -134,6 +146,9 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
             if platform == Platform.MOBILE:
                 from qa.tools.mobile_tools import get_task_tools
                 tools = get_task_tools(mcp_server, inp.app.device_id or "")
+            elif platform == Platform.WEB:
+                from qa.tools.web_tools import get_task_tools
+                tools = get_task_tools(mcp_server)
 
             agent = Agent(
                 name=f"Executor ({screen_name})",
@@ -144,12 +159,21 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
                 tools=tools,
             )
 
+            # Web execution runs each test case as its own evaluate_script turn,
+            # so 15 turns can't cover a 20+ case plan. Floor it at 40 for web.
+            effective_max_turns = (
+                max(inp.max_turns_per_screen, 40)
+                if platform == Platform.WEB
+                else inp.max_turns_per_screen
+            )
+            effective_budget = max(inp.budget, 3.0) if platform == Platform.WEB else inp.budget
+
             result = await run_agent_loop(
                 agent=agent,
                 task=task,
-                max_turns=inp.max_turns_per_screen,
+                max_turns=effective_max_turns,
                 model=inp.model,
-                budget=inp.budget,
+                budget=effective_budget,
                 keep_last_n=1,
                 nudge_message=(
                     "IMPORTANT: You have only a few turns left. "

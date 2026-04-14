@@ -65,26 +65,49 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                         print(f"  Could not navigate to {screen_name} — skipping")
                         continue
 
-            task = (
-                f"The app '{inp.app.app_name}' is ALREADY OPEN on the '{screen_name}' screen.\n"
-                f"DO NOT call mobile_launch_app, mobile_list_apps, or mobile_list_available_devices. "
-                f"These tools are forbidden for this task — the app is already running.\n\n"
-                f"Start directly with scan_screen_summary() to see what's on screen.\n"
-                f"Then open EVERY dropdown (test_dropdown with select_option) and record ALL options returned.\n"
-                f"Then test the date picker, then fill the text field.\n\n"
-                f"YOUR FINAL RESPONSE MUST end with exactly this format:\n\n"
-                f"## KNOWLEDGE\n"
-                f"```json\n"
-                f"{{...complete knowledge JSON here...}}\n"
-                f"```\n\n"
-                f"Without the literal text '## KNOWLEDGE' heading above the JSON block, "
-                f"the data will be discarded. Every dropdown's dropdown_options array MUST be filled."
-            )
+            if platform == Platform.MOBILE:
+                task = (
+                    f"The app '{inp.app.app_name}' is ALREADY OPEN on the '{screen_name}' screen.\n"
+                    f"DO NOT call mobile_launch_app, mobile_list_apps, or mobile_list_available_devices. "
+                    f"These tools are forbidden for this task — the app is already running.\n\n"
+                    f"Start directly with scan_screen_summary() to see what's on screen.\n"
+                    f"Then open EVERY dropdown (test_dropdown with select_option) and record ALL options returned.\n"
+                    f"Then test the date picker, then fill the text field.\n\n"
+                    f"YOUR FINAL RESPONSE MUST end with exactly this format:\n\n"
+                    f"## KNOWLEDGE\n"
+                    f"```json\n"
+                    f"{{...complete knowledge JSON here...}}\n"
+                    f"```\n\n"
+                    f"Without the literal text '## KNOWLEDGE' heading above the JSON block, "
+                    f"the data will be discarded. Every dropdown's dropdown_options array MUST be filled."
+                )
+            else:  # WEB
+                task = (
+                    f"The web app '{inp.app.app_name}' is ALREADY LOADED in Chrome at {inp.app.url or 'the target URL'}.\n"
+                    f"DO NOT call list_pages, select_page, new_page, or close_page — there is one tab and it is correct.\n\n"
+                    f"Start with take_snapshot to see the page. Then run the XPath+CSS extraction "
+                    f"evaluate_script ONCE. Then click EVERY custom dropdown ('Select X', 'Choose X') "
+                    f"to open it and capture ALL options. Then fill EVERY text field with a test value "
+                    f"to observe validation. If fill doesn't stick (React controlled input), drop to "
+                    f"evaluate_script with the native setter pattern.\n\n"
+                    f"Do NOT click Submit, Save & Continue, or Save & Exit — they navigate away.\n\n"
+                    f"YOUR FINAL RESPONSE MUST end with exactly this format:\n\n"
+                    f"## KNOWLEDGE\n"
+                    f"```json\n"
+                    f"{{...complete knowledge JSON here...}}\n"
+                    f"```\n\n"
+                    f"Without the literal text '## KNOWLEDGE' heading above the JSON block, "
+                    f"the data will be discarded. Every dropdown's dropdown_options array MUST be filled with real option texts."
+                )
 
             # Build agent with MCP server for exploration
             mcp_server = adapter.get_mcp_server()
 
-            # For mobile, use compound tools
+            # Compound tools per platform
+            # Mobile: compound tools handle keyboard/coordinate quirks — they work well.
+            # Web: raw Chrome DevTools MCP tools only (version_2 philosophy). The LLM
+            #      needs to adapt at the JS level for React/custom-dropdown quirks
+            #      that no compound tool can anticipate. The fat prompt teaches patterns.
             tools = []
             if platform == Platform.MOBILE:
                 from qa.tools.mobile_tools import get_explore_tools
@@ -99,12 +122,16 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                 tools=tools,
             )
 
+            # Web needs more room: React/async/fallback-ladder cycles burn turns.
+            effective_max_turns = max(inp.max_turns, 40) if platform == Platform.WEB else inp.max_turns
+            effective_budget = max(inp.budget, 3.0) if platform == Platform.WEB else inp.budget
+
             result = await run_agent_loop(
                 agent=agent,
                 task=task,
-                max_turns=inp.max_turns,
+                max_turns=effective_max_turns,
                 model=inp.model,
-                budget=inp.budget,
+                budget=effective_budget,
                 nudge_message=(
                     "IMPORTANT: You have only a few turns left. "
                     "Extract all element data NOW and produce your KNOWLEDGE JSON."
@@ -148,9 +175,9 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                         retry_result = await run_agent_loop(
                             agent=agent,
                             task=retry_task,
-                            max_turns=5,
+                            max_turns=10,
                             model=inp.model,
-                            budget=inp.budget / 4,
+                            budget=inp.budget / 2,
                         )
                         total_cost += retry_result.cost_usd
                         total_turns += retry_result.turns_used
@@ -182,10 +209,14 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
         knowledge = store.merge(inp.existing_knowledge, knowledge)
 
     # Save
-    path = store.save(knowledge)
-    print(f"\n  Knowledge saved: {path}")
-    print(f"  Screens: {knowledge.screen_names()}")
-    print(f"  Total elements: {sum(len(s.l0) for s in knowledge.screens)}")
+    total_elements = sum(len(s.l0) for s in knowledge.screens)
+    if total_elements > 0:
+        path = store.save(knowledge)
+        print(f"\n  Knowledge saved: {path}")
+        print(f"  Screens: {knowledge.screen_names()}")
+        print(f"  Total elements: {total_elements}")
+    else:
+        print(f"\n  NOT SAVED — no elements captured. The LLM did not produce usable knowledge.")
 
     return ExploreOutput(
         knowledge=knowledge,
@@ -212,7 +243,17 @@ def _validate_screen_knowledge(kb) -> list[str]:
             # Dropdowns must have at least 1 option
             if el.type.value == "dropdown" and not el.options:
                 issues.append(
-                    f"Dropdown '{el.name}' has empty options[] — you must open it and record all visible options"
+                    f"Dropdown '{el.name}' has empty options[] — you must call test_dropdown to capture all options"
+                )
+            # Buttons whose name starts with "Select"/"Choose"/"Pick" are almost
+            # certainly dropdowns in disguise. Flag and demand re-exploration.
+            name_lower = el.name.lower()
+            if el.type.value == "button" and any(
+                name_lower.startswith(p) for p in ("select ", "choose ", "pick ")
+            ):
+                issues.append(
+                    f"Element '{el.name}' is classified as button but looks like a dropdown — "
+                    f"reclassify as type='dropdown' and call test_dropdown to capture its options"
                 )
             # Required fields should have behavior description
             if el.required and not el.behavior:

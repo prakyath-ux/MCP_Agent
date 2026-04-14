@@ -1,0 +1,539 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECH-U",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - TECH-U (default screen)",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_tech_u_default_screen:global_submit_button_type_submit_unlabeled:button",
+          "name": "Global submit button (type=submit, unlabeled)",
+          "type": "button",
+          "required": false,
+          "behavior": "Generic button with type='submit'; no accessible text or distinguishing attributes captured by extractor",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:upload_profile_photo_add_profile_picture_button:button",
+          "name": "Upload Profile Photo - Add profile picture button",
+          "type": "button",
+          "required": false,
+          "behavior": "Triggers upload of a profile photo (camera icon + text 'Add profile picture'); likely opens a file chooser or photo capture UI",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Standard text input; label in UI is 'First Name' with asterisk indicating required",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required; likely simple non-empty validation and possibly character-only constraints",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Standard email input for primary contact email; UI label 'Email ID' with required asterisk",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Required; likely checks for valid email format (presence of '@', domain, etc.)",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:middle_name_optional:text_input",
+          "name": "Middle Name (optional)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional text field for middle name",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Optional; probably only basic length/character constraints if any",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Text/phone input paired with fixed country flag (Trinidad & Tobago) and prefix '+1868'; UI label 'Mobile Number' with required asterisk",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required; likely numeric-only and length validation for TT mobile pattern; may strip non-digits",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Standard text input; UI label 'Last Name' with required asterisk",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required; likely non-empty with possible character restrictions",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:branch_select_branch_button:button",
+          "name": "Branch - Select Branch button",
+          "type": "button",
+          "required": true,
+          "behavior": "Custom branch selector trigger labeled 'Select Branch' under 'Branch*' heading; likely opens a dropdown, modal, or list of branch options",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "Branch selection required before proceeding; specific validation executed on form submit or navigation",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Action button to save current application state and leave flow; likely performs validation and partial save",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "May enforce minimum required fields before allowing exit or may allow saving incomplete draft; behavior to be verified via interaction",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary call-to-action to save current step and move to next section of the application (likely 'Documents')",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "Expected to enforce all required fields on this 'TECH-U (default screen)' step before navigation",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_tech_u_default_screen:global_submit_button_type_submit_unlabeled:button",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "button[type=\"submit\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[@type=\"submit\"]",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:upload_profile_photo_add_profile_picture_button:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_14",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_18",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_21",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:middle_name_optional:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_23",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_28",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_31",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:branch_select_branch_button:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Branch\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_34",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_35",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_36",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - TECH-U (default screen)"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_tech_u_default_screen:global_submit_button_type_submit_unlabeled:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461482",
+          "last_seen": "2026-04-14T10:41:55.461482"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:upload_profile_photo_add_profile_picture_button:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461671",
+          "last_seen": "2026-04-14T10:41:55.461671"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:first_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461711",
+          "last_seen": "2026-04-14T10:41:55.461711"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:email_id:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461745",
+          "last_seen": "2026-04-14T10:41:55.461745"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:middle_name_optional:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461777",
+          "last_seen": "2026-04-14T10:41:55.461777"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:mobile_number:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461807",
+          "last_seen": "2026-04-14T10:41:55.461807"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:last_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461837",
+          "last_seen": "2026-04-14T10:41:55.461837"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:branch_select_branch_button:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461876",
+          "last_seen": "2026-04-14T10:41:55.461876"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461908",
+          "last_seen": "2026-04-14T10:41:55.461908"
+        },
+        {
+          "element_id": "new_member_application_tech_u_default_screen:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T10:41:55.461941",
+          "last_seen": "2026-04-14T10:41:55.461941"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-14T10:41:16.003009",
+  "updated_at": "2026-04-14T10:41:59.465134",
+  "version": 1
+}

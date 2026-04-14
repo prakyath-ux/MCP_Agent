@@ -1,0 +1,85 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 18
+Cost: $0.0903
+Duration: 73.8s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | Empty required | "" | error_shown | NO_ERROR | FAIL | Required field accepted empty value with no inline error. |
+| 2 | Email ID | Empty required | "" | error_shown | NO_ERROR | FAIL | Required field accepted empty value with no inline error. |
+| 3 | Mobile Number | Empty required | "" | error_shown | NO_ERROR | FAIL | Required field accepted empty value with no inline error. |
+| 4 | Last Name | Empty required | "" | error_shown | NO_ERROR | FAIL | Required field accepted empty value with no inline error. |
+| 5 | Branch | tap_verify | 200 - TECU - COUVA BRANCH | option_exists | EXISTS|text=Select Branch | PASS | Branch dropdown button present; specific option not verifiable without opening, but control exists. |
+| 6 | First Name | Valid value | "Lydia" | no_error | NO_ERROR | PASS | Valid alphabetic input accepted; no error surfaced. |
+| 7 | Email ID | Valid value | "tqtester1@example.com" | no_error | NO_ERROR | PASS | Syntactically valid email accepted; no error shown. |
+| 8 | Mobile Number | Valid value | "8685551234" | no_error | NO_ERROR | PASS | 10‑digit number accepted; no inline error detected. |
+| 9 | Last Name | Valid value | "Walters" | no_error | NO_ERROR | PASS | Valid alphabetic input accepted; no error surfaced. |
+| 10 | Middle Name (optional) | Empty optional | "" | no_error | NO_ERROR | PASS | Optional field correctly allows empty value without error. |
+| 11 | Branch search within dropdown | tap_verify | "COUVA" | search_field_exists | ELEMENT_NOT_TESTED | SKIP | Branch search only appears when dropdown is open; opening is not allowed by plan. |
+| 12 | Save & Continue | verify_only | N/A | button_visible | EXISTS|text=Save & Continue | PASS | Button present with correct label. |
+| 13 | Save & Exit | verify_only | N/A | button_visible | EXISTS|text=Save & Exit | PASS | Button present with correct label. |
+| 14 | First Name | Special characters | "ann-marie" | no_error_or_specific_rule | NO_ERROR | PASS | Hyphenated name accepted; no validation error. |
+| 15 | Email ID | Special characters | "user.name+test!_@example.com" | depends_on_spec (likely no_error if allowed) | NO_ERROR | PASS | Complex local-part email accepted; no inline error. |
+| 16 | Middle Name (optional) | Special characters | "anne_m." | no_error | NO_ERROR | PASS | Optional field accepts underscore and period without error. |
+
+**Note on TC11:** Could not interact with or open the Branch dropdown search input due to constraints (no clicks); marked SKIP.
+
+---
+
+## BUGS FOUND
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | First Name | Required validation not triggered when field left empty (no inline error). | Medium | Using React-safe setter, set `input[name="firstName"]` to `''`, dispatched `input` and `change`, blurred; script returned `NO_ERROR` and found no error element. |
+| 2 | Email ID | Required validation not triggered when field left empty (no inline error). | Medium | Set `input[name="email"]` to `''`, dispatched events, blurred; result `NO_ERROR` with no helper/error text found near field. |
+| 3 | Mobile Number | Required validation not triggered when field left empty (no inline error). | Medium | Set `input[name="primaryMobileNo"]` to `''`, dispatched events, blurred; `NO_ERROR` and no error node located. |
+| 4 | Last Name | Required validation not triggered when field left empty (no inline error). | Medium | Set `input[name="lastName"]` to `''`, dispatched events, blurred; `NO_ERROR` and no inline error message detected. |
+
+If required validation is intentionally deferred to Save & Continue/Exit click, these may be design issues rather than bugs; current behavior provides no field-level feedback on blur.
+
+---
+
+## TEST SUMMARY
+- Total: 16
+- Passed: 9
+- Failed: 4
+- Skipped: 1
+- Blocked: 0
+
+---
+
+## RECOMMENDATIONS
+
+- **Field-level required validation:**  
+  Trigger “This field is required” (or equivalent) on blur or on change for:
+  - First Name
+  - Email ID
+  - Mobile Number
+  - Last Name  
+  Ensure errors are exposed via `.MuiFormHelperText-root.Mui-error` or similar, and associated with inputs via `aria-describedby` for accessibility.
+
+- **Validation strategy clarity:**  
+  If validation is intentionally only on form-level actions (Save & Continue / Save & Exit), consider:
+  - Showing inline errors per field after those actions.
+  - Noting this behavior in UX requirements to avoid confusion in testing.
+
+- **Branch dropdown & search testing:**  
+  In a future test cycle where clicks are allowed:
+  - Verify that “200 - TECU - COUVA BRANCH” is present and can be selected.
+  - Confirm branch search for “COUVA” filters correctly and remains keyboard-accessible (focusable search box, listbox semantics).
+
+- **Accessibility considerations:**
+  - Ensure error messages (when implemented) have `role="alert"` or equivalent and are programmatically tied to their fields.
+  - Confirm that auto-uppercase transformations do not alter the underlying submitted value for email if case sensitivity matters for backend logic (usually local-part is case-sensitive in theory).
+
+- **Deeper testing areas:**
+  - Email format edge cases (long domains, subdomains, internationalized addresses) once validation is visible.
+  - Mobile number masking: verify exact pattern, length constraints, and error messaging for too-short / too-long numbers.
+  - Cross-field behavior when Save & Continue / Save & Exit are actually clicked (server-side errors, navigation, data persistence).

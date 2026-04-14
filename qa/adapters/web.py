@@ -6,6 +6,7 @@ import time
 
 from agents.mcp import MCPServerStdio
 
+from qa.adapters.snapshot_filter import filter_snapshot
 from qa.models.common import Platform, TargetApp
 from qa.models.knowledge import L1Element
 
@@ -25,7 +26,9 @@ class WebAdapter:
             name="Chrome DevTools MCP",
             params={
                 "command": "npx",
-                "args": ["-y", "chrome-devtools-mcp@latest"],
+                # --isolated: fresh profile per run, avoids "browser already running"
+                # lock conflicts when previous run was killed mid-flight.
+                "args": ["-y", "chrome-devtools-mcp@latest", "--isolated"],
             },
             cache_tools_list=True,
             client_session_timeout_seconds=30.0,
@@ -44,7 +47,13 @@ class WebAdapter:
 
     async def snapshot(self) -> list[dict]:
         raw = await self._call("take_snapshot", {})
-        return self._parse_snapshot(raw)
+        trimmed = filter_snapshot(raw)
+        return self._parse_snapshot(trimmed)
+
+    async def raw_snapshot_text(self) -> str:
+        """Return the trimmed accessibility tree as text — for LLM context."""
+        raw = await self._call("take_snapshot", {})
+        return filter_snapshot(raw)
 
     async def screenshot(self) -> bytes | None:
         raw = await self._call("take_screenshot", {})
@@ -61,8 +70,8 @@ class WebAdapter:
                     return "OK"
             elif locator.strategy == "css":
                 # Use evaluate_script to click by CSS selector
-                script = f"document.querySelector('{locator.value}')?.click()"
-                result = await self._call("evaluate_script", {"expression": script})
+                fn = f"() => {{ document.querySelector('{locator.value}')?.click(); return 'OK'; }}"
+                result = await self._call("evaluate_script", {"function": fn})
                 if "error" not in result.lower():
                     return "OK"
         return "ELEMENT_NOT_FOUND"
@@ -75,15 +84,23 @@ class WebAdapter:
             if "error" not in result.lower():
                 return f"FILLED: {value}"
 
-        # Fallback to CSS + evaluate_script
+        # Fallback to CSS + evaluate_script with React-safe native setter
         css_loc = next((l for l in element.locators if l.strategy == "css"), None)
         if css_loc:
-            script = f"""
-                const el = document.querySelector('{css_loc.value}');
-                if (el) {{ el.value = '{value}'; el.dispatchEvent(new Event('input', {{bubbles: true}})); 'OK'; }}
-                else {{ 'ELEMENT_NOT_FOUND'; }}
-            """
-            result = await self._call("evaluate_script", {"expression": script})
+            fn = (
+                "() => {"
+                f"  const el = document.querySelector('{css_loc.value}');"
+                "   if (!el) return 'ELEMENT_NOT_FOUND';"
+                "   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;"
+                "   const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;"
+                f"  setter.call(el, '{value}');"
+                "   el.dispatchEvent(new Event('input', {bubbles: true}));"
+                "   el.dispatchEvent(new Event('change', {bubbles: true}));"
+                "   el.blur();"
+                "   return 'OK';"
+                "}"
+            )
+            result = await self._call("evaluate_script", {"function": fn})
             if "OK" in result:
                 return f"FILLED: {value}"
 
@@ -103,8 +120,9 @@ class WebAdapter:
     async def scroll(self, direction: str = "down") -> None:
         pixels = 500 if direction in ("down", "right") else -500
         axis = "y" if direction in ("up", "down") else "x"
-        script = f"window.scrollBy({{{'top' if axis == 'y' else 'left'}: {pixels}, behavior: 'smooth'}})"
-        await self._call("evaluate_script", {"expression": script})
+        key = "top" if axis == "y" else "left"
+        fn = f"() => {{ window.scrollBy({{{key}: {pixels}, behavior: 'smooth'}}); return 'OK'; }}"
+        await self._call("evaluate_script", {"function": fn})
         await asyncio.sleep(0.5)
 
     async def navigate_to_screen(self, screen_name: str) -> bool:
@@ -113,12 +131,15 @@ class WebAdapter:
             await self._call("navigate_page", {"url": screen_name})
         else:
             # Try clicking a link/tab with matching text
-            script = f"""
-                const links = [...document.querySelectorAll('a, button, [role="tab"]')];
-                const match = links.find(el => el.textContent.trim().toLowerCase().includes('{screen_name.lower()}'));
-                if (match) {{ match.click(); 'OK'; }} else {{ 'NOT_FOUND'; }}
-            """
-            result = await self._call("evaluate_script", {"expression": script})
+            target = screen_name.lower()
+            fn = (
+                "() => {"
+                "  const links = [...document.querySelectorAll('a, button, [role=\"tab\"]')];"
+                f"  const match = links.find(el => el.textContent.trim().toLowerCase().includes('{target}'));"
+                "   if (match) { match.click(); return 'OK'; } return 'NOT_FOUND';"
+                "}"
+            )
+            result = await self._call("evaluate_script", {"function": fn})
             if "NOT_FOUND" in result:
                 return False
         await asyncio.sleep(1.5)
@@ -149,7 +170,11 @@ class WebAdapter:
     # ── Script Execution ─────────────────────────────────────
 
     async def evaluate_script(self, expression: str) -> str:
-        return await self._call("evaluate_script", {"expression": expression})
+        # Auto-wrap non-arrow bodies so callers can pass either shape.
+        body = expression.strip()
+        if not body.startswith("()"):
+            body = f"() => {{ return ({body}); }}"
+        return await self._call("evaluate_script", {"function": body})
 
     # ── MCP Server Access ────────────────────────────────────
 

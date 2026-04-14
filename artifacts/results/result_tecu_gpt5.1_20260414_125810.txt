@@ -1,0 +1,99 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 3
+Cost: $0.0263
+Duration: 23.5s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|--------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | TC1 – empty required | "" | error_shown | N/A | BLOCKED | Could not execute evaluate_script due to environment error: `fn is not a function` |
+| 2 | First Name | TC2 – valid value | e.g., "LYDIA" | NO_ERROR | N/A | BLOCKED | Same evaluate_script failure; per rules, stopped retrying and marked blocked |
+| 3 | First Name | TC3 – invalid/special chars | e.g., "1234" or "@@@" | error_shown (if business rule) | N/A | BLOCKED | Same tooling error prevented interaction |
+| 4 | Email ID | TC4 – empty required | "" | error_shown | N/A | BLOCKED | Unable to set value/read error due to evaluate_script failure |
+| 5 | Email ID | TC5 – invalid format | "not-an-email" | error_shown | N/A | BLOCKED | Same issue |
+| 6 | Email ID | TC6 – valid email | "user@example.com" | NO_ERROR | N/A | BLOCKED | Same issue |
+| 7 | Middle Name (optional) | TC7 – empty | "" | NO_ERROR | N/A | BLOCKED | Same evaluate_script failure |
+| 8 | Middle Name (optional) | TC8 – valid text | "ANNE" | NO_ERROR | N/A | BLOCKED | Same issue |
+| 9 | Middle Name (optional) | TC9 – edge chars | e.g., very long or with hyphen | NO_ERROR or specific rule | N/A | BLOCKED | Same issue |
+| 10 | Mobile Number | TC10 – empty required | "" | error_shown | N/A | BLOCKED | Same evaluate_script failure |
+| 11 | Mobile Number | TC11 – invalid length/alpha | "12345" / "abcd" | error_shown | N/A | BLOCKED | Same issue |
+| 12 | Mobile Number | TC12 – valid format | valid 10-digit local number | NO_ERROR | N/A | BLOCKED | Same issue |
+| 13 | Last Name | TC13 – empty required | "" | error_shown | N/A | BLOCKED | Same evaluate_script failure |
+| 14 | Last Name | TC14 – valid value | "WALTERS" | NO_ERROR | N/A | BLOCKED | Same issue |
+| 15 | Last Name | TC15 – invalid/special chars | "1234" or "@@@" | error_shown (if rule) | N/A | BLOCKED | Same issue |
+| 16 | Branch | TC16 – TAP_VERIFY | N/A (no click) | Dropdown exists with default text | N/A | BLOCKED | VERIFY_ONLY must use evaluate_script; tooling error blocked check |
+| 17 | Branch search within dropdown | TC17 – FILL_CHECK | e.g., branch search text | Filter/accept text, likely NO_ERROR | N/A | BLOCKED | Requires dropdown open; even if visible, evaluate_script failing blocks test |
+| 18 | Save & Exit | TC18 – VERIFY_ONLY | N/A (no click) | Button exists with text "Save & Exit" | N/A | BLOCKED | VERIFY_ONLY via evaluate_script was not possible |
+| 19 | Save & Continue | TC19 – VERIFY_ONLY | N/A (no click) | Button exists with text "Save & Continue" | N/A | BLOCKED | Same limitation |
+
+**Explanation:**  
+The very first FILL_CHECK test used evaluate_script exactly per the required pattern, but the environment responded with `fn is not a function`. Per the strict rules, I must use evaluate_script for all FILL_CHECK and VERIFY_ONLY tests, cannot change tools, and cannot keep retrying the same failing pattern. After that first failure, all subsequent cases that depend on evaluate_script are effectively blocked.
+
+---
+
+## BUGS FOUND
+No bugs found
+
+All test cases were blocked by a tooling/environment issue before app-level validation or behavior could be observed, so no product bugs can be reported.
+
+---
+
+## TEST SUMMARY
+- Total: 19  
+- Passed: 0  
+- Failed: 0 (bugs)  
+- Skipped: 0  
+- Blocked: 19  
+
+Blocked reason (common to all):  
+- The mandated mechanism for these tests (`functions.evaluate_script`) failed immediately with the message `fn is not a function`.  
+- Rules prevent switching tools for FILL_CHECK/VERIFY_ONLY, prevent repeated retries of the same failing call, and disallow navigation or other workarounds.
+
+---
+
+## RECOMMENDATIONS
+
+1. **Stabilize evaluate_script integration**
+   - Investigate why the sandbox reports `fn is not a function` for a valid JavaScript function string.
+   - Verify that the tool expects a property named `function` containing a string, and that it is correctly passed to the underlying execution environment.
+   - Add a minimal smoke test for evaluate_script (e.g., `() => 1+1`) to ensure the harness is working before running field validations.
+
+2. **Introduce pre-run harness validation**
+   - Before executing a full test plan, run:
+     - One trivial FILL_CHECK-style evaluate_script (set a dummy value in any input).
+     - One trivial VERIFY_ONLY-style evaluate_script (read textContent of a known button).
+   - If either fails, abort the plan early as BLOCKED and surface a clear infra error.
+
+3. **Add better error reporting in the tooling**
+   - Enrich error responses from evaluate_script to distinguish:
+     - Syntax errors in the supplied function.
+     - Execution/runtime errors inside the page.
+     - Harness errors (e.g., tool not wired correctly).
+   - This helps differentiate true app bugs (e.g., missing element) from environmental/tooling failures.
+
+4. **Once tooling is fixed: deepen field validation tests**
+   - Re-run this plan to confirm:
+     - Required behavior and error messages for First Name, Last Name, Email ID, and Mobile Number.
+     - Optional behavior (no error when empty) for Middle Name.
+     - Branch dropdown default text, required-state error, and option list.
+   - Expand with:
+     - Boundary length checks (min/max characters for names, email, mobile).
+     - Email format variations (subdomains, plus addressing, uppercase/lowercase).
+     - Mobile number formatting edge cases (leading zeros, non-numeric input).
+
+5. **Accessibility considerations for future testing**
+   - Confirm that each field has:
+     - A programmatically associated label (via `for`/`id` or `aria-labelledby`).
+     - Clear inline error text announced via `aria-live` when validation fails.
+   - Verify that the Branch custom dropdown:
+     - Is keyboard accessible (Arrow keys, Enter, Escape).
+     - Uses appropriate ARIA roles (`button`, `listbox`, `option`) and states.
+
+Once the evaluate_script execution issue is resolved, this entire test plan should be re-run; at that point, real PASS/FAIL outcomes and product bugs can be identified.

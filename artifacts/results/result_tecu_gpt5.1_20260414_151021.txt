@@ -1,0 +1,87 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 2
+Cost: $0.0191
+Duration: 21.4s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+
+Due to a tooling/environment issue, no interactions with the live page could be executed. The Chrome DevTools automation layer reported that a browser instance is already running with the same profile and cannot be reused in the required way:
+
+> "The browser is already running for /Users/impactoinfra/.cache/chrome-devtools-mcp/chrome-profile. Use a different `userDataDir` or stop the running browser first."
+
+Because of this, all test cases are effectively blocked – no `evaluate_script` calls could be run, so no fields or buttons were actually tested.
+
+Below is the required results table, reflecting that status:
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | TC1 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Browser automation session could not be started. |
+| 2 | First Name | TC2 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue as TC1. |
+| 3 | First Name | TC3 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 4 | Email ID | TC4 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 5 | Email ID | TC5 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 6 | Email ID | TC6 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 7 | Middle Name (optional) | TC7 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 8 | Middle Name (optional) | TC8 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 9 | Middle Name (optional) | TC9 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 10 | Mobile Number | TC10 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 11 | Mobile Number | TC11 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 12 | Mobile Number | TC12 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 13 | Last Name | TC13 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 14 | Last Name | TC14 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 15 | Last Name | TC15 | (per plan) | Field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 16 | Branch (dropdown) | TC16 | (per plan – SELECT_AND_VERIFY) | Dropdown selection confirmed | Not executed (tooling error) | BLOCKED | Could not run SELECT_AND_VERIFY. |
+| 17 | Branch search within dropdown | TC17 | (per plan) | Search field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Branch dropdown not automatable in this run. |
+| 18 | Branch search within dropdown | TC18 | (per plan) | Search field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 19 | Branch search within dropdown | TC19 | (per plan) | Search field behavior validated via FILL_CHECK | Not executed (tooling error) | BLOCKED | Same environment issue. |
+| 20 | Add profile picture | TC20 | (per plan – TAP_VERIFY) | Button tap and upload flow verified | Not executed (tooling error) | BLOCKED | No TAP/VERIFY possible without page automation. |
+| 21 | Save & Exit | TC21 | N/A (VERIFY_ONLY) | Existence & label verified | Not executed (tooling error) | BLOCKED | Could not run VERIFY_ONLY via evaluate_script. |
+| 22 | Save & Continue | TC22 | N/A (VERIFY_ONLY) | Existence & label verified | Not executed (tooling error) | BLOCKED | Could not run VERIFY_ONLY via evaluate_script. |
+
+*(Inputs and detailed expectations are “per plan” because they were never actually sent to the page; only the test intent is known.)*
+
+## BUGS FOUND
+
+No bugs found
+
+No application behavior was exercised, so no functional defects can be confirmed or ruled out.
+
+## TEST SUMMARY
+
+- Total: 22  
+- Passed: 0  
+- Failed: 0 (bugs)  
+- Skipped: 0  
+- Blocked: 22  
+
+All cases are blocked due to the underlying browser automation/profile conflict.
+
+## RECOMMENDATIONS
+
+1. **Resolve tooling/browser profile conflict**
+   - Stop any existing Chrome DevTools MCP / automation session that is using `/Users/impactoinfra/.cache/chrome-devtools-mcp/chrome-profile`, or
+   - Reconfigure the automation runner to use `--isolated` / a different `userDataDir` so a fresh browser context is available for this test run.
+
+2. **Re-run the full test plan after fix**
+   - Once the browser session issue is resolved, rerun TC1–TC22 exactly as per the plan:
+     - Use `evaluate_script` for all FILL_CHECK / VERIFY_ONLY / SELECT_AND_VERIFY tests.
+     - Keep a single tab and no navigation away from the New Member Application – Contact Info screen.
+     - Do not click Save & Exit / Save & Continue; only verify their presence and labels.
+
+3. **Automation robustness**
+   - In your CI or local test harness, consider:
+     - Adding a pre-check that ensures no conflicting Chrome profile is in use before starting tests.
+     - Configuring each run with an explicit, unique user data directory (or isolated context) to avoid collisions when multiple suites or users run tests concurrently.
+
+4. **Areas needing deeper testing (once tooling works)**
+   - Email format validation (invalid vs valid emails, case handling due to auto-uppercase).
+   - Mobile number masking and length enforcement (10 digits, non-numeric characters).
+   - Branch dropdown search relevance and behavior with partial matches and no-match scenarios.
+   - Required field errors for First Name, Last Name, Email ID, Mobile Number, and Branch when left empty.

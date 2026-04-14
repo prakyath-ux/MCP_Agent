@@ -1,0 +1,611 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - Contact Info",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_contact_info:add_profile_picture:button",
+          "name": "Add profile picture",
+          "type": "button",
+          "required": false,
+          "behavior": "Clicking this button is expected to open a file chooser for profile photo upload. No hidden file inputs were explicitly inspected or used in this run; no upload was attempted.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Optional; no validation observed on this screen.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "After filling with 'TEST_FIRST', the accessibility snapshot shows value 'TESTFIRST' (uppercase, underscore/space removed). Indicates auto-uppercase and whitespace removal or normalization. React-controlled input behaved correctly with standard fill().",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Required (*). No inline error shown for the test value. Likely expects alphabetic characters; max length not directly observed.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "After filling with 'test@example.com', value is rendered as 'TEST@EXAMPLE.COM' (fully uppercased). Standard fill() worked; React-controlled.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required (*). Appears to enforce an email format, though no error was triggered with a valid address. Uppercasing suggests normalization; domain case-insensitivity is standard, but local-part case sensitivity could be affected.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "After filling with 'TEST_MIDDLE', displayed value is 'TESTMIDDLE' (uppercased, whitespace or underscore removed). fill() worked normally.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Optional. No validation messages were shown for the provided value.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Typed '18681234567'; after fill, snapshot shows value '186-8123'. This indicates a masking/formatting rule that displays only 7 digits as a local number with a hyphen, while '+1868' is shown separately as a country code flag/label. The extra digits '4567' are not visible, suggesting they may be trimmed or not accepted.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required (*). Likely expects a 7-digit local number with country code '+1868' fixed. Enforces numeric input and formats as 'XXX-XXXX'.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "After filling with 'TEST_LAST', value is 'TESTLAST' (uppercased, whitespace/underscore removed). fill() worked; React-controlled.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required (*). No error message shown with this value.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Initially labeled 'Select Branch'. Clicking opened a custom dropdown overlay with a 'Search...' textbox and a list of StaticText options. Clicking option '300 - TECU - PT. FORTIN BRANCH' closed the overlay and updated the button label to this value.",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - PT. FORTIN BRANCH",
+            "900 - TECU Business Development Unit",
+            "600 - TISL",
+            "601 - TISL Branch 1"
+          ],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (*). Must select one branch from the provided list. No validation errors occurred after selecting an option.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch_search:text_input",
+          "name": "Branch search",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Appears only when the Branch dropdown is open. It is intended to filter branch options, but it was not used in this run. No default value.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "Optional free text search field.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary action button likely saves current data and exits the application flow.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "Triggers navigation; pre-submit validation rules not observed because click was intentionally avoided.",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary action button to proceed to the next step of the application (e.g., 'Documents').",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "Would likely trigger required-field validation before moving on; not observed.",
+          "screen_name": "New Member Application - Contact Info"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_contact_info:add_profile_picture:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_82",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_113",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_129",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_137",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Branch')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Branch\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_146",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch_search:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Search...\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Search...']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "2_0",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_154",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_158",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Contact Info"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_contact_info:add_profile_picture:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099137",
+          "last_seen": "2026-04-14T11:56:31.099137"
+        },
+        {
+          "element_id": "new_member_application_contact_info:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099207",
+              "model": "",
+              "value_entered": "TEST_FIRST",
+              "accepted": true,
+              "issues": "Auto-transformation may surprise users expecting spaces; assumed to be business requirement.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099223",
+          "last_seen": "2026-04-14T11:56:31.099223"
+        },
+        {
+          "element_id": "new_member_application_contact_info:email_id:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099259",
+              "model": "",
+              "value_entered": "test@example.com",
+              "accepted": true,
+              "issues": "Uppercasing email may conflict with systems that treat local-part as case-sensitive, but typically acceptable; no visible validation error in this flow.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099266",
+          "last_seen": "2026-04-14T11:56:31.099266"
+        },
+        {
+          "element_id": "new_member_application_contact_info:middle_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099298",
+              "model": "",
+              "value_entered": "TEST_MIDDLE",
+              "accepted": true,
+              "issues": "Same auto-uppercase/spacing behavior as First Name; might be by design.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099303",
+          "last_seen": "2026-04-14T11:56:31.099303"
+        },
+        {
+          "element_id": "new_member_application_contact_info:mobile_number:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099332",
+              "model": "",
+              "value_entered": "18681234567",
+              "accepted": true,
+              "issues": "User-entered extra digits beyond mask length are not visible; if not validated with an explicit message, users may not realize input was truncated.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099337",
+          "last_seen": "2026-04-14T11:56:31.099337"
+        },
+        {
+          "element_id": "new_member_application_contact_info:last_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099364",
+              "model": "",
+              "value_entered": "TEST_LAST",
+              "accepted": true,
+              "issues": "Same normalization as First Name; might affect names requiring spaces or diacritics, depending on backend rules.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099369",
+          "last_seen": "2026-04-14T11:56:31.099369"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-14T11:56:31.099406",
+              "model": "",
+              "value_entered": "300 - TECU - PT. FORTIN BRANCH",
+              "accepted": true,
+              "issues": "Options are rendered as StaticText nodes in the accessibility tree rather than role=\"option\" elements, which may reduce accessibility and keyboard navigation support.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099411",
+          "last_seen": "2026-04-14T11:56:31.099411"
+        },
+        {
+          "element_id": "new_member_application_contact_info:branch_search:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099437",
+          "last_seen": "2026-04-14T11:56:31.099437"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099468",
+          "last_seen": "2026-04-14T11:56:31.099468"
+        },
+        {
+          "element_id": "new_member_application_contact_info:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-14: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-14T11:56:31.099497",
+          "last_seen": "2026-04-14T11:56:31.099497"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-14T11:55:11.224977",
+  "updated_at": "2026-04-14T11:56:33.203322",
+  "version": 1
+}

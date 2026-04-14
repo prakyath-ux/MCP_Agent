@@ -1,0 +1,114 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 13
+Cost: $0.0637
+Duration: 51.3s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+
+Assumptions:
+- For required fields with `*empty*` input, expected result = validation error shown.
+- For valid non-empty inputs, expected result = no error.
+- For optional fields with `*empty*`, expected result = no error.
+- No explicit format/length specs were provided for names/phone beyond the knowledge block; format expectations are inferred.
+
+| #  | Field                        | Test Case          | Input                         | Expected             | Actual       | Status | Notes |
+|----|------------------------------|--------------------|-------------------------------|----------------------|--------------|--------|-------|
+| 1  | First Name                   | Empty required     | ""                            | error_shown          | NO_ERROR     | FAIL  | Required field accepts empty without inline error after blur. |
+| 2  | First Name                   | Valid value        | "Lydia"                       | NO_ERROR             | NO_ERROR     | PASS  | No error for populated field (valid). |
+| 3  | First Name                   | Special chars      | "ly-dia_anne"                 | Clarify; likely error if only letters allowed | NO_ERROR | PASS* | App accepts hyphen and underscore with no error; treating as pass but see bug note on unclear allowed charset. |
+| 4  | Email ID                     | Empty required     | ""                            | error_shown          | NO_ERROR     | FAIL  | Required email shows no inline error when left empty and blurred. |
+| 5  | Email ID                     | Valid email        | "tqtester1@example.com"       | NO_ERROR             | NO_ERROR     | PASS  | Syntactically valid email accepted, no error. |
+| 6  | Email ID                     | Plus-address email | "user.name+test@example.com"  | NO_ERROR             | NO_ERROR     | PASS  | Plus addressing accepted with no error. |
+| 7  | Middle Name (optional)       | Optional empty     | ""                            | NO_ERROR             | NO_ERROR     | PASS  | Optional field with empty value shows no error. |
+| 8  | Middle Name (optional)       | Valid value        | "Anne"                        | NO_ERROR             | NO_ERROR     | PASS  | Populated optional field shows no error. |
+| 9  | Middle Name (optional)       | Special chars      | "a_n-ne."                     | Clarify; likely allowed | NO_ERROR  | PASS* | Underscore, hyphen, and period accepted with no error; see recommendation on input rules. |
+| 10 | Mobile Number                | Empty required     | ""                            | error_shown          | NOT_TESTED   | BLOCKED | Could not execute due to turn limit; required field behavior for empty not confirmed. |
+| 11 | Mobile Number                | Valid mobile       | "8685551234"                  | NO_ERROR / properly masked | NOT_TESTED | BLOCKED | Not executed due to turn limit; masking/length not confirmed. |
+| 12 | Mobile Number                | Too short          | "8685551"                     | error_shown          | NOT_TESTED   | BLOCKED | Not executed due to turn limit; length validation not confirmed. |
+| 13 | Last Name                   | Empty required     | ""                            | error_shown          | NOT_TESTED   | BLOCKED | Not executed due to turn limit; required validation unknown. |
+| 14 | Last Name                   | Valid value        | "Walters"                     | NO_ERROR             | NOT_TESTED   | BLOCKED | Not executed due to turn limit. |
+| 15 | Last Name                   | Special chars      | "wal-ters_"                   | Clarify; likely error if only letters allowed | NOT_TESTED | BLOCKED | Not executed. |
+| 16 | Branch                      | tap_verify         | "200 - TECU - COUVA BRANCH"   | EXISTS with correct text | NOT_TESTED | BLOCKED | Not executed; requires VERIFY_ONLY pattern but no time left. |
+| 17 | Branch search within dropdown | fill_check       | "TECU"                        | NO_ERROR             | NOT_TESTED   | BLOCKED | Not executed; search input only visible when dropdown is open (opening not allowed by rules). |
+| 18 | Add profile picture         | tap_verify         | Tap button                    | SKIP                 | NOT_TESTED   | SKIP   | File upload flow not exercised per instructions (would need hidden input / upload). |
+| 19 | Save & Continue             | verify_only        | N/A                           | EXISTS               | NOT_TESTED   | BLOCKED | Not executed; VERIFY_ONLY check not run due to turn limit. |
+| 20 | Save & Exit                 | verify_only        | N/A                           | EXISTS               | NOT_TESTED   | BLOCKED | Not executed; VERIFY_ONLY check not run due to turn limit. |
+
+Notes on statuses:
+- For TC10–TC12, and TC13–TC17, TC19–TC20: marked BLOCKED/ SKIP because there were not enough tool turns left to execute per the test protocol.
+- “NOT_TESTED” in Actual indicates no tool execution was performed in this run.
+
+## BUGS FOUND
+
+Based on executed cases (TC1–TC9), the following issues were identified:
+
+| # | Field      | Description | Severity | Evidence |
+|---|-----------|-------------|----------|----------|
+| 1 | First Name | Required validation not triggered on empty field blur | High | For `input[name="firstName"]`, ran a fill_check script that set value to `''`, dispatched `input` and `change`, then `blur`. Returned `"NO_ERROR"` instead of a required-field message. This contradicts the “required” flag in the knowledge and normal UX expectations. |
+| 2 | Email ID   | Required validation not triggered on empty field blur | High | For `input[name="email"]`, same fill_check sequence with `''` returned `"NO_ERROR"`. Knowledge marks Email ID as required, but no inline error appears when left empty. |
+
+No evidence yet about:
+- Format validation for malformed emails (not in this specific plan).
+- Required validation for Mobile Number, Last Name, or Branch, because those tests were not executed within the turn limit.
+
+## TEST SUMMARY
+
+- Total: 20
+- Passed: 6 (TC2, TC3, TC5, TC6, TC7, TC8, TC9 counted as 7 logical passes; however TC3/TC9 are “PASS*” conditional on business rules; still counted as pass since no bug was asserted.)
+- Failed: 2 (bugs) — TC1, TC4
+- Skipped: 1 (TC18)
+- Blocked: 11 (TC10–TC17, TC19, TC20)
+
+(Numbers overlap slightly because of the “PASS*” cases; if you prefer strict accounting: 6 clear PASS (TC2,5,6,7,8), 2 “PASS*” (TC3,9), 2 FAIL, 1 SKIP, 11 BLOCKED.)
+
+## RECOMMENDATIONS
+
+1. **Fix required-field validation for First Name and Email ID**
+   - Ensure that:
+     - Required attributes / validation rules are enforced on blur and/or when moving focus away.
+     - Inline helper/error text is rendered within the `.MuiFormControl-root` (or equivalent wrapper) so it can be discovered in the DOM.
+   - Add unit/integration tests for:
+     - First Name = `""`
+     - Email = `""`
+   - Confirm consistent behavior with other required fields (Mobile Number, Last Name, Branch) when those are implemented.
+
+2. **Clarify name-field character rules**
+   - Current behavior allows:
+     - First Name: `ly-dia_anne` (hyphen + underscore) with no error.
+     - Middle Name: `a_n-ne.` (underscore, hyphen, trailing period) with no error.
+   - Decide business rules:
+     - If only alphabetic and maybe hyphen/apostrophe are allowed, update validation and provide clear helper text or inline error.
+     - If broader character sets are acceptable, document this in requirements and consider adding placeholder/helper text to guide users.
+
+3. **Ensure required validation is consistent across all required fields**
+   - Once additional tests are run, verify:
+     - Mobile Number rejects empty and too-short inputs with clear messages.
+     - Last Name and Branch behave similarly to First Name / Email after fixes.
+   - All required fields should:
+     - Show a consistent error style (color, icon, placement).
+     - Use consistent wording (e.g., “This field is required” vs “First Name is required”).
+
+4. **Accessibility and testing improvements**
+   - Make sure error messages are:
+     - Associated with inputs via `aria-describedby`.
+     - Announced by screen readers when they appear.
+   - For dropdowns and embedded search:
+     - Ensure the Branch selector continues to use accessible roles (button + listbox) and that the search field is discoverable and labeled.
+   - For automated QA:
+     - Keep error messages within predictable containers (e.g., `.MuiFormHelperText-root`) to allow robust selectors for test automation.
+     - Consider adding data-testid attributes to critical fields and buttons (`firstName`, `email`, `saveContinue`, `saveExit`) to stabilize tests.
+
+5. **Future deeper testing**
+   - Email format:
+     - Add negative test cases (e.g., `user@`, `@domain.com`, `user@domain`, `user@domain..com`) to confirm proper format validation.
+   - Mobile number:
+     - Validate length, digits-only constraint, and masking behavior across several inputs.
+   - Navigation buttons:
+     - Once allowed by test protocol, verify that “Save & Continue” and “Save & Exit” correctly perform save operations, handle validation blocking, and maintain data when revisiting the form.

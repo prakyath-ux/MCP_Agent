@@ -1,0 +1,73 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 2
+Cost: $0.0170
+Duration: 17.4s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+
+Environment/browser tooling failed before any in-app interaction could be performed, so all cases are effectively blocked at the tooling level rather than by the application UI.
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | TC1 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | `scan_page_summary` failed: Chrome DevTools MCP profile already in use; no DOM access. |
+| 2 | First Name | TC2 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 3 | First Name | TC3 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 4 | Email ID | TC4 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 5 | Email ID | TC5 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 6 | Email ID | TC6 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 7 | Middle Name (optional) | TC7 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 8 | Middle Name (optional) | TC8 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 9 | Middle Name (optional) | TC9 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 10 | Mobile Number | TC10 | (per plan) | Field filled, masking/validation observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 11 | Mobile Number | TC11 | (per plan) | Field filled, masking/validation observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 12 | Mobile Number | TC12 | (per plan) | Field filled, masking/validation observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 13 | Last Name | TC13 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 14 | Last Name | TC14 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 15 | Last Name | TC15 | (per plan) | Field filled, validation result observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 16 | Branch (dropdown) | TC16 | (per plan) | Option selected and reflected in trigger | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 17 | Branch search within dropdown | TC17 | (per plan) | Text entered, options filtered | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 18 | Branch search within dropdown | TC18 | (per plan) | Text entered, options filtered | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 19 | Add profile picture | TC19 | (per plan) | Button tap verified / upload flow observed | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 20 | Save & Exit | TC20 | N/A (VERIFY_ONLY) | Existence/text verified | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+| 21 | Save & Continue | TC21 | N/A (VERIFY_ONLY) | Existence/text verified | Tooling error before interaction | BLOCKED | Same environment error as TC1. |
+
+## BUGS FOUND
+
+No bugs found in the application itself; testing was blocked by the automation environment:
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | N/A (environment) | Chrome DevTools MCP cannot start because the Chrome profile is already in use, preventing any `evaluate_script` execution. | High (test-blocking) | Error from `scan_page_summary`: “The browser is already running for /Users/impactoinfra/.cache/chrome-devtools-mcp/chrome-profile. Use a different `userDataDir` or stop the running browser first.” |
+
+## TEST SUMMARY
+
+- Total: 21  
+- Passed: 0  
+- Failed: 0 (no app-level bugs identified)  
+- Skipped: 0  
+- Blocked: 21  
+
+## RECOMMENDATIONS
+
+1. **Resolve automation environment issue first**
+   - Stop any existing Chrome instance using the same MCP profile directory (`/Users/impactoinfra/.cache/chrome-devtools-mcp/chrome-profile`), or
+   - Reconfigure the DevTools MCP to use an isolated `userDataDir`/profile for this run.
+   - Once DevTools evaluates scripts successfully, rerun the full test plan.
+
+2. **After environment fix, execute as planned**
+   - Use `evaluate_script` only, following:
+     - FILL_CHECK for all text inputs (first/middle/last name, email, mobile, branch search).
+     - SELECT_AND_VERIFY for Branch dropdown (custom combobox pattern).
+     - VERIFY_ONLY for Save & Exit and Save & Continue (no clicking).
+   - Ensure no page reloads and no navigation actions, as per plan.
+
+3. **Future robustness**
+   - For CI or shared environments, configure each test run with its own isolated Chrome user data directory to avoid profile-lock conflicts.
+   - Add a pre-check in the harness that confirms DevTools MCP can open a session before starting functional test cases.

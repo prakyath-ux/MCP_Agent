@@ -48,6 +48,63 @@ def _map_type(raw_type: str) -> ElementType:
     return _TYPE_MAP.get(raw_type.lower(), ElementType.OTHER)
 
 
+# ── XPath → CSS conversion (free fallback when LLM doesn't emit css_selector) ──
+
+import re
+
+_CSS_SAFE_ATTRS = (
+    "id", "name", "data-testid", "data-test", "data-cy",
+    "placeholder", "aria-label", "aria-labelledby",
+    "type", "role", "for", "href",
+    "title", "alt", "value", "action",
+    "class",
+)
+
+
+def xpath_to_css(xpath: str, tag: str | None = None) -> dict[str, str | list[str]]:
+    """Parse @name/@id/@placeholder/etc. from an XPath into CSS selectors.
+
+    Returns dict with keys: css_selector, css_fallbacks, and optionally
+    js_selector + text_content (for text-matched XPaths like //button[normalize-space()=...]).
+    """
+    if not xpath:
+        return {"css_selector": "", "css_fallbacks": []}
+
+    if tag is None:
+        tag_match = re.match(r"//(\w+)", xpath)
+        tag = tag_match.group(1) if tag_match else "input"
+
+    attrs = re.findall(r"@([\w-]+)='([^']*)'", xpath)
+    if not attrs:
+        attrs = re.findall(r'@([\w-]+)="([^"]*)"', xpath)
+
+    selectors = [
+        f'{tag}[{name}="{value}"]'
+        for name, value in attrs
+        if name in _CSS_SAFE_ATTRS
+    ]
+
+    if selectors:
+        return {"css_selector": selectors[0], "css_fallbacks": selectors[1:]}
+
+    # Text-based XPath fallback — cannot express as pure CSS; emit a JS finder
+    text_match = re.search(r'normalize-space\(\)=["\']([^"\']+)["\']', xpath)
+    if text_match:
+        text = text_match.group(1)
+        js = (
+            f"[...document.querySelectorAll('{tag}')]"
+            f".find(el => el.textContent.trim() === '{text}')"
+        )
+        return {
+            "css_selector": "",
+            "css_fallbacks": [],
+            "js_selector": js,
+            "text_content": text,
+        }
+
+    return {"css_selector": "", "css_fallbacks": []}
+
+
 # ── Convert mobile knowledge JSON ───────────────────────────────────────────
 
 def convert_mobile_knowledge(path: Path) -> KnowledgeBase:
@@ -189,8 +246,12 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
     l1_elements: list[L1Element] = []
     l2_elements: list[L2Element] = []
 
-    # Web JSONs have "fields" and "buttons" as separate arrays
-    all_elements = data.get("fields", []) + data.get("buttons", [])
+    # Accept either the new unified shape ("elements") or the legacy split shape
+    # ("fields" + "buttons") from version_2 exports.
+    all_elements = (
+        _l(data, "elements")
+        or (_l(data, "fields") + _l(data, "buttons"))
+    )
 
     for i, el in enumerate(all_elements):
         el_type = _map_type(_s(el, "type", "other"))
@@ -216,18 +277,32 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
             screen_name=screen_name,
         ))
 
-        # L1 — web uses CSS > xpath > uid
+        # L1 — web uses CSS > xpath > uid. If only xpath is given, derive CSS.
         locators: list[Locator] = []
 
         css = _s(el, "css_selector")
+        css_fallbacks = list(_l(el, "css_fallbacks"))
+        js_selector = _s(el, "js_selector")
+        xpath = _s(el, "xpath")
+
+        if not css and xpath:
+            derived = xpath_to_css(xpath)
+            css = str(derived.get("css_selector") or "")
+            derived_fallbacks = derived.get("css_fallbacks") or []
+            if isinstance(derived_fallbacks, list):
+                css_fallbacks.extend(str(fb) for fb in derived_fallbacks)
+            js_selector = js_selector or str(derived.get("js_selector") or "")
+
         if css:
             locators.append(Locator(strategy="css", value=css, confidence=1.0))
 
-        for fb in _l(el, "css_fallbacks"):
+        for fb in css_fallbacks:
             if fb:
                 locators.append(Locator(strategy="css", value=fb, confidence=0.9))
 
-        xpath = _s(el, "xpath")
+        if js_selector:
+            locators.append(Locator(strategy="js", value=js_selector, confidence=0.85))
+
         if xpath:
             locators.append(Locator(strategy="xpath", value=xpath, confidence=0.8))
 

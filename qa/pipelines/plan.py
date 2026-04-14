@@ -1,5 +1,6 @@
 # qa/pipelines/plan.py — Pipeline 2: Test Case Planning (pure LLM, no MCP)
 
+import asyncio
 import json
 import time
 
@@ -33,6 +34,10 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
     skip_name_keywords = {
         "back", "backbutton", "headerimage", "headercontainer", "texture_view",
         "screen title", "title", "label", "tab label", "nav text", "header",
+        # Dropdown helper inputs that only exist while a parent dropdown is open.
+        # These should not be treated as standalone testable fields — selecting
+        # an option from the parent dropdown covers their purpose.
+        "search", "filter",
     }
 
     def _is_testable(el) -> bool:
@@ -125,12 +130,38 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         # No mcp_servers — pure planning
     )
 
+    # Attach a TurnLogger so plan's single LLM call gets cost-tracked just like
+    # explore/execute do. Without this, plan always reports cost=$0 even though
+    # it makes a real LLM call (~$0.001-$0.005).
+    from qa.engine.orchestrator import TurnLogger
+    plan_logger = TurnLogger(model=inp.model)
+
     start_time = time.time()
-    result = await Runner.run(agent, input=task, max_turns=1)
+    try:
+        result = await asyncio.wait_for(
+            Runner.run(agent, input=task, max_turns=1, hooks=plan_logger),
+            timeout=120.0,
+        )
+    except asyncio.TimeoutError:
+        elapsed = time.time() - start_time
+        print(f"\n  TIMEOUT: plan stalled for {elapsed:.1f}s — returning empty plan")
+        return PlanOutput(model=inp.model, duration_sec=elapsed)
     duration = time.time() - start_time
 
     raw_plan = result.final_output or ""
     test_cases = _parse_test_plan(raw_plan)
+
+    # Group cases by field so all tests for one field run consecutively.
+    # Preserves first-appearance order of fields and HIGH→MED→LOW within field.
+    priority_rank = {"HIGH": 0, "MED": 1, "LOW": 2}
+    field_first_seen: dict[str, int] = {}
+    for i, tc in enumerate(test_cases):
+        if tc.field_name not in field_first_seen:
+            field_first_seen[tc.field_name] = i
+    test_cases.sort(key=lambda tc: (
+        field_first_seen.get(tc.field_name, 999),
+        priority_rank.get(tc.priority.value.upper(), 99),
+    ))
 
     print(f"\n  Generated {len(test_cases)} test cases in {duration:.1f}s")
 
@@ -138,7 +169,7 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         test_cases=test_cases,
         coverage_summary=f"{len(test_cases)} cases covering {len(l0_index)} elements",
         model=inp.model,
-        cost_usd=0.0,  # Minimal — one LLM call
+        cost_usd=plan_logger.budget.current_cost,
         duration_sec=duration,
         raw_plan_text=raw_plan,
     )
@@ -177,6 +208,8 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
             approach = TestApproach.SKIP
         if "FILL" in approach_text:
             approach = TestApproach.FILL_CHECK
+        if "SELECT" in approach_text:
+            approach = TestApproach.SELECT_AND_VERIFY
 
         # Map priority
         priority_text = parts[-1].strip().upper() if len(parts) > 6 else "MED"

@@ -1,0 +1,100 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 22
+Cost: $0.1402
+Duration: 90.7s
+============================================================
+
+## Screen: New Member Application - Contact Info
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| 1 | First Name | Empty required | `""` | Error shown for required field | `NO_ERROR` | FAIL | Required field accepts empty value with no inline error. |
+| 2 | First Name | Valid alphabetic | `Lydia` | No error; value accepted (likely uppercased) | `error=NO_ERROR`, value=`LYDIA` | PASS | Auto-uppercase behavior confirmed. |
+| 3 | First Name | Alphanumeric | `Lydia123` | Either reject numerics (error) or store full value | `error=NO_ERROR`, value=`LYDIA` | FAIL | Numerics silently stripped without validation or user feedback. |
+| 4 | Email ID | Empty required | `""` | Error shown for required field | `NO_ERROR` | FAIL | Required email field shows no error when empty. |
+| 5 | Email ID | Valid email | `tqtester1@example.com` | No error; value accepted (uppercased) | `error=NO_ERROR`, value=`TQTESTER1@EXAMPLE.COM` | PASS | Valid email accepted and uppercased. |
+| 6 | Email ID | Invalid format | `not-an-email` | Error for invalid email format | `error=NO_ERROR`, value=`NOT-AN-EMAIL` | FAIL | No email-format validation appears to run. |
+| 7 | Middle Name (optional) | Empty optional | `""` | No error | `NO_ERROR` | PASS | Optional field behaves correctly when empty. |
+| 8 | Middle Name (optional) | Alphabetic | `Anne` | No error; value accepted (uppercased) | `error=NO_ERROR`, value=`ANNE` | PASS | Auto-uppercase works, no validation issues. |
+| 9 | Middle Name (optional) | With hyphen | `Anne-Marie` | No error; hyphen allowed | `error=NO_ERROR`, value=`ANNE-MARIE` | PASS | Hyphenated names accepted. |
+| 10 | Mobile Number | Empty required | `""` | Error shown for required field | `NO_ERROR` | FAIL | Required mobile number allows blank with no error. |
+| 11 | Mobile Number | Valid numeric | `8685551234` | Value accepted or masked; no error | `error=NO_ERROR`, value=`` (empty) | FAIL | Digits are cleared, leaving field empty without any error. |
+| 12 | Mobile Number | Alphabetic | `abcd` | Reject non-numeric with error | `error=NO_ERROR`, value=`` (empty) | FAIL | Non-numeric input is cleared with no feedback; field ends empty and error-free. |
+| 13 | Last Name | Empty required | `""` | Error shown for required field | `NO_ERROR` | FAIL | Required last name accepts empty input with no inline error. |
+| 14 | Last Name | Valid alphabetic | `Walters` | No error; value accepted (uppercased) | `error=NO_ERROR`, value=`WALTERS` | PASS | Expected behavior. |
+| 15 | Last Name | Alphanumeric | `Walters3` | Either reject numerics with error or accept full string | `error=NO_ERROR`, value=`WALTERS` | FAIL | Numeric suffix silently removed with no validation message. |
+| 16 | Branch (dropdown) | Select specific branch | Option containing “Marabella” | Trigger label updates from “Select Branch” to selected option | `OPTION_NOT_FOUND|available=`; trigger stayed `Select Branch` | BLOCKED | Could not detect listbox options or select Marabella; likely DOM structure not matched by generic dropdown selectors. |
+| 17 | Branch search | Type search text | `Marabella` | Search field visible when dropdown open; text populated | `SEARCH_NOT_FOUND` | BLOCKED | Could not locate in-dropdown search input by placeholder or type; blocked by unknown selector/structure. |
+| 18 | Save & Exit button | VERIFY_ONLY | N/A | Button exists with correct label; not clicked | `EXISTS|text=Save & Exit` | PASS | Presence and label verified; no click performed. |
+| 19 | Save & Continue button | VERIFY_ONLY | N/A | Button exists with correct label; not clicked | `EXISTS|text=Save & Continue` | PASS | Presence and label verified; no click performed. |
+
+---
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | First Name | Required validation not enforced; empty value shows no error. | Medium | Setting `input[name="firstName"]` to `""` via React-safe setter and blurring returned `NO_ERROR`. |
+| 2 | First Name | Numerics removed silently from alphanumeric input without validation message. | Low | Filling `Lydia123` resulted in `value="LYDIA"` and `error="NO_ERROR"`, so digits were stripped with no user feedback. |
+| 3 | Email ID | Required validation not enforced; empty email shows no error. | High | Setting `input[name="email"]` to `""` and triggering `input`/`change`/blur returned `NO_ERROR`. |
+| 4 | Email ID | No validation for syntactically invalid email format. | High | Filling `not-an-email` produced `value="NOT-AN-EMAIL"` and `error="NO_ERROR"`; no inline error surfaced. |
+| 5 | Mobile Number | Required validation not enforced; empty mobile shows no error. | High | Setting `input[name="primaryMobileNo"]` to `""` returned `NO_ERROR` with no helper/error text. |
+| 6 | Mobile Number | Numeric input cleared, leaving field empty with no error. | High | Filling `8685551234` resulted in `value=""` and `error="NO_ERROR"`, so a non-empty, numeric input disappeared without explanation and without marking field invalid. |
+| 7 | Mobile Number | Non-numeric input cleared without validation message. | Medium | Filling `abcd` produced `value=""` and `error="NO_ERROR"`; invalid characters were removed and the field ended blank with no error. |
+| 8 | Last Name | Required validation not enforced; empty value shows no error. | Medium | Setting `input[name="lastName"]` to `""` and blurring returned `NO_ERROR`. |
+| 9 | Last Name | Numerics removed silently from alphanumeric input without validation message. | Low | Filling `Walters3` resulted in `value="WALTERS"` and `error="NO_ERROR"`, indicating digits stripped without notifying the user. |
+| 10 | Branch (dropdown) | Dropdown options/search not accessible via standard listbox/search selectors, blocking automated selection and search testing. | Low | Attempting to click `Select Branch` and query `[role=option]`, `.MuiMenuItem-root`, or `input[placeholder="Search..."]` returned `OPTION_NOT_FOUND|available=` and `SEARCH_NOT_FOUND`. Manual UX may still work, but DOM roles/attributes appear non-standard or obfuscated. |
+
+---
+
+## TEST SUMMARY
+
+- Total: 19
+- Passed: 7
+- Failed: 10
+- Skipped: 0
+- Blocked: 2
+
+---
+
+## RECOMMENDATIONS
+
+1. **Validation behavior**
+   - Implement and/or expose **required-field validation** for:
+     - First Name
+     - Email ID
+     - Mobile Number
+     - Last Name  
+     Errors should surface on blur or on form-level validation, with clear messages like “First Name is required.”
+   - Add **email format validation** (HTML5 or custom) to `Email ID`. Reject values without `@` and a valid domain; show message such as “Enter a valid email address.”
+
+2. **Input sanitization vs. user feedback**
+   - Current behavior silently strips numerics from First/Last Name and clears invalid mobile inputs. Prefer:
+     - Either blocking forbidden characters as the user types with subtle cues, or
+     - Allowing typing but showing explicit inline error messages when invalid.
+   - For Mobile Number, do not clear valid numeric values without explanation. If a specific pattern is required, show a message (e.g., “Enter a 7-digit number; country code +1868 is prefilled.”).
+
+3. **Mobile number control**
+   - Ensure that:
+     - The internal value is preserved after input, and
+     - Any masking logic still leaves a stable, readable value in the textbox.
+   - Add explicit messaging for length/format requirements and for non-numeric characters.
+
+4. **Branch dropdown accessibility**
+   - Use standard ARIA roles (`role="combobox"`, `role="listbox"`, `role="option"`) and explicit attributes for the options list and search field.
+   - Ensure the internal “Search...” input is detectable via standard selectors (`input[placeholder="Search..."]` or `role="searchbox"`). This will improve both assistive tech compatibility and automated testability.
+
+5. **General UX and accessibility**
+   - Provide consistent helper text or error text regions with `role="alert"` and/or `aria-live="polite"` for all validated fields.
+   - Verify keyboard navigation:
+     - Tab order follows the visible sequence (First Name → Email → Middle Name → Mobile → Last Name → Branch → Save buttons).
+     - Dropdown can be opened and navigated via keyboard.
+   - Consider adding inline hints for auto-uppercase behavior so users understand why their input changes.
+
+These changes will make validation more transparent to users, reduce confusion when characters or entire values disappear, and improve both accessibility and automated test coverage.
