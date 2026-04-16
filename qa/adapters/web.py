@@ -172,24 +172,59 @@ class WebAdapter:
         await asyncio.sleep(0.5)
 
     async def navigate_to_screen(self, screen_name: str) -> bool:
-        # Web: screen_name is a URL or a relative path
+        # Case 1: absolute URL → direct navigation
         if screen_name.startswith("http"):
             await self._call("navigate_page", {"url": screen_name})
-        else:
-            # Try clicking a link/tab with matching text
-            target = screen_name.lower()
-            fn = (
-                "() => {"
-                "  const links = [...document.querySelectorAll('a, button, [role=\"tab\"]')];"
-                f"  const match = links.find(el => el.textContent.trim().toLowerCase().includes('{target}'));"
-                "   if (match) { match.click(); return 'OK'; } return 'NOT_FOUND';"
-                "}"
-            )
-            result = await self._call("evaluate_script", {"function": fn})
-            if "NOT_FOUND" in result:
-                return False
-        await asyncio.sleep(1.5)
-        return True
+            await asyncio.sleep(1.5)
+            return True
+
+        # Case 2: text-match a link / button / tab whose visible text matches.
+        # Works for in-page tabs (e.g. TECU page 2's section buttons).
+        target = screen_name.lower()
+        # Escape single quotes for safe JS string embedding.
+        target_js = target.replace("\\", "\\\\").replace("'", "\\'")
+        fn = (
+            "() => {"
+            "  const els = [...document.querySelectorAll('a, button, [role=\"tab\"]')];"
+            f"  const match = els.find(el => el.textContent.trim().toLowerCase().includes('{target_js}'));"
+            "   if (match) { match.click(); return 'OK'; } return 'NOT_FOUND';"
+            "}"
+        )
+        result = await self._call("evaluate_script", {"function": fn})
+        if "OK" in result:
+            await asyncio.sleep(1.5)
+            return True
+
+        # Case 3: no matching tab — try clicking a wizard advance button
+        # (Save & Continue / Continue / Next). Used when moving between
+        # validation-gated pages of a multi-step form. The current page's
+        # required fields must be filled with valid data; otherwise the
+        # button may be disabled or the click has no effect.
+        advance_fn = (
+            "() => {"
+            "  const labels = ["
+            "    'Save and Continue', 'Save & Continue',"
+            "    'Continue', 'Next Step', 'Next', 'Proceed'"
+            "  ];"
+            "  const btns = [...document.querySelectorAll('button, [role=\"button\"]')];"
+            "  for (const label of labels) {"
+            "    const btn = btns.find(b => {"
+            "      const t = (b.textContent || '').trim();"
+            "      return (t === label || t.includes(label))"
+            "        && !b.disabled && b.offsetParent !== null;"
+            "    });"
+            "    if (btn) { btn.click(); return 'ADVANCED:' + label; }"
+            "  }"
+            "  return 'NO_ADVANCE_BUTTON';"
+            "}"
+        )
+        adv_result = await self._call("evaluate_script", {"function": advance_fn})
+        if "ADVANCED:" in adv_result:
+            # Page transitions take longer than in-page tab switches — give
+            # the app time to validate, submit, and render the next page.
+            await asyncio.sleep(3.0)
+            return True
+        return False
 
     # ── Element Resolution ───────────────────────────────────
 

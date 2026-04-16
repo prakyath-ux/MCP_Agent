@@ -117,9 +117,17 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
                         print(f"  Could not navigate to {screen_name} — skipping")
                         continue
 
-            # Always navigate to the named screen (even for single-screen runs)
-            # This ensures the correct screen is active when screen_name is specified
-            if screen_name and screen_name != "default":
+            # Mobile: always tap the nav tab for the named screen — idempotent
+            # and ensures the correct tab is active even mid-session.
+            # Web: we already arrived via URL on adapter.launch(); a second
+            # call here would risk triggering the "Save & Continue" advance
+            # fallback on an empty page 1 form. The i>0 block above handles
+            # navigation between screens for multi-screen web runs.
+            if (
+                platform == Platform.MOBILE
+                and screen_name
+                and screen_name != "default"
+            ):
                 await adapter.dismiss_keyboard()
                 await adapter.navigate_to_screen(screen_name)
 

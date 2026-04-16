@@ -92,6 +92,22 @@ Returns JSON: {status, file_uploaded, success_signal, ...}
 - Unexpected page (login/CAPTCHA/error) → STOP and report.
 - 5+ consecutive failures → STOP and produce final report.
 
+# END-OF-SCREEN — LEAVE FORM SUBMITTABLE
+
+Many apps are multi-page wizards. After the orchestrator finishes testing
+this screen, it will try to advance to the next screen (Save & Continue /
+Continue / Next). For that to work, every required field must hold a
+VALID value when you finish.
+
+BEFORE emitting your final report for this screen:
+1. Re-fill any field that your tests left in an invalid or empty state
+   with a plausible valid value (use FILL_CHECK templates above).
+2. Do NOT click Save & Continue / Next / Submit yourself — the
+   orchestrator handles screen advancement.
+3. If a field cannot be left valid (e.g. upload failed), note it in the
+   report — Python will attempt to advance anyway; a failure there means
+   the next screen's tests will be skipped.
+
 # STATUS INTERPRETATION
 
 - PASS    — app behaved as expected
