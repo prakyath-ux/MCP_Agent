@@ -20,6 +20,10 @@ class L0Element(BaseModel):
     default_value: str = ""                              # Pre-filled value if any
     validation_rules: str = ""                           # "required (asterisk)", "max 50 chars"
     screen_name: str = ""
+    # File-upload-only hints captured during explore so plan can auto-resolve
+    # a test file path without prompting for one.
+    accept: str = ""                                     # "image/*", ".pdf,application/pdf"
+    semantic_hint: str = ""                              # profile_picture | id_document | bank_statement | proof_of_address | signature | other
 
 
 # ── L1: Execution Details (what tools use, never in LLM context) ─────────────

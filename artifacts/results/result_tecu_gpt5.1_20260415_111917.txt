@@ -1,0 +1,351 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 24
+Cost: $0.1877
+Duration: 78.8s
+============================================================
+
+## Screen: New Member Application - Personal Information
+
+## TEST CASE RESULTS
+
+| # | Field | Test Case | Input | Expected | Actual | Status | Notes |
+|---|-------|-----------|-------|----------|--------|--------|-------|
+| TC1 | First Name | Empty required | `""` | Inline required-field error shown or form blocks submission; value not accepted | No inline error shown (`NO_ERROR`); field left empty allowed | FAIL | Required flag (*) present but no inline validation message when left blank |
+| TC2 | First Name | Valid name uppercase | `Marisa` | Auto-transformed to `MARISA`, no error | Value became `MARISA`, no error | PASS | Matches expected behavior |
+| TC3 | First Name | Special chars | `MAR!SA-._` | Auto-uppercase; special chars retained or rejected per rules; appropriate error if invalid | Final value `MARISA`; no error | PASS | Special characters stripped, but no crash or error; behavior acceptable per plan (“retained or rejected”) |
+| TC4 | Email ID | Empty required | `""` | Inline required-field error or blocked submission | No inline error shown (`NO_ERROR`) | FAIL | Required (*) but no inline validation when cleared |
+| TC5 | Email ID | Plus addressing | `marisa.qa+tecu1@example.com` | Auto-uppercase, accepted, no error | Value `MARISA.QA+TECU1@EXAMPLE.COM`, no error | PASS | Behavior as expected |
+| TC6 | Email ID | Alternate domain | `USER.NAME_01@EXAMPLE.CO` | Auto-uppercase; accepted if format valid, else error | Value `USER.NAME_01@EXAMPLE.CO`, no error | PASS | `.CO` treated as valid; acceptable per plan |
+| TC7 | Middle Name | Optional empty | `""` | No validation error | No error (`NO_ERROR`) | PASS | Optional behavior confirmed |
+| TC8 | Middle Name | Valid text | `Lynn` | Auto-uppercase to `LYNN`, no error | Value `LYNN`, no error | PASS | Matches expectations |
+| TC9 | Middle Name | Special chars | `L-YNN_.@` | Auto-uppercase; special chars handled per validation, no crash | Final value `LYNN`, no error | PASS | Special chars stripped without crash; acceptable per plan |
+| TC10 | Mobile Number | Empty required | `""` | Required-field error or blocked submission | No inline error (`NO_ERROR`) | FAIL | Required but no inline validation when left blank |
+| TC11 | Mobile Number | 7-digit local | `7135554` | Formatted to `713-5554` with `+1868` prefix displayed; no error | Value `713-5554`, `+1868` prefix visible, no error | PASS | Matches expected mask/format |
+| TC12 | Mobile Number | Extra digits | `7135554820` | Truncate/ignore after 7 digits, display `713-5554`, no crash | Final value `713-5554`, no error | PASS | Extra digits ignored, behavior consistent |
+| TC13 | Last Name | Empty required | `""` | Required-field error or blocked submission | No inline error (`NO_ERROR`) | FAIL | Required but no inline validation when left blank |
+| TC14 | Last Name | Valid name | `Carter` | Auto-uppercase to `CARTER`, no error | Value `CARTER`, no error | PASS | Works as expected |
+| TC15 | Last Name | Special chars | `O'NEIL-._` | Auto-uppercase; special chars accepted/rejected per rules, no crash | Final value `CARTER`, no error | FAIL | Input overwritten with prior value; new value not accepted nor flagged; data loss risk |
+| TC16 | Branch | Select branch | `100 - TECU - MARABELLA BRANCH` | Dropdown opens; label updates to selected branch | Button label updated to `100 - TECU - MARABELLA BRANCH` | PASS | Verified via native click + label check |
+| TC17 | Add profile picture | Upload file | `AUTO` (test file) | Image/file uploaded, thumbnail/filename or success indicator shown | Underlying `<input type=file>` could not be found; upload not possible | BLOCKED | `evaluate_script` returned `NO_FILE_INPUT` even after clicking trigger; likely drag-drop/custom picker we cannot drive |
+| TC18 | Save & Exit | Verify-only | N/A | Visible, enabled, labeled correctly; no navigation | Button found: `Save & Exit`, `disabled=false` | PASS | Meets expectations; not clicked |
+| TC19 | Save & Continue | Verify-only | N/A | Visible, enabled, labeled correctly; no navigation | Button found: `Save & Continue`, `disabled=false` | PASS | Meets expectations; not clicked |
+
+## BUGS FOUND
+
+| # | Field | Description | Severity | Evidence |
+|---|-------|-------------|----------|----------|
+| 1 | First Name | Required-field validation not triggered when field is left empty | High | Using React-safe setter, set `input[name="firstName"]` to `""`, dispatched `input` and `change`, blurred; no `.error` / helper text found (returned `NO_ERROR`) despite `*` indicating required. |
+| 2 | Email ID | Required-field validation not triggered when field is left empty | High | Set `input[name="email"]` to `""`, dispatched events and blur; validation scan around field returned `NO_ERROR`. Field label shows `*` but no inline message. |
+| 3 | Mobile Number | Required-field validation not triggered when field is left empty | High | Set `input[name="primaryMobileNo"]` to `""`, dispatched events and blur; no error helper text detected (`NO_ERROR`), though field is marked required with `*`. |
+| 4 | Last Name | Required-field validation not triggered when field is left empty | High | Set `input[name="lastName"]` to `""`, dispatched events and blur; returned `NO_ERROR` with no visible inline validation message despite required indicator. |
+| 5 | Last Name | New value with special characters not persisted; field reverts to previous value without error | Medium | After successfully setting `lastName` to `CARTER`, setting it to `\"O'NEIL-._\"` and blurring resulted in final value `CARTER` again, with `NO_ERROR`. Input change silently ignored/reverted, causing data loss risk and confusing UX. |
+
+## TEST SUMMARY
+
+- Total: 19  
+- Passed: 13  
+- Failed: 5  
+- Skipped: 0  
+- Blocked: 1  
+
+## RECOMMENDATIONS
+
+- **Required-field validation**  
+  - Implement and surface inline error messages for required fields (First Name, Email ID, Mobile Number, Last Name) on blur and/or on attempted submission.  
+  - Ensure errors are tied to the fields with `aria-describedby` for accessibility.
+
+- **Last Name persistence bug**  
+  - Investigate why `lastName` reverts to a previous valid value when a new (potentially invalid) value is entered.  
+  - If special characters are disallowed, show a clear validation error and keep the user’s raw input so they can correct it, rather than reverting silently.
+
+- **Consistency of special-character handling**  
+  - Current behavior strips special characters in First/Middle Name silently. Consider either:  
+    - Allowing a wider set of characters (apostrophes, hyphens, etc.), or  
+    - Explicitly validating and messaging when characters are removed/invalid, so users understand what happened.
+
+- **Profile picture upload**  
+  - Expose a standard (even if hidden) `<input type="file">` associated with “Add profile picture” to support automation and accessibility tools.  
+  - Ensure there is a visible confirmation (filename or thumbnail) after upload.
+
+- **Accessibility considerations**  
+  - Verify that all error messages (once implemented) are announced via `role="alert"` or similar with appropriate `aria-live` regions.  
+  - Confirm all buttons and fields have descriptive labels (already good for main fields) and logical tab order.  
+
+- **Further testing**  
+  - Perform form-level submission tests to confirm that, even if inline errors are missing now, the backend or client-side logic actually blocks submission when required fields are empty.  
+  - Add tests for invalid formats (e.g., malformed email, non-numeric mobile) and max-length constraints across all name fields.
+
+## RAW EVIDENCE
+
+Below is every tool call the agent made, with its actual return value.
+Cross-reference any claim in TEST CASE RESULTS above with the matching call here.
+
+### 1. Turn 1 — scan_page_summary()
+```json
+{
+  "include_buttons": "yes"
+}
+```
+**Returned:**
+```
+Page elements (11 interactive):
+  a: '(unlabeled)'
+  submit: '(unlabeled)'
+  submit: 'Add profile picture'
+  text: 'firstName' [input[name="firstName"]]
+  email: 'email' [input[name="email"]]
+  text: 'middleName' [input[name="middleName"]]
+  tel: 'primaryMobileNo' [input[name="primaryMobileNo"]]
+  text: 'lastName' [input[name="lastName"]]
+  submit: 'Select Branch'
+  submit: 'Save & Exit'
+  submit: 'Save & Continue'
+```
+
+### 2. Turn 2 — evaluate_script(() => { const el=document.querySelector('input[name="firstName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HT…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"firstName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_ERROR"\n```'}
+```
+
+### 3. Turn 3 — evaluate_script(() => { const el=document.querySelector('input[name="firstName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HT…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"firstName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'Marisa'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"MARISA","error":"NO_ERROR"}\n```'}
+```
+
+### 4. Turn 4 — evaluate_script(() => { const el=document.querySelector('input[name="firstName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HT…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"firstName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, \"MAR!SA-._\"); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"MARISA","error":"NO_ERROR"}\n```'}
+```
+
+### 5. Turn 5 — evaluate_script(() => { const el=document.querySelector('input[name="email"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLIn…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"email\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_ERROR"\n```'}
+```
+
+### 6. Turn 6 — evaluate_script(() => { const el=document.querySelector('input[name="email"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLIn…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"email\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'marisa.qa+tecu1@example.com'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"MARISA.QA+TECU1@EXAMPLE.COM","error":"NO_ERROR"}\n```'}
+```
+
+### 7. Turn 7 — evaluate_script(() => { const el=document.querySelector('input[name="email"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLIn…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"email\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'USER.NAME_01@EXAMPLE.CO'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"USER.NAME_01@EXAMPLE.CO","error":"NO_ERROR"}\n```'}
+```
+
+### 8. Turn 8 — evaluate_script(() => { const el=document.querySelector('input[name="middleName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = H…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"middleName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_ERROR"\n```'}
+```
+
+### 9. Turn 9 — evaluate_script(() => { const el=document.querySelector('input[name="middleName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = H…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"middleName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'Lynn'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"LYNN","error":"NO_ERROR"}\n```'}
+```
+
+### 10. Turn 10 — evaluate_script(() => { const el=document.querySelector('input[name="middleName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = H…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"middleName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'L-YNN_.@'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"LYNN","error":"NO_ERROR"}\n```'}
+```
+
+### 11. Turn 11 — evaluate_script(() => { const el=document.querySelector('input[name="primaryMobileNo"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const prot…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"primaryMobileNo\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_ERROR"\n```'}
+```
+
+### 12. Turn 12 — evaluate_script(() => { const el=document.querySelector('input[name="primaryMobileNo"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const prot…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"primaryMobileNo\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, '7135554'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"713-5554","error":"NO_ERROR"}\n```'}
+```
+
+### 13. Turn 13 — evaluate_script(() => { const el=document.querySelector('input[name="primaryMobileNo"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const prot…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"primaryMobileNo\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, '7135554820'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"713-5554","error":"NO_ERROR"}\n```'}
+```
+
+### 14. Turn 14 — evaluate_script(() => { const el=document.querySelector('input[name="lastName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTM…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"lastName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_ERROR"\n```'}
+```
+
+### 15. Turn 15 — evaluate_script(() => { const el=document.querySelector('input[name="lastName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTM…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"lastName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'Carter'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"CARTER","error":"NO_ERROR"}\n```'}
+```
+
+### 16. Turn 16 — evaluate_script(() => { const el=document.querySelector('input[name="lastName"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTM…)
+```json
+{
+  "function": "() => { const el=document.querySelector('input[name=\"lastName\"]'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, \"O'NEIL-._\"); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const finalVal = el.value; const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return {value: finalVal, error: err ? err.textContent.trim() : 'NO_ERROR'}; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n{"value":"CARTER","error":"NO_ERROR"}\n```'}
+```
+
+### 17. Turn 17 — take_snapshot()
+```json
+{
+  "verbose": false
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': '## Latest page snapshot\nuid=1_0 RootWebArea url="https://qa-tq-awp.impactodigifin.xyz/newapplication"\n  uid=1_1 link "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/"\n    uid=1_2 image "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FTECULogo.png&w=256&q=75"\n  uid=1_3 StaticText "Contact Info"\n  uid=1_4 StaticText "Documents"\n  uid=1_5 StaticText "Additional Details"\n  uid=1_6 StaticText "Other Products"\n  uid=1_7 StaticText "PEP / FATCA"\n  uid=1_8 StaticText "PDF / Other Details"\n  uid=1_9 image "Decorator" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FDecorator.png&w=640&q=75"\n  uid=1_10 StaticText "New Member Application"\n  uid=1_11 image "Terri - Virtual Assistant" url="https://qa-tq-awp.impactodigifin.xyz/Terri/Success%201.svg"\n  uid=1_12 StaticText "Hi, I am happy you are ready to join TECU Credit Union. The new member process will take a few minutes. Let\'s create your account."\n  uid=1_13 StaticText "Upload Profile Photo"\n  uid=1_14 button "camera Add profile picture"\n  uid=1_15 StaticText "Personal Information"\n  uid=1_16 StaticText "First Name"\n  uid=1_17 StaticText "*"\n  uid=1_18 textbox "First Name*" value="MARISA"\n  uid=1_19 StaticText "Email ID"\n  uid=1_20 StaticText "*"\n  uid=1_21 textbox "Enter email address" value="USER.NAME_01@EXAMPLE.CO"\n  uid=1_22 StaticText "Middle Name (optional)"\n  uid=1_23 textbox "Middle Name (optional)" value="LYNN"\n  uid
+```
+
+### 18. Turn 18 — click(1_34)
+```json
+{
+  "uid": "1_34",
+  "includeSnapshot": true
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Successfully clicked on the element\n## Latest page snapshot\nuid=1_0 RootWebArea url="https://qa-tq-awp.impactodigifin.xyz/newapplication"\n  uid=1_1 link "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/"\n    uid=1_2 image "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FTECULogo.png&w=256&q=75"\n  uid=1_3 StaticText "Contact Info"\n  uid=1_4 StaticText "Documents"\n  uid=1_5 StaticText "Additional Details"\n  uid=1_6 StaticText "Other Products"\n  uid=1_7 StaticText "PEP / FATCA"\n  uid=1_8 StaticText "PDF / Other Details"\n  uid=1_9 image "Decorator" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FDecorator.png&w=640&q=75"\n  uid=1_10 StaticText "New Member Application"\n  uid=1_11 image "Terri - Virtual Assistant" url="https://qa-tq-awp.impactodigifin.xyz/Terri/Success%201.svg"\n  uid=1_12 StaticText "Hi, I am happy you are ready to join TECU Credit Union. The new member process will take a few minutes. Let\'s create your account."\n  uid=1_13 StaticText "Upload Profile Photo"\n  uid=1_14 button "camera Add profile picture"\n  uid=1_15 StaticText "Personal Information"\n  uid=1_16 StaticText "First Name"\n  uid=1_17 StaticText "*"\n  uid=1_18 textbox "First Name*" value="MARISA"\n  uid=1_19 StaticText "Email ID"\n  uid=1_20 StaticText "*"\n  uid=1_21 textbox "Enter email address" value="USER.NAME_01@EXAMPLE.CO"\n  uid=1_22 StaticText "Middle Name (optional)"\n  uid=1_23 textbox "Middle
+```
+
+### 19. Turn 19 — click(2_1)
+```json
+{
+  "uid": "2_1",
+  "includeSnapshot": true
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Successfully clicked on the element\n## Latest page snapshot\nuid=1_0 RootWebArea url="https://qa-tq-awp.impactodigifin.xyz/newapplication"\n  uid=1_1 link "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/"\n    uid=1_2 image "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FTECULogo.png&w=256&q=75"\n  uid=1_3 StaticText "Contact Info"\n  uid=1_4 StaticText "Documents"\n  uid=1_5 StaticText "Additional Details"\n  uid=1_6 StaticText "Other Products"\n  uid=1_7 StaticText "PEP / FATCA"\n  uid=1_8 StaticText "PDF / Other Details"\n  uid=1_9 image "Decorator" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FDecorator.png&w=640&q=75"\n  uid=1_10 StaticText "New Member Application"\n  uid=1_11 image "Terri - Virtual Assistant" url="https://qa-tq-awp.impactodigifin.xyz/Terri/Success%201.svg"\n  uid=1_12 StaticText "Hi, I am happy you are ready to join TECU Credit Union. The new member process will take a few minutes. Let\'s create your account."\n  uid=1_13 StaticText "Upload Profile Photo"\n  uid=1_14 button "camera Add profile picture"\n  uid=1_15 StaticText "Personal Information"\n  uid=1_16 StaticText "First Name"\n  uid=1_17 StaticText "*"\n  uid=1_18 textbox "First Name*" value="MARISA"\n  uid=1_19 StaticText "Email ID"\n  uid=1_20 StaticText "*"\n  uid=1_21 textbox "Enter email address" value="USER.NAME_01@EXAMPLE.CO"\n  uid=1_22 StaticText "Middle Name (optional)"\n  uid=1_23 textbox "Middle
+```
+
+### 20. Turn 20 — evaluate_script(() => { const buttons = [...document.querySelectorAll('button, [role=button]')]; const match = buttons.find(b => b.textC…)
+```json
+{
+  "function": "() => { const buttons = [...document.querySelectorAll('button, [role=button]')]; const match = buttons.find(b => b.textContent.trim().includes('100 - TECU - MARABELLA BRANCH')); return match ? 'TRIGGER_NOW|text=' + match.textContent.trim() : 'NOT_VERIFIED'; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"TRIGGER_NOW|text=100 - TECU - MARABELLA BRANCH"\n```'}
+```
+
+### 21. Turn 21 — evaluate_script(() => { const btns = [...document.querySelectorAll('button')]; const btn = btns.find(b => b.textContent.trim() === 'Save…)
+```json
+{
+  "function": "() => { const btns = [...document.querySelectorAll('button')]; const btn = btns.find(b => b.textContent.trim() === 'Save & Exit'); if (!btn) return 'ELEMENT_NOT_FOUND'; return 'EXISTS|text=' + btn.textContent.trim() + '|disabled=' + btn.disabled; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"EXISTS|text=Save & Exit|disabled=false"\n```'}
+```
+
+### 22. Turn 22 — evaluate_script(() => { const btns = [...document.querySelectorAll('button')]; const btn = btns.find(b => b.textContent.trim() === 'Save…)
+```json
+{
+  "function": "() => { const btns = [...document.querySelectorAll('button')]; const btn = btns.find(b => b.textContent.trim() === 'Save & Continue'); if (!btn) return 'ELEMENT_NOT_FOUND'; return 'EXISTS|text=' + btn.textContent.trim() + '|disabled=' + btn.disabled; }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"EXISTS|text=Save & Continue|disabled=false"\n```'}
+```
+
+### 23. Turn 23 — evaluate_script(() => { let inp = document.querySelector('input[type=file]'); if (!inp) { const trigger = [...document.querySelectorAll(…)
+```json
+{
+  "function": "() => { let inp = document.querySelector('input[type=file]'); if (!inp) { const trigger = [...document.querySelectorAll('button, [role=button], label')].find(b => /upload|add\\s+profile|add\\s+photo|choose\\s+file|attach/i.test(b.textContent || '')); if (trigger) trigger.click(); inp = document.querySelector('input[type=file]'); } if (!inp) return 'NO_FILE_INPUT'; inp.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important; position:static !important; width:200px; height:30px; pointer-events:auto;'; return 'EXPOSED|name=' + (inp.name||'') + '|id=' + (inp.id||''); }"
+}
+```
+**Returned:**
+```
+{'type': 'text', 'text': 'Script ran on page and returned:\n```json\n"NO_FILE_INPUT"\n```'}
+```

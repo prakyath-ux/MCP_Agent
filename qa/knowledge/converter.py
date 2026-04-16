@@ -275,6 +275,8 @@ def convert_web_knowledge(path: Path) -> KnowledgeBase:
             default_value="",
             validation_rules=_s(el, "validation_rules"),
             screen_name=screen_name,
+            accept=_s(el, "accept"),
+            semantic_hint=_s(el, "semantic_hint"),
         ))
 
         # L1 — web uses CSS > xpath > uid. If only xpath is given, derive CSS.

@@ -30,6 +30,11 @@ def main() -> None:
     p_explore.add_argument("--provider", default="")
     p_explore.add_argument("--budget", type=float, default=2.0)
     p_explore.add_argument("--max-turns", type=int, default=20)
+    p_explore.add_argument(
+        "--wait",
+        action="store_true",
+        help="Pause after browser launch for manual setup (e.g. fill prior pages); press Enter to continue exploring whatever is on screen.",
+    )
 
     # ── plan ─────────────────────────────────────────────────
     p_plan = sub.add_parser("plan", help="Pipeline 2: Generate test cases from knowledge")
@@ -56,6 +61,11 @@ def main() -> None:
     p_exec.add_argument("--provider", default="")
     p_exec.add_argument("--budget", type=float, default=2.0)
     p_exec.add_argument("--max-turns", type=int, default=15)
+    p_exec.add_argument(
+        "--wait",
+        action="store_true",
+        help="Pause after browser launch for manual setup (e.g. fill prior pages); press Enter to start running tests.",
+    )
 
     # ── full ─────────────────────────────────────────────────
     p_full = sub.add_parser("full", help="Run all 3 pipelines end-to-end")
@@ -94,6 +104,7 @@ async def _cmd_explore(args) -> None:
         provider=args.provider,
         max_turns=args.max_turns,
         budget=args.budget,
+        wait_for_user=getattr(args, "wait", False),
     )
 
     result = await run_explore(inp)
@@ -150,6 +161,7 @@ async def _cmd_execute(args) -> None:
         provider=args.provider,
         max_turns_per_screen=args.max_turns,
         budget=args.budget,
+        wait_for_user=getattr(args, "wait", False),
     )
 
     result = await run_execute(inp)

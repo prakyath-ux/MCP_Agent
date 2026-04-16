@@ -25,6 +25,7 @@ class LoopResult:
     status: str = "completed"  # "completed", "max_turns", "budget_exceeded", "error"
     turn_log: list[dict] = field(default_factory=list)
     rolling_summary: str = ""
+    evidence: list[dict] = field(default_factory=list)  # raw tool call traces
 
 
 class TurnLogger(RunHooks):
@@ -35,6 +36,11 @@ class TurnLogger(RunHooks):
         self.model = model
         self._header_printed = False
         self.budget = BudgetTracker(model)
+        # Raw evidence: every tool call's (turn, tool, args, result) so the
+        # final report's claims can be cross-checked against actual returns.
+        self.evidence: list[dict] = []
+        # Args from the most recent on_llm_end (paired up in on_tool_end).
+        self._pending_args: list[dict] = []
 
     async def on_llm_end(
         self, context: RunContextWrapper, agent: Agent, response: ModelResponse
@@ -60,27 +66,34 @@ class TurnLogger(RunHooks):
         self.budget.record_turn(t_input, t_output, t_cached)
         cache_pct = (t_cached / t_input * 100) if t_input > 0 else 0
 
-        # Extract action for display
+        # Extract action for display + queue every tool-call arg set so
+        # on_tool_end can pair them with results into evidence.
         action = "text_output"
         target = ""
         for item in response.output:
             name = getattr(item, "name", None)
-            if name:
+            if not name:
+                continue
+            args_raw = getattr(item, "arguments", "{}")
+            try:
+                args = json.loads(args_raw)
+            except (json.JSONDecodeError, TypeError):
+                args = {"_raw": str(args_raw)[:500]}
+            self._pending_args.append({
+                "turn": self.turn,
+                "tool": name,
+                "args": args,
+            })
+            if action == "text_output":
                 action = name.replace("mobile_", "")[:28]
-                args_raw = getattr(item, "arguments", "{}")
-                try:
-                    args = json.loads(args_raw)
-                    if "x" in args and "y" in args:
-                        target = f"({args['x']},{args['y']})"
-                    elif "text" in args:
-                        target = str(args["text"])[:20]
-                    elif "packageName" in args:
-                        target = str(args["packageName"])[:20]
-                    elif "button" in args:
-                        target = args["button"]
-                except (json.JSONDecodeError, TypeError):
-                    pass
-                break
+                if "x" in args and "y" in args:
+                    target = f"({args['x']},{args['y']})"
+                elif "text" in args:
+                    target = str(args["text"])[:20]
+                elif "packageName" in args:
+                    target = str(args["packageName"])[:20]
+                elif "button" in args:
+                    target = args["button"]
 
         if not self._header_printed:
             print(f"  {'Turn':<5} {'Action':<30} {'Target':<20} {'Input':>7} {'Cached':>7} {'Out':>6} {'Cache%':>7}")
@@ -88,6 +101,25 @@ class TurnLogger(RunHooks):
             self._header_printed = True
 
         print(f"  {self.turn:<5} {action:<30} {target:<20} {t_input:>7,} {t_cached:>7,} {t_output:>6,} {cache_pct:>6.0f}%")
+
+    async def on_tool_end(
+        self, context: RunContextWrapper, agent: Agent, tool, result: str
+    ) -> None:
+        # Pair this result with the queued args (FIFO).
+        tool_name = getattr(tool, "name", "?")
+        args_entry = None
+        for i, pending in enumerate(self._pending_args):
+            if pending["tool"] == tool_name:
+                args_entry = self._pending_args.pop(i)
+                break
+        if args_entry is None:
+            args_entry = {"turn": self.turn, "tool": tool_name, "args": {}}
+        self.evidence.append({
+            "turn": args_entry["turn"],
+            "tool": tool_name,
+            "args": args_entry["args"],
+            "result": str(result)[:1500],
+        })
 
 
 async def run_agent_loop(
@@ -197,7 +229,13 @@ async def run_agent_loop(
                 "press_key", "upload_file", "wait_for", "hover",
                 # Web: evaluate_script IS the primary test-case action tool.
                 # 4 in a row = 4 test cases running, not a stuck loop.
-                "evaluate_script",
+                "evaluate_script", "take_snapshot",
+                # Our compound tools batch sequences per field/element. 4 in a
+                # row = 4 different fields being tested, not a loop.
+                "test_text_field", "test_dropdown", "test_date_picker",
+                "fill_field_and_verify", "verify_elements_exist",
+                "scan_page_summary", "scan_screen_summary",
+                "upload_file_for_field",
             }
             # Check if last 4 calls were the same tool (excluding action tools)
             if (len(recent_tools) >= 4
@@ -287,4 +325,6 @@ async def run_agent_loop(
         duration_sec=duration,
         status=status,
         rolling_summary=rolling_summary,
+        evidence=logger.evidence,
+        turn_log=turn_log,
     )

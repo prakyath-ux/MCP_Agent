@@ -23,6 +23,7 @@ TC# | Element ID | Field Name | Approach | Test Value | Expected Result | Priori
 Where Approach is one of:
 - FILL_CHECK: Set value on text input, verify acceptance/error
 - SELECT_AND_VERIFY: Open a dropdown, click an option, verify selection actually changed
+- UPLOAD_FILE: Upload a file via the hidden input[type=file]
 - TAP_VERIFY: Tap element, verify response (date pickers, generic taps)
 - VERIFY_ONLY: Check existence/state only (buttons that should NOT be clicked)
 
@@ -66,14 +67,13 @@ Where Approach is one of:
 - Only "Find Member" type action buttons — check existence
 - Do NOT include back buttons or nav tabs
 
-## File uploads (SKIP):
-- Always mark file_upload elements as approach=SKIP
-- Reason: clicking opens the OS file chooser, which blocks browser automation
-  and cannot be dismissed via JS
-- Element names like "Add profile picture", "Upload document", "Choose file"
-  with type=file_upload → ALWAYS SKIP
-- Record one SKIP test case per file upload field with note "File upload
-  cannot be tested via evaluate_script — opens OS file chooser"
+## File uploads (UPLOAD_FILE):
+- Generate ONE UPLOAD_FILE test case per file_upload element
+- test_value: leave as "AUTO" — the pipeline will resolve a real file path
+  using the element's accept + semantic_hint captured during explore
+- Expected: "uploaded" (button text changes, thumbnail or filename appears)
+- Do NOT emit the visible button's click — the execute layer targets the
+  hidden input[type=file] directly via upload_file, no OS chooser opens
 
 # STRICT LIMITS
 - Maximum 3 test cases per field

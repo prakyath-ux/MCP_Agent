@@ -151,6 +151,82 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
     raw_plan = result.final_output or ""
     test_cases = _parse_test_plan(raw_plan)
 
+    # Resolve UPLOAD_FILE placeholders to real file paths via the 4-tier lookup.
+    # Plan prompt tells the LLM to emit test_value="AUTO" for uploads; we swap
+    # it for an actual path from artifacts/test_files/ using the element's
+    # accept + semantic_hint captured during explore.
+    from qa.models.plan import TestApproach
+    from qa.knowledge.file_resolver import resolve_upload_path
+    l0_by_id = {el.element_id: el for el in l0_filtered}
+    upload_l0s = [el for el in l0_filtered if el.type.value == "file_upload"]
+
+    def _match_l0(tc) -> object | None:
+        # 1. Exact element_id match
+        l0 = l0_by_id.get(tc.element_id)
+        if l0:
+            return l0
+        # 2. Suffix match — LLM sometimes truncates the screen prefix
+        for el in l0_filtered:
+            if el.element_id.endswith(tc.element_id) or tc.element_id.endswith(el.element_id):
+                return el
+        # 3. Match by field name (case-insensitive) for file uploads
+        if upload_l0s:
+            tc_name_lower = tc.field_name.lower()
+            for el in upload_l0s:
+                if el.name.lower() in tc_name_lower or tc_name_lower in el.name.lower():
+                    return el
+        return None
+
+    # Iterate KB's file_upload elements directly. For each one, find or create
+    # a matching test case with a resolved file path. Don't trust the LLM to
+    # emit the right element_id or approach.
+    from qa.models.plan import TestApproach, TestCasePriority
+    from qa.knowledge.file_resolver import resolve_upload_path
+
+    def _resolve(l0):
+        return resolve_upload_path(
+            element_id=l0.element_id,
+            semantic_hint=l0.semantic_hint or "other",
+            accept=l0.accept,
+            app_name=inp.knowledge.app.app_name,
+            element_name=l0.name,
+        )
+
+    handled_l0_ids: set[str] = set()
+    for upload_l0 in upload_l0s:
+        # Find the LLM-emitted case that corresponds to this L0 (by id, suffix,
+        # or field name). If found, fix it. If not, append a new one.
+        match: TestCase | None = None
+        for tc in test_cases:
+            l0_for_tc = _match_l0(tc)
+            if l0_for_tc and l0_for_tc.element_id == upload_l0.element_id:
+                match = tc
+                break
+
+        resolved_path = _resolve(upload_l0)
+        if match:
+            old_value = match.test_value
+            match.element_id = upload_l0.element_id
+            match.field_name = upload_l0.name
+            match.approach = TestApproach.UPLOAD_FILE
+            match.test_value = resolved_path
+            match.expected_result = "uploaded"
+            print(f"  ✓ Plan: fixed UPLOAD case {match.tc_id} ({upload_l0.name}) — was {old_value!r} → {resolved_path}")
+        else:
+            new_tc = TestCase(
+                tc_id=f"TC{len(test_cases) + 1}",
+                element_id=upload_l0.element_id,
+                field_name=upload_l0.name,
+                approach=TestApproach.UPLOAD_FILE,
+                test_value=resolved_path,
+                expected_result="uploaded",
+                priority=TestCasePriority.MED,
+                screen_name=upload_l0.screen_name,
+            )
+            test_cases.append(new_tc)
+            print(f"  ✓ Plan: injected UPLOAD case {new_tc.tc_id} ({upload_l0.name}) → {resolved_path}")
+        handled_l0_ids.add(upload_l0.element_id)
+
     # Group cases by field so all tests for one field run consecutively.
     # Preserves first-appearance order of fields and HIGH→MED→LOW within field.
     priority_rank = {"HIGH": 0, "MED": 1, "LOW": 2}
@@ -210,6 +286,8 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
             approach = TestApproach.FILL_CHECK
         if "SELECT" in approach_text:
             approach = TestApproach.SELECT_AND_VERIFY
+        if "UPLOAD" in approach_text:
+            approach = TestApproach.UPLOAD_FILE
 
         # Map priority
         priority_text = parts[-1].strip().upper() if len(parts) > 6 else "MED"

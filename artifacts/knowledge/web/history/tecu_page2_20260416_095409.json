@@ -1,0 +1,1753 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU_page2",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - Documents - First Form of ID",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:1_first_form_of_id_tab:button",
+          "name": "1. First form of ID tab",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab button to switch to First form of ID section; already active by default on this page.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:2_second_form_of_id_tab:button",
+          "name": "2. Second form of ID tab",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab button that will switch context to second ID form when clicked; not interacted with in this run to avoid changing the active section.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:3_address_proof_tab:button",
+          "name": "3. Address Proof tab",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab button that will switch to address proof upload/details section when clicked; left untouched in this pass.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:reset_form:button",
+          "name": "Reset Form",
+          "type": "button",
+          "required": false,
+          "behavior": "Action button that would clear the current First Form of ID details when enabled; not clicked to preserve state.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_document_type_dropdown:dropdown",
+          "name": "First form of ID - document type dropdown",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom dropdown; on click shows a searchable list of document types and then collapses with the selected option as the button label.",
+          "options": [
+            "Passport",
+            "Drivers Permit",
+            "National Identification Card"
+          ],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Field is required to proceed; options constrained to three listed document types.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_underlying_file_input:file_upload",
+          "name": "First form of ID - underlying file input",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Hidden file input associated with visible 'Select File' label; used to upload the first ID image or PDF. Not triggered in this run.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "File is required before document OCR/autofill is available; allowed MIME types and size not visible at DOM snapshot.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:select_file_trigger:button",
+          "name": "Select File trigger",
+          "type": "button",
+          "required": false,
+          "behavior": "Visible trigger text/label associated with the hidden upload-front-input. Would open the OS file picker to upload the first ID file.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:continue_documents_section:button",
+          "name": "Continue (Documents section)",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation/action button for the documents step. Intentionally not clicked because it advances the overall application flow to the next page or section.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "Likely requires valid document upload and OCR-validated fields before enabling successful progression.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:details_tab:button",
+          "name": "Details tab",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab switcher between textual details and image view for the selected ID. Currently active, showing the disabled OCR fields.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:images_tab:button",
+          "name": "Images tab",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab switcher that would show uploaded document images instead of the Details form when clicked; not interacted with in this run.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_first_name:text_input",
+          "name": "Passport Details - First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Text input labeled 'First Name*' within Passport Details; currently disabled and intended to be auto-populated from OCR rather than manually editable at this stage.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "Required once enabled; cannot be modified while disabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_middle_name:text_input",
+          "name": "Passport Details - Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional middle name text input in Passport Details; disabled pending OCR extraction.",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "Optional when enabled; no manual entry allowed while disabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_last_name:text_input",
+          "name": "Passport Details - Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Text input labeled 'Last Name*' in Passport Details; disabled and designed for OCR population.",
+          "options": [],
+          "interaction_order": 12,
+          "default_value": "",
+          "validation_rules": "Required when enabled; not editable in current disabled state.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_full_name:text_input",
+          "name": "Passport Details - Full Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Composite full-name field for Passport Details; disabled, likely derived automatically from other name fields or OCR.",
+          "options": [],
+          "interaction_order": 13,
+          "default_value": "",
+          "validation_rules": "Read-only/derived when enabled; currently disabled so user cannot change it.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_sex:dropdown",
+          "name": "Passport Details - Sex",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom dropdown/button labeled 'Sex'; fully disabled so the user cannot open or change the value yet.",
+          "options": [],
+          "interaction_order": 14,
+          "default_value": "",
+          "validation_rules": "Will be required once enabled; currently enforced as non-editable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_passport_number:text_input",
+          "name": "Passport Details - Passport Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Text input labeled 'Passport Number*'; disabled and expected to be populated by OCR from the uploaded passport.",
+          "options": [],
+          "interaction_order": 15,
+          "default_value": "",
+          "validation_rules": "Required when enabled; passport numbering rules not testable while disabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_age:text_input",
+          "name": "Passport Details - Age",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Age field in Passport Details; disabled and probably computed from Date of Birth rather than manually entered.",
+          "options": [],
+          "interaction_order": 16,
+          "default_value": "",
+          "validation_rules": "Derived field when enabled; cannot test numeric validation while disabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_composite:text_input",
+          "name": "Passport Details - Date Of Birth composite",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Composite date picker made of three spinbuttons (Year, Month, Day) for Date of Birth; all currently disabled.",
+          "options": [],
+          "interaction_order": 17,
+          "default_value": "",
+          "validation_rules": "Three-part date; year allowed 0–9999, month 1–12, day 1–31 as indicated by ARIA attributes; validation undiscoverable while disabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_year:text_input",
+          "name": "Passport Details - Date Of Birth year",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Year spinbutton for Date of Birth; ARIA valuemin 0, valuemax 9999, valuetext 'Empty'; disabled.",
+          "options": [],
+          "interaction_order": 18,
+          "default_value": "",
+          "validation_rules": "Numeric 0–9999 when enabled; currently not editable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_month:text_input",
+          "name": "Passport Details - Date Of Birth month",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Month spinbutton for Date of Birth; ARIA valuemin 1, valuemax 12; disabled.",
+          "options": [],
+          "interaction_order": 19,
+          "default_value": "",
+          "validation_rules": "Numeric 1–12 when enabled; currently not editable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_day:text_input",
+          "name": "Passport Details - Date Of Birth day",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Day spinbutton for Date of Birth; ARIA valuemin 1, valuemax 31; disabled.",
+          "options": [],
+          "interaction_order": 20,
+          "default_value": "",
+          "validation_rules": "Numeric 1–31 when enabled; currently not editable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_date_picker_button:button",
+          "name": "Passport Details - Date Of Birth date picker button",
+          "type": "button",
+          "required": false,
+          "behavior": "Icon/button to open a calendar UI for Date Of Birth; disabled and non-interactive.",
+          "options": [],
+          "interaction_order": 21,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_composite:text_input",
+          "name": "Passport Details - Date Of Issue composite",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Three-part date input for Date Of Issue (Year, Month, Day); all ARIA spinbuttons disabled.",
+          "options": [],
+          "interaction_order": 22,
+          "default_value": "",
+          "validation_rules": "Year 0–9999, month 1–12, day 1–31 once enabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_year:text_input",
+          "name": "Passport Details - Date Of Issue year",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Year spinbutton for Date Of Issue; disabled.",
+          "options": [],
+          "interaction_order": 23,
+          "default_value": "",
+          "validation_rules": "Numeric range 0–9999 on enable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_month:text_input",
+          "name": "Passport Details - Date Of Issue month",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Month spinbutton for Date Of Issue; disabled.",
+          "options": [],
+          "interaction_order": 24,
+          "default_value": "",
+          "validation_rules": "Numeric 1–12 on enable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_day:text_input",
+          "name": "Passport Details - Date Of Issue day",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Day spinbutton for Date Of Issue; disabled.",
+          "options": [],
+          "interaction_order": 25,
+          "default_value": "",
+          "validation_rules": "Numeric 1–31 on enable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_date_picker_button:button",
+          "name": "Passport Details - Date Of Issue date picker button",
+          "type": "button",
+          "required": false,
+          "behavior": "Calendar trigger for Date Of Issue; disabled.",
+          "options": [],
+          "interaction_order": 26,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_composite:text_input",
+          "name": "Passport Details - Date Of Expiry composite",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Three-part date input for Date Of Expiry (Year, Month, Day); all values zero and disabled.",
+          "options": [],
+          "interaction_order": 27,
+          "default_value": "",
+          "validation_rules": "Year 0–9999, month 1–12, day 1–31 when enabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_year:text_input",
+          "name": "Passport Details - Date Of Expiry year",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Year spinbutton for Date Of Expiry; disabled.",
+          "options": [],
+          "interaction_order": 28,
+          "default_value": "",
+          "validation_rules": "Numeric 0–9999 expected when enabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_month:text_input",
+          "name": "Passport Details - Date Of Expiry month",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Month spinbutton for Date Of Expiry; disabled.",
+          "options": [],
+          "interaction_order": 29,
+          "default_value": "",
+          "validation_rules": "Numeric 1–12 expected when enabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_day:text_input",
+          "name": "Passport Details - Date Of Expiry day",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Day spinbutton for Date Of Expiry; disabled.",
+          "options": [],
+          "interaction_order": 30,
+          "default_value": "",
+          "validation_rules": "Numeric 1–31 on enable.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_date_picker_button:button",
+          "name": "Passport Details - Date Of Expiry date picker button",
+          "type": "button",
+          "required": false,
+          "behavior": "Calendar trigger for Date Of Expiry; disabled.",
+          "options": [],
+          "interaction_order": 31,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_remainder_term:text_input",
+          "name": "Passport Details - Remainder Term",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Text field for remaining passport term; disabled and likely computed from Date Of Expiry vs current date.",
+          "options": [],
+          "interaction_order": 32,
+          "default_value": "",
+          "validation_rules": "Derived field when enabled; manual entry not expected.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_id_type:text_input",
+          "name": "Passport Details - Id Type",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Text field labeled 'Id Type'; disabled and likely set to the selected document type (e.g. Passport) via OCR/mapping.",
+          "options": [],
+          "interaction_order": 33,
+          "default_value": "",
+          "validation_rules": "Read-only/derived when enabled.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_country:dropdown",
+          "name": "Passport Details - Country",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom dropdown/button labeled 'Country'; disabled so cannot open country list.",
+          "options": [],
+          "interaction_order": 34,
+          "default_value": "",
+          "validation_rules": "Required once enabled; likely provides an exhaustive country list.",
+          "screen_name": "New Member Application - Documents - First Form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:1_first_form_of_id_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '1. First form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"1. First form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_94",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:2_second_form_of_id_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '2. Second form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"2. Second form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:3_address_proof_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '3. Address Proof')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"3. Address Proof\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_98",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:reset_form:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Reset Form')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Reset Form\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_document_type_dropdown:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose an option')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose an option\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_112",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_underlying_file_input:file_upload",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[id=\"upload-front-input\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='upload-front-input']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_123",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:select_file_trigger:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select File')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select File\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_122",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:continue_documents_section:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_127",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:details_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Details')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Details\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_132",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:images_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Images')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Images\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_135",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_3",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_5",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_8",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_full_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_10",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_sex:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Sex')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Sex\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_13",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_passport_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_16",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_age:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_18",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_composite:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "div[role=\"group\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//div[@role='group' and .//span[text()='Date Of Birth']]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_21",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_year:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_22",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_month:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_24",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_day:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_26",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_date_picker_button:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose date')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose date\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_27",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_composite:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "div[role=\"group\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//div[@role='group' and .//span[text()='Date Of Issue']]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_30",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_year:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_31",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_month:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_33",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_day:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_35",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_date_picker_button:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose date')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose date\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_36",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_composite:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "div[role=\"group\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//div[@role='group' and .//span[text()='Date Of Expiry']]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_39",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_year:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_40",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_month:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_42",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_day:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"number\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"number\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_44",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_date_picker_button:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose date')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose date\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_45",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_remainder_term:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_47",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_id_type:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_49",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_country:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Country')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Country\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "3_52",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents - First Form of ID"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:1_first_form_of_id_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174299",
+          "last_seen": "2026-04-15T16:43:33.174299"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:2_second_form_of_id_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174379",
+          "last_seen": "2026-04-15T16:43:33.174379"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:3_address_proof_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174419",
+          "last_seen": "2026-04-15T16:43:33.174419"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:reset_form:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174453",
+          "last_seen": "2026-04-15T16:43:33.174453"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_document_type_dropdown:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-15T16:43:33.174491",
+              "model": "",
+              "value_entered": "Passport",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174518",
+          "last_seen": "2026-04-15T16:43:33.174518"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:first_form_of_id_underlying_file_input:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174577",
+          "last_seen": "2026-04-15T16:43:33.174577"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:select_file_trigger:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174612",
+          "last_seen": "2026-04-15T16:43:33.174612"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:continue_documents_section:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174646",
+          "last_seen": "2026-04-15T16:43:33.174646"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:details_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174682",
+          "last_seen": "2026-04-15T16:43:33.174682"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:images_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174714",
+          "last_seen": "2026-04-15T16:43:33.174714"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_first_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174758",
+          "last_seen": "2026-04-15T16:43:33.174758"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_middle_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174790",
+          "last_seen": "2026-04-15T16:43:33.174790"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_last_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174822",
+          "last_seen": "2026-04-15T16:43:33.174822"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_full_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174856",
+          "last_seen": "2026-04-15T16:43:33.174856"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_sex:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174889",
+          "last_seen": "2026-04-15T16:43:33.174889"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_passport_number:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174920",
+          "last_seen": "2026-04-15T16:43:33.174920"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_age:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174950",
+          "last_seen": "2026-04-15T16:43:33.174950"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_composite:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.174986",
+          "last_seen": "2026-04-15T16:43:33.174986"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_year:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175017",
+          "last_seen": "2026-04-15T16:43:33.175017"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_month:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175047",
+          "last_seen": "2026-04-15T16:43:33.175047"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_day:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175079",
+          "last_seen": "2026-04-15T16:43:33.175079"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_birth_date_picker_button:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175111",
+          "last_seen": "2026-04-15T16:43:33.175111"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_composite:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175142",
+          "last_seen": "2026-04-15T16:43:33.175142"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_year:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175173",
+          "last_seen": "2026-04-15T16:43:33.175173"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_month:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175206",
+          "last_seen": "2026-04-15T16:43:33.175206"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_day:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175240",
+          "last_seen": "2026-04-15T16:43:33.175240"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_issue_date_picker_button:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175276",
+          "last_seen": "2026-04-15T16:43:33.175276"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_composite:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175307",
+          "last_seen": "2026-04-15T16:43:33.175307"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_year:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175339",
+          "last_seen": "2026-04-15T16:43:33.175339"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_month:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175371",
+          "last_seen": "2026-04-15T16:43:33.175371"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_day:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175406",
+          "last_seen": "2026-04-15T16:43:33.175406"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_date_of_expiry_date_picker_button:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175438",
+          "last_seen": "2026-04-15T16:43:33.175438"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_remainder_term:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175475",
+          "last_seen": "2026-04-15T16:43:33.175475"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_id_type:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175505",
+          "last_seen": "2026-04-15T16:43:33.175505"
+        },
+        {
+          "element_id": "new_member_application_documents_first_form_of_id:passport_details_country:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T16:43:33.175538",
+          "last_seen": "2026-04-15T16:43:33.175538"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-15T16:42:02.285292",
+  "updated_at": "2026-04-15T16:44:45.130113",
+  "version": 1
+}

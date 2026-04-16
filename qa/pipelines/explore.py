@@ -30,6 +30,19 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
     platform = inp.app.platform
     adapter = make_adapter(platform, device_id=inp.app.device_id or "")
 
+    # Preload any existing KB so new screens MERGE with previous ones instead
+    # of overwriting. This prevents losing prior-page data when running
+    # explore with --wait on a downstream page of the same app.
+    from qa.knowledge.store import KnowledgeStore as _KS
+    _store_preload = _KS()
+    if inp.existing_knowledge is None:
+        preloaded = _store_preload.load(inp.app)
+        if preloaded and preloaded.screens:
+            print(f"  Existing KB found with {len(preloaded.screens)} screen(s): "
+                  f"{[s.screen_name for s in preloaded.screens]}")
+            print(f"  New screens will be MERGED into this KB.")
+            inp.existing_knowledge = preloaded
+
     print(f"\n{'='*60}")
     print(f"  PIPELINE 1: EXPLORE")
     print(f"  Platform: {platform.value}")
@@ -38,6 +51,20 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
     print(f"{'='*60}\n")
 
     await adapter.launch(inp.app)
+
+    # Optional manual setup pause — useful for multi-step wizards where the
+    # downstream page can only be reached by manually filling/submitting prior
+    # pages. User does the navigation in the browser, then hits Enter.
+    if getattr(inp, "wait_for_user", False):
+        print()
+        print("=" * 60)
+        print("  PAUSE: browser is open. Do any manual setup now.")
+        print("  When the page you want to explore is on screen, press Enter.")
+        print("=" * 60)
+        try:
+            input("  >>> Press Enter to start exploring... ")
+        except EOFError:
+            pass
 
     # Select prompt based on platform
     prompt = EXPLORE_MOBILE_PROMPT if platform == Platform.MOBILE else EXPLORE_WEB_PROMPT
@@ -82,6 +109,44 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                     f"the data will be discarded. Every dropdown's dropdown_options array MUST be filled."
                 )
             else:  # WEB
+                # Discover available test files so the agent can coordinate
+                # dropdown option selection with the right file to upload.
+                from pathlib import Path
+                from qa.knowledge.file_resolver import _safe_app_dir
+                test_files_root = Path("artifacts/test_files").resolve()
+                app_files_dir = test_files_root / _safe_app_dir(inp.app.app_name)
+                app_files = []
+                if app_files_dir.exists():
+                    app_files = sorted(
+                        f.name for f in app_files_dir.iterdir()
+                        if f.is_file() and f.suffix.lower() != ".json"
+                    )
+                global_files = []
+                gdir = test_files_root / "global"
+                if gdir.exists():
+                    global_files = sorted(
+                        f.name for f in gdir.iterdir()
+                        if f.is_file() and f.suffix.lower() != ".json" and f.name != "README.md"
+                    )
+                files_block = ""
+                if app_files or global_files:
+                    files_block = (
+                        "\nAVAILABLE TEST FILES for upload_file_for_field:\n"
+                    )
+                    if app_files:
+                        files_block += f"  In artifacts/test_files/{_safe_app_dir(inp.app.app_name)}/:\n"
+                        for f in app_files:
+                            files_block += f"    - {f}\n"
+                    if global_files:
+                        files_block += f"  In artifacts/test_files/global/ (fallback):\n"
+                        for f in global_files:
+                            files_block += f"    - {f}\n"
+                    files_block += (
+                        "When calling upload_file_for_field, pass file_name=\"<exact name>\"\n"
+                        "to pair the right file with the dropdown option you selected.\n"
+                        "Example: if you selected 'Passport' from a dropdown, pass file_name=\"passport.png\".\n"
+                    )
+
                 task = (
                     f"The web app '{inp.app.app_name}' is ALREADY LOADED in Chrome at {inp.app.url or 'the target URL'}.\n"
                     f"DO NOT call list_pages, select_page, new_page, or close_page — there is one tab and it is correct.\n\n"
@@ -90,7 +155,8 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
                     f"to open it and capture ALL options. Then fill EVERY text field with a test value "
                     f"to observe validation. If fill doesn't stick (React controlled input), drop to "
                     f"evaluate_script with the native setter pattern.\n\n"
-                    f"Do NOT click Submit, Save & Continue, or Save & Exit — they navigate away.\n\n"
+                    f"Do NOT click Submit, Save & Continue, or Save & Exit — they navigate away.\n"
+                    f"{files_block}\n"
                     f"YOUR FINAL RESPONSE MUST end with exactly this format:\n\n"
                     f"## KNOWLEDGE\n"
                     f"```json\n"
@@ -104,14 +170,20 @@ async def run_explore(inp: ExploreInput) -> ExploreOutput:
             mcp_server = adapter.get_mcp_server()
 
             # Compound tools per platform
-            # Mobile: compound tools handle keyboard/coordinate quirks — they work well.
-            # Web: raw Chrome DevTools MCP tools only (version_2 philosophy). The LLM
-            #      needs to adapt at the JS level for React/custom-dropdown quirks
-            #      that no compound tool can anticipate. The fat prompt teaches patterns.
+            # Mobile: compound tools handle keyboard/coordinate quirks.
+            # Web: raw Chrome MCP + a few helpers. upload_file_for_field is
+            # registered so explore can advance gated pages (TECU-style KYC).
             tools = []
             if platform == Platform.MOBILE:
                 from qa.tools.mobile_tools import get_explore_tools
                 tools = get_explore_tools(mcp_server, inp.app.device_id or "")
+            elif platform == Platform.WEB:
+                from qa.tools.web_tools import get_explore_tools, set_kb
+                tools = get_explore_tools(mcp_server)
+                # Seed the compound tool with KB so far so upload_file_for_field
+                # can look up semantic_hint for the currently-visible element.
+                # If this is the first screen, KB will be mostly empty.
+                set_kb(knowledge, inp.app.app_name)
 
             agent = Agent(
                 name=f"Explorer ({screen_name})",

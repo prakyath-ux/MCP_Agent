@@ -75,6 +75,19 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
 
     await adapter.launch(inp.app)
 
+    # Optional manual setup pause — useful for multi-step wizards where
+    # tests target a downstream page reachable only by manual navigation.
+    if getattr(inp, "wait_for_user", False):
+        print()
+        print("=" * 60)
+        print("  PAUSE: browser is open. Do any manual setup now.")
+        print("  Navigate to the page you want to test, then press Enter.")
+        print("=" * 60)
+        try:
+            input("  >>> Press Enter to start running tests... ")
+        except EOFError:
+            pass
+
     # Select prompt
     exec_prompt = EXECUTE_MOBILE_PROMPT if platform == Platform.MOBILE else EXECUTE_WEB_PROMPT
 
@@ -147,8 +160,11 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
                 from qa.tools.mobile_tools import get_task_tools
                 tools = get_task_tools(mcp_server, inp.app.device_id or "")
             elif platform == Platform.WEB:
-                from qa.tools.web_tools import get_task_tools
+                from qa.tools.web_tools import get_task_tools, set_kb
                 tools = get_task_tools(mcp_server)
+                # Inject the active KB so upload_file_for_field can resolve
+                # file paths from L0 metadata (semantic_hint + accept).
+                set_kb(knowledge, inp.app.app_name)
 
             agent = Agent(
                 name=f"Executor ({screen_name})",
@@ -185,7 +201,14 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
             total_cost += result.cost_usd
             total_turns += result.turns_used
             total_duration += result.duration_sec
-            all_outputs.append(f"## Screen: {screen_name}\n\n{result.final_output}")
+
+            # Append the LLM's report PLUS a raw-evidence appendix so users can
+            # cross-check every "Actual" claim against the actual tool returns.
+            evidence_block = _format_evidence(result.evidence) if result.evidence else ""
+            screen_section = f"## Screen: {screen_name}\n\n{result.final_output}"
+            if evidence_block:
+                screen_section += f"\n\n{evidence_block}"
+            all_outputs.append(screen_section)
 
     finally:
         await adapter.close()
@@ -201,6 +224,42 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
         duration_sec=total_duration,
         turns_used=total_turns,
     )
+
+
+def _format_evidence(evidence: list[dict]) -> str:
+    """Build a RAW EVIDENCE section listing every tool call with args + return.
+    Lets users verify the LLM's final report claims against actual tool outputs.
+    """
+    lines = [
+        "## RAW EVIDENCE",
+        "",
+        "Below is every tool call the agent made, with its actual return value.",
+        "Cross-reference any claim in TEST CASE RESULTS above with the matching call here.",
+        "",
+    ]
+    for i, e in enumerate(evidence, start=1):
+        turn = e.get("turn", "?")
+        tool = e.get("tool", "?")
+        args = e.get("args", {})
+        result = e.get("result", "")
+        # Pick the most informative arg field for the heading
+        label = ""
+        for key in ("function", "expression", "uid", "css_selector", "url", "value"):
+            if key in args:
+                v = str(args[key])
+                label = v[:120] + ("…" if len(v) > 120 else "")
+                break
+        lines.append(f"### {i}. Turn {turn} — {tool}({label})")
+        if args:
+            lines.append("```json")
+            lines.append(json.dumps(args, indent=2)[:1500])
+            lines.append("```")
+        lines.append("**Returned:**")
+        lines.append("```")
+        lines.append(str(result)[:1500])
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _save_results(inp: ExecuteInput, output: str, cost: float, turns: int, duration: float) -> None:

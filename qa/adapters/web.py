@@ -22,13 +22,25 @@ class WebAdapter:
     # ── Lifecycle ────────────────────────────────────────────
 
     async def launch(self, app: TargetApp) -> None:
+        # Clean up any leftover chrome process / lock file from a previous run
+        # that was Ctrl+C'd. Without this, persistent profile mode would error
+        # with "browser already running for /path/to/chrome-profile".
+        self._cleanup_stale_chrome()
+
         self._server = MCPServerStdio(
             name="Chrome DevTools MCP",
             params={
                 "command": "npx",
-                # --isolated: fresh profile per run, avoids "browser already running"
-                # lock conflicts when previous run was killed mid-flight.
-                "args": ["-y", "chrome-devtools-mcp@latest", "--isolated"],
+                # NOTE: no --isolated → uses persistent profile so site
+                # permissions ("Allow camera/storage/etc") persist across runs.
+                # Stale locks are handled by _cleanup_stale_chrome above.
+                # --no-performance-crux: suppresses Google CrUX telemetry noise.
+                # --no-usage-statistics: skips usage telemetry.
+                "args": [
+                    "-y", "chrome-devtools-mcp@latest",
+                    "--no-performance-crux",
+                    "--no-usage-statistics",
+                ],
             },
             cache_tools_list=True,
             client_session_timeout_seconds=30.0,
@@ -37,6 +49,32 @@ class WebAdapter:
 
         if app.url:
             await self._call("navigate_page", {"url": app.url})
+
+    @staticmethod
+    def _cleanup_stale_chrome() -> None:
+        """Kill leftover chrome-devtools-mcp processes and remove the profile
+        lock file so we can reuse the persistent profile cleanly."""
+        import subprocess
+        import os
+        from pathlib import Path
+
+        # Best-effort kill — don't error if nothing to kill.
+        for pattern in ("chrome-devtools-mcp", "Google Chrome for Testing"):
+            subprocess.run(
+                ["pkill", "-f", pattern],
+                capture_output=True,
+                check=False,
+            )
+
+        # Remove the SingletonLock that chrome leaves behind on uncleaned exits.
+        profile_dir = Path.home() / ".cache" / "chrome-devtools-mcp" / "chrome-profile"
+        for lock_name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            lock = profile_dir / lock_name
+            try:
+                if lock.exists() or lock.is_symlink():
+                    os.remove(lock)
+            except OSError:
+                pass
 
     async def close(self) -> None:
         if self._server:

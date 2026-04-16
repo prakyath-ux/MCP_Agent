@@ -17,6 +17,7 @@ __pycache__/
 # Run outputs (large, regeneratable)
 state/runs/
 version_2/runs/
+Documents
 # Agent Monitor
 .agent/
 mobile_version/runs/

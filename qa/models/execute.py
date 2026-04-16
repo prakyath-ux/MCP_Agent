@@ -59,6 +59,7 @@ class ExecuteInput(BaseModel):
     provider: str = "openai_chat"
     max_turns_per_screen: int = 15
     budget: float = 2.0
+    wait_for_user: bool = False  # pause after browser launch for manual setup
 
 
 class ExecuteOutput(BaseModel):

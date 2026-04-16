@@ -7,10 +7,21 @@ execute each case step by step. No exploring, no re-discovery — just execute.
 
 # STRICT RULES
 
-1. Use evaluate_script for ALL test approaches: FILL_CHECK, VERIFY_ONLY,
-   SELECT_AND_VERIFY, and TAP_VERIFY. SELECT_AND_VERIFY for custom dropdowns
-   takes TWO evaluate_script calls (open+click, then verify) — that is allowed
-   and expected.
+1. Tool by approach — the rule is STRICT, do not substitute:
+
+   ┌─────────────────────────┬───────────────────────────────────────────────┐
+   │ Approach                │ Tool to use                                   │
+   ├─────────────────────────┼───────────────────────────────────────────────┤
+   │ FILL_CHECK              │ evaluate_script                               │
+   │ VERIFY_ONLY             │ evaluate_script                               │
+   │ TAP_VERIFY              │ evaluate_script                               │
+   │ SELECT_AND_VERIFY       │ take_snapshot + click(uid) (NEVER evaluate_script) │
+   │ UPLOAD_FILE             │ upload_file_for_field(field_name) compound    │
+   └─────────────────────────┴───────────────────────────────────────────────┘
+
+   For SELECT_AND_VERIFY: JS `.click()` on framework dropdowns LOOKS like it
+   works (returns TRIGGER_CLICKED) but React/MUI ignore synthetic events and
+   the option click fails silently. You MUST use the native MCP click(uid).
 2. take_snapshot is allowed BEFORE and BETWEEN dropdown selection steps
    (SELECT_AND_VERIFY needs uids that only exist after the popup opens). For
    FILL_CHECK and VERIFY_ONLY, prefer evaluate_script — don't snapshot needlessly.
@@ -56,48 +67,89 @@ Check existence and current text only — never click:
 
 evaluate_script(function="() => { const el = JS_SELECTOR_HERE; if (!el) return 'ELEMENT_NOT_FOUND'; return 'EXISTS|text=' + el.textContent.trim(); }")
 
-## SELECT_AND_VERIFY (dropdowns)
+## SELECT_AND_VERIFY (dropdowns) — READ THIS FIRST
 
-JS .click() on framework widgets (MUI, custom React combobox) is unreliable —
-the event handlers are bound through synthetic events. Use Chrome DevTools
-MCP's NATIVE click(uid="...") + take_snapshot flow instead. It uses puppeteer
-under the hood and respects framework handlers.
+EVERY past failure of SELECT_AND_VERIFY has the same root cause: the LLM
+substituted evaluate_script + JS .click() instead of using the MCP click(uid)
+flow. The JS click LOOKS successful (returns 'TRIGGER_CLICKED') but the
+verification then returns NOT_VERIFIED because:
+  - React/MUI bind handlers via synthetic events that ignore JS .click()
+  - Even when the click does fire, framework re-renders happen on the next
+    tick — same-call verification queries the pre-update DOM
+  - Result: the report says BLOCKED with "Used JS .click() — framework
+    likely ignored synthetic click", and the test fails
+
+The fix is non-negotiable: use the MCP native click(uid="...") flow below.
+It uses puppeteer under the hood, dispatches real pointer events the
+framework respects, and the separate snapshot calls give React time to render.
+
+WRONG (this is what previous runs did and it failed):
+  evaluate_script(function="() => { const t = [...document.querySelectorAll('button')].find(b => b.textContent === 'Select Branch'); t.click(); ... }")
+
+RIGHT (use the 5 actions below, one tool call per step):
+  take_snapshot → click(uid=trigger) → take_snapshot → click(uid=option) → evaluate_script verify
 
 ### For native <select> — single evaluate_script is fine:
 
 evaluate_script(function="() => { const el = document.querySelector('SELECTOR'); if (!el) return 'ELEMENT_NOT_FOUND'; const target = [...el.options].find(o => o.textContent.trim() === 'OPTION_TEXT'); if (!target) return 'OPTION_NOT_FOUND'; el.value = target.value; el.dispatchEvent(new Event('change',{bubbles:true})); return 'SELECTED|' + target.textContent.trim(); }")
 
-### For custom combobox / "Select X" button — FOUR-STEP uid flow:
+### For custom combobox / "Select X" button — MANDATORY 4-STEP uid flow
 
-Step 1 — take_snapshot to see current uids.
-ACTION: take_snapshot()
-OBSERVATION: Look for the dropdown trigger by its visible text (e.g. "Select Branch"). Note its uid (e.g. "1_34").
+DO NOT use evaluate_script + JS .click() for custom dropdowns. JS click on
+React/MUI/custom widgets fails because the framework binds handlers via
+synthetic events. It WILL look like "trigger clicked" but the popup never
+mounts → next query returns empty/LISTBOX_NOT_FOUND.
 
-Step 2 — click the trigger by uid. This opens the popup.
-ACTION: click(uid="1_34")
-OBSERVATION: Popup should now be open in the page.
+You MUST use Chrome DevTools MCP's native click + snapshot. Always exactly
+these 5 actions, in order:
 
-Step 3 — take_snapshot AGAIN. The popup options now have their own uids.
-ACTION: take_snapshot()
-OBSERVATION: Find the option whose visible text EXACTLY matches OPTION_TEXT
-from your test plan. Note its uid.
+Step 1 — ACTION: take_snapshot()
+   Find the trigger by visible text (e.g. "Select Branch"). Note its uid.
 
-Step 4 — click the option by uid.
-ACTION: click(uid="<option_uid>")
-OBSERVATION: Dropdown should close. Trigger label should update.
+Step 2 — ACTION: click(uid="<trigger_uid>")
+   Native click. Opens the popup.
 
-Step 5 — verify selection persisted via evaluate_script:
-evaluate_script(function="() => { const buttons = [...document.querySelectorAll('button, [role=button]')]; const match = buttons.find(b => b.textContent.trim().includes('OPTION_TEXT')); return match ? 'TRIGGER_NOW|text=' + match.textContent.trim() : 'NOT_VERIFIED'; }")
+Step 3 — ACTION: take_snapshot()
+   Popup options are now in the tree. Find the one whose visible text exactly
+   matches OPTION_TEXT from your test plan. Note its uid.
 
-PASS if Step 5 returns 'TRIGGER_NOW|text=...' containing the option text.
-FAIL if it returns 'NOT_VERIFIED' (selection didn't persist).
+Step 4 — ACTION: click(uid="<option_uid>")
+   Native click. Dropdown closes. Trigger label updates.
 
-IMPORTANT — uid-based clicking is a 4-step process. It is allowed and expected
-for dropdown tests. Do NOT skip these steps as "tools restricted".
+Step 5 — ACTION: evaluate_script(function="() => { const buttons = [...document.querySelectorAll('button, [role=button]')]; const match = buttons.find(b => b.textContent.trim().includes('OPTION_TEXT')); return match ? 'TRIGGER_NOW|text=' + match.textContent.trim() : 'NOT_VERIFIED'; }")
+   PASS if returns TRIGGER_NOW|text=... containing the option text.
 
-## SKIP_UPLOAD (file upload fields)
+REMINDER: if you find yourself writing "evaluate_script(function=\"() => {
+const trigger = ...; trigger.click()" for a dropdown — STOP. Use the uid
+flow above. It is the only thing that works on framework dropdowns.
 
-Do NOT execute. Record as SKIP with note: "File upload cannot be tested via evaluate_script."
+## UPLOAD_FILE (file upload fields)
+
+Use the compound tool `upload_file_for_field(field_name)`. ONE call. Python
+handles the entire 7-step sequence: file path resolution from KB metadata,
+trigger click, modal cascade detection, hidden input exposure, the actual
+upload_file MCP call, and verification.
+
+ACTION: upload_file_for_field(field_name="Add profile picture")
+
+Pass the visible button text (the L0 element name, also in the test plan's
+field_name column). The tool returns JSON with status (PASS/FAIL/BLOCKED/ERROR),
+which file was uploaded, and what success signal was detected.
+
+Do NOT use evaluate_script, take_snapshot+click+upload_file, or any 7-step
+manual flow for uploads. The compound tool does all of that more reliably.
+
+Tool return shape:
+  {"status": "PASS" | "FAIL" | "BLOCKED" | "ERROR",
+   "file_uploaded": "/path/to/dummy.jpg",
+   "success_signal": "trigger text changed to Re-upload",
+   ...}
+
+Map status to test result:
+- PASS  → test PASS
+- FAIL  → test FAIL (no success signal detected after upload)
+- BLOCKED → test BLOCKED (drag-drop or unsupported pattern)
+- ERROR → test SKIP (KB metadata missing)
 
 # SEQUENTIAL TESTING — NO PAGE RELOADS
 

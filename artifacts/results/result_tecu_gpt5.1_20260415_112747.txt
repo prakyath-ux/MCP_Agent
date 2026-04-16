@@ -1,0 +1,12 @@
+EXECUTION REPORT
+============================================================
+App: TECU
+Platform: web
+Model: gpt-5.1
+Turns: 0
+Cost: $0.0000
+Duration: 120.0s
+============================================================
+
+## Screen: New Member Application - Personal Information
+

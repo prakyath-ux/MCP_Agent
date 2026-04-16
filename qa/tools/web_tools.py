@@ -23,11 +23,21 @@ from agents.mcp import MCPServerStdio
 # ── Module-level state ───────────────────────────────────────────────────────
 
 _mcp_server: MCPServerStdio | None = None
+_kb = None  # KnowledgeBase — set per execute run; tools query L0 metadata
+_app_name: str = ""
 
 
 def set_server(server: MCPServerStdio) -> None:
     global _mcp_server
     _mcp_server = server
+
+
+def set_kb(kb, app_name: str = "") -> None:
+    """Inject the active KB so compound tools can look up L0 metadata
+    (semantic_hint, accept) and resolve file paths server-side."""
+    global _kb, _app_name
+    _kb = kb
+    _app_name = app_name or (kb.app.app_name if kb else "")
 
 
 def clear_caches() -> None:
@@ -130,6 +140,30 @@ def _js_string(value: str) -> str:
              .replace("\n", "\\n")
              .replace("\r", "\\r")
     )
+
+
+def _normalize_selector(sel: str) -> str:
+    """Strip jQuery/Playwright pseudo-selectors that querySelector can't handle.
+
+    LLMs frequently emit `button:has(span:contains("X"))` or
+    `button:has-text("X")` which are NOT valid CSS. We extract the text
+    inside the pseudo-class and return it as plain text so the caller can
+    fall back to text-content matching.
+    """
+    import re as _re
+    # `:contains("X")` or `:contains('X')` → keep the text only
+    m = _re.search(r":contains\(\s*['\"]([^'\"]+)['\"]\s*\)", sel)
+    if m:
+        return m.group(1)
+    # `:has-text("X")` → keep the text only
+    m = _re.search(r":has-text\(\s*['\"]([^'\"]+)['\"]\s*\)", sel)
+    if m:
+        return m.group(1)
+    # `tag:has(...)` with non-CSS-spec usage → strip
+    m = _re.search(r":has\(\s*[^)]*['\"]([^'\"]+)['\"][^)]*\)", sel)
+    if m:
+        return m.group(1)
+    return sel
 
 
 # ── Task-level compound tools (exposed to LLM) ───────────────────────────────
@@ -300,6 +334,38 @@ async def test_text_field(css_selector: str, test_values: str) -> str:
             results.append(parsed)
         else:
             results.append({"value": value, "status": "SKIP", "raw": raw[:200]})
+
+    # ── Restore a stable valid value at end ──────────────────────────────
+    # After testing N values rapidly, the field's final state is whatever
+    # was last set — often empty or invalid. For multi-page flows where we
+    # later click Save & Continue, every required field must hold a valid
+    # value. Restore the last NON-EMPTY value tested if one exists.
+    last_valid = ""
+    for r in reversed(results):
+        v = r.get("value", "")
+        if v and v != "(empty)" and r.get("status") in ("PASS", "FAIL"):
+            last_valid = v
+            break
+
+    if last_valid:
+        restore_val = _js_string(last_valid)
+        restore_js = f"""
+          () => {{
+            const el = document.querySelector('{sel}');
+            if (!el) return 'NOT_FOUND';
+            const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+            const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+            el.focus();
+            setter.call(el, '{restore_val}');
+            el.dispatchEvent(new InputEvent('input', {{bubbles: true}}));
+            el.dispatchEvent(new Event('change', {{bubbles: true}}));
+            el.blur();
+            return el.value;
+          }}
+        """
+        await _eval(restore_js)
+        results.append({"_post_test_state": f"field restored to last valid value: {last_valid!r}"})
+
     return json.dumps(results, indent=2)
 
 
@@ -313,14 +379,23 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
         select_option: Option text to select (substring match, case-insensitive).
                        Leave empty to just capture options.
     """
+    # Sanitize: LLMs love hallucinating jQuery/Playwright selectors that
+    # don't work in querySelector. Strip them to a plain text-match fallback.
+    css_selector = _normalize_selector(css_selector)
     sel = _js_string(css_selector)
     opt = _js_string(select_option)
 
     # Step 1: Detect type and capture options
     detect_js = f"""
       (function() {{
-        const el = document.querySelector('{sel}');
-        if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND'}});
+        let el = null;
+        try {{ el = document.querySelector('{sel}'); }} catch(e) {{
+          // Selector failed — try as text-content match on buttons/comboboxes
+          const txt = '{sel}'.toLowerCase();
+          el = [...document.querySelectorAll('button, [role=combobox], [role=button]')]
+            .find(e => e.textContent.trim().toLowerCase().includes(txt));
+        }}
+        if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND', selector_tried: '{sel}'}});
         if (el.tagName === 'SELECT') {{
           const opts = [...el.options].map(o => o.textContent.trim()).filter(t => t);
           return JSON.stringify({{kind: 'native', options: opts, current: el.value}});
@@ -468,11 +543,30 @@ async def verify_elements_exist(css_selectors: str) -> str:
     """
     selectors = [s.strip() for s in css_selectors.split(",")]
     js_sels = json.dumps(selectors)
+    # JS handles three selector flavors:
+    #   1. Standard CSS via querySelector
+    #   2. Playwright-style `:has-text("X")` → fall back to text-content scan
+    #      (LLMs frequently hallucinate this; we accept it gracefully)
+    #   3. JS:` prefix → run as raw expression (find element by code)
     js = f"""
-      (function() {{
+      () => {{
         const sels = {js_sels};
         return JSON.stringify(sels.map(s => {{
-          const el = document.querySelector(s);
+          let el = null;
+          try {{
+            const hasTextMatch = s.match(/^([a-zA-Z0-9*]+)?:has-text\\(["']([^"']+)["']\\)$/);
+            if (hasTextMatch) {{
+              const tag = (hasTextMatch[1] || '*').toLowerCase();
+              const needle = hasTextMatch[2].toLowerCase();
+              el = [...document.querySelectorAll(tag)].find(e => e.textContent.trim().toLowerCase().includes(needle));
+            }} else if (s.startsWith('JS:')) {{
+              el = eval(s.slice(3));
+            }} else {{
+              el = document.querySelector(s);
+            }}
+          }} catch (e) {{
+            return {{ selector: s, status: 'INVALID_SELECTOR', error: String(e).slice(0, 120) }};
+          }}
           return {{
             selector: s,
             status: el ? 'EXISTS' : 'NOT_FOUND',
@@ -480,7 +574,7 @@ async def verify_elements_exist(css_selectors: str) -> str:
             text: el ? (el.textContent.trim().substring(0,80) || el.value || '') : null
           }};
         }}));
-      }})()
+      }}
     """
     raw = await _eval(js)
     results = _safe_parse(raw)
@@ -490,6 +584,350 @@ async def verify_elements_exist(css_selectors: str) -> str:
     return json.dumps(results, indent=2)
 
 
+@function_tool
+async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
+    """Upload a test file to the named upload field. Python handles the entire
+    sequence: file resolution, trigger click, modal cascade, hidden input
+    exposure, upload_file MCP call, and wait-for-verification.
+
+    Args:
+      field_name: Visible upload trigger text (e.g. "Add profile picture",
+                  "First form of ID front image upload"). Match the L0 name.
+      file_name: OPTIONAL. Explicit filename to upload (e.g. "passport.png").
+                 Use this when you've selected a specific dropdown option
+                 (e.g. Passport) and need to pair it with the right file.
+                 Path is resolved relative to artifacts/test_files/{app_name}/
+                 first, then artifacts/test_files/global/. If omitted, Python
+                 picks the best-matching file automatically via token overlap.
+    """
+    import asyncio
+    import re
+    from pathlib import Path
+
+    print(f"\n  [upload] Starting upload for field '{field_name}'" + (f" with explicit file '{file_name}'" if file_name else ""))
+
+    # ── Step 0: Resolve which file to upload ─────────────────────────────────
+    if _kb is None:
+        print(f"  [upload] ✗ KB not injected")
+        return json.dumps({"status": "ERROR", "reason": "KB not injected — set_kb() never called"})
+
+    upload_l0 = None
+    name_lower = field_name.lower()
+    for screen in _kb.screens:
+        for el in screen.l0:
+            if el.type.value != "file_upload":
+                continue
+            if el.name.lower() == name_lower or name_lower in el.name.lower() or el.name.lower() in name_lower:
+                upload_l0 = el
+                break
+        if upload_l0:
+            break
+
+    if upload_l0 is None:
+        available = [el.name for s in _kb.screens for el in s.l0 if el.type.value == "file_upload"]
+        print(f"  [upload] ✗ No matching L0 element. Available: {available}")
+        return json.dumps({
+            "status": "ERROR",
+            "reason": f"No file_upload L0 element found matching '{field_name}'",
+            "available": available,
+        })
+
+    print(f"  [upload] L0 matched: {upload_l0.element_id} (hint={upload_l0.semantic_hint!r})")
+
+    # Explicit file_name override takes priority over auto-resolution
+    file_path = ""
+    if file_name:
+        from qa.knowledge.file_resolver import _safe_app_dir
+        root = Path("artifacts/test_files").resolve()
+        candidates = [
+            root / _safe_app_dir(_app_name) / file_name,
+            root / "global" / file_name,
+        ]
+        for c in candidates:
+            if c.exists():
+                file_path = str(c)
+                print(f"  [upload] Using explicit file: {file_path}")
+                break
+        if not file_path:
+            from qa.knowledge.file_resolver import _safe_app_dir as _s
+            available_files = []
+            for d in (root / _s(_app_name), root / "global"):
+                if d.exists():
+                    available_files.extend(f.name for f in d.iterdir() if f.is_file() and f.suffix.lower() != ".json")
+            return json.dumps({
+                "status": "ERROR",
+                "reason": f"Explicit file '{file_name}' not found",
+                "searched": [str(c) for c in candidates],
+                "available_in_app_folder": sorted(set(available_files)),
+            })
+
+    from qa.knowledge.file_resolver import resolve_upload_path
+    if not file_path:
+        file_path = resolve_upload_path(
+            element_id=upload_l0.element_id,
+            semantic_hint=upload_l0.semantic_hint or "other",
+            accept=upload_l0.accept,
+            app_name=_app_name,
+            element_name=upload_l0.name,
+        )
+    print(f"  [upload] File path: {file_path}")
+
+    # ── Step 1: Look for hidden <input type=file> WITHOUT any clicks ───────
+    # This is version_2's proven approach. Most apps have the input in the
+    # DOM from page load (display:none but present). Querying directly
+    # avoids the trigger-click → modal → OS picker rabbit hole.
+    print(f"  [upload] Step 1: querying DOM for input[type=file] (no clicks)")
+    initial_count_raw = await _eval(
+        "() => JSON.stringify({n: document.querySelectorAll('input[type=file]').length})"
+    )
+    initial_count = (_safe_parse(initial_count_raw) or {}).get("n", 0)
+    print(f"  [upload] input[type=file] in DOM at start: {initial_count}")
+
+    pre_snapshot = await _call_mcp("take_snapshot", {})
+    trigger_uid = _find_uid_by_text(pre_snapshot, upload_l0.name) or _find_uid_by_text(pre_snapshot, field_name)
+    print(f"  [upload] Trigger uid (kept for verification only): {trigger_uid or 'NOT_FOUND'}")
+
+    # ── Step 2: If no input on page, ONLY THEN click the trigger ───────────
+    post_click_snapshot = pre_snapshot
+    modal_button_uid = ""
+    if initial_count == 0:
+        if not trigger_uid:
+            print(f"  [upload] ✗ No hidden input AND no trigger — cannot proceed")
+            return json.dumps({
+                "status": "FAIL",
+                "reason": "No input[type=file] in DOM and no visible trigger to click",
+                "file_resolved": file_path,
+            })
+        print(f"  [upload] Step 2: no input on page — clicking trigger uid={trigger_uid} as fallback")
+        await _call_mcp("click", {"uid": trigger_uid})
+        await asyncio.sleep(0.4)
+        post_click_snapshot = await _call_mcp("take_snapshot", {})
+        recheck_raw = await _eval(
+            "() => JSON.stringify({n: document.querySelectorAll('input[type=file]').length})"
+        )
+        recheck = (_safe_parse(recheck_raw) or {}).get("n", 0)
+        print(f"  [upload] input[type=file] after trigger click: {recheck}")
+        if recheck == 0:
+            print(f"  [upload] ✗ Trigger click did not inject input. App likely uses pure JS picker.")
+            return json.dumps({
+                "status": "BLOCKED",
+                "reason": "No input[type=file] in DOM even after trigger click. App may use drag-drop or pure JS picker.",
+                "file_resolved": file_path,
+                "trigger_uid": trigger_uid,
+            })
+    else:
+        print(f"  [upload] Step 2: skipped — input already in DOM from page load")
+
+    # ── Step 4: Expose hidden <input type=file> AND tag it with a known label ─
+    # Setting a unique aria-label gives us a deterministic way to locate the
+    # uid in the next snapshot, instead of guessing which element is the input.
+    MARKER = "qa-upload-target-input"
+    expose_js = (
+        "() => {"
+        "  const inps = [...document.querySelectorAll('input[type=file]')];"
+        "  if (inps.length === 0) return JSON.stringify({status: 'NO_FILE_INPUT'});"
+        "  const inp = inps[inps.length - 1];"
+        "  inp.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important; position:static !important; width:200px; height:30px; pointer-events:auto;';"
+        f"  inp.setAttribute('aria-label', '{MARKER}');"
+        f"  inp.setAttribute('id', inp.id || '{MARKER}');"
+        "  return JSON.stringify({status: 'EXPOSED', count: inps.length, name: inp.name||'', id: inp.id||''});"
+        "}"
+    )
+    print(f"  [upload] Step 4: exposing hidden input via JS")
+    expose_raw = await _eval(expose_js)
+    expose = _safe_parse(expose_raw)
+    print(f"  [upload] Expose result: {expose}")
+    if not isinstance(expose, dict) or expose.get("status") != "EXPOSED":
+        print(f"  [upload] ✗ BLOCKED — no input[type=file] in DOM")
+        return json.dumps({
+            "status": "BLOCKED",
+            "reason": "No <input type=file> in DOM after trigger click. App may use drag-drop or JS-only picker.",
+            "file_resolved": file_path,
+            "trigger_uid": trigger_uid,
+            "modal_button_clicked": bool(modal_button_uid),
+        })
+
+    # ── Step 5: Snapshot — find the input by our marker ─────────────────────
+    print(f"  [upload] Step 5: snapshot to find marked input uid")
+    exposed_snapshot = await _call_mcp("take_snapshot", {})
+    file_input_uid = _find_uid_by_text(exposed_snapshot, MARKER)
+    if not file_input_uid:
+        reported_id = expose.get("id", "")
+        if reported_id:
+            file_input_uid = _find_uid_by_text(exposed_snapshot, reported_id)
+            if file_input_uid:
+                print(f"  [upload] Found input via reported id '{reported_id}'")
+    else:
+        print(f"  [upload] Found input via marker '{MARKER}'")
+    if not file_input_uid:
+        print(f"  [upload] ✗ BLOCKED — exposed input not in a11y tree")
+        return json.dumps({
+            "status": "BLOCKED",
+            "reason": "Exposed input not visible in snapshot a11y tree (marker '" + MARKER + "' not found)",
+            "file_resolved": file_path,
+            "trigger_uid": trigger_uid,
+            "modal_button_clicked": bool(modal_button_uid),
+            "expose_result": expose,
+        })
+    print(f"  [upload] File input uid: {file_input_uid}")
+
+    # ── Step 6: Upload the file ─────────────────────────────────────────────
+    print(f"  [upload] Step 6: upload_file(uid={file_input_uid}, filePath={file_path})")
+    upload_result = await _call_mcp("upload_file", {"uid": file_input_uid, "filePath": file_path})
+    print(f"  [upload] upload_file MCP returned: {str(upload_result)[:150]}")
+
+    # ── Step 7: Wait for verification / OCR processing ──────────────────────
+    # Some apps (banking, KYC) validate uploaded docs via backend OCR before
+    # rendering the next section. Poll snapshots until loading/verifying
+    # signals disappear, new content appears, or we hit the timeout.
+    print(f"  [upload] Step 7: polling for verification complete (max 30s)")
+    verify_snapshot, wait_signal, elapsed = await _wait_for_verification(
+        post_click_snapshot, timeout=30.0, poll_interval=1.5,
+    )
+    print(f"  [upload]   {wait_signal} after {elapsed:.1f}s")
+
+    # ── Step 8: Final success check ─────────────────────────────────────────
+    success_signal = _detect_upload_success(post_click_snapshot, verify_snapshot, file_path)
+    print(f"  [upload] {'✓ PASS' if success_signal else '✗ FAIL'} — signal: {success_signal or 'none'}")
+
+    return json.dumps({
+        "status": "PASS" if success_signal else "FAIL",
+        "file_uploaded": file_path,
+        "trigger_uid": trigger_uid,
+        "file_input_uid": file_input_uid,
+        "modal_button_clicked": bool(modal_button_uid),
+        "success_signal": success_signal or "none detected (no Re-upload text, filename, or thumbnail)",
+        "upload_result_excerpt": str(upload_result)[:200],
+    }, indent=2)
+
+
+# ── Internal helpers for upload_file_for_field ───────────────────────────────
+
+def _find_uid_by_text(snapshot: str, text: str) -> str:
+    """Find uid of an element whose visible text/label matches `text` exactly
+    (case-insensitive). Snapshot format: lines like `uid=1_14 button "camera Add profile picture"`."""
+    if not snapshot or not text:
+        return ""
+    text_l = text.lower()
+    for line in snapshot.split("\n"):
+        if text_l in line.lower():
+            m = __import__("re").search(r"uid=(\S+)", line)
+            if m:
+                return m.group(1)
+    return ""
+
+
+def _find_uid_by_text_pattern(snapshot: str, pattern, exclude_uid: str = "") -> str:
+    """Find uid of an element whose VISIBLE text (between quotes) matches a regex."""
+    if not snapshot:
+        return ""
+    import re as _re
+    for line in snapshot.split("\n"):
+        # Extract uid + quoted text
+        m = _re.search(r'uid=(\S+).*?"([^"]+)"', line)
+        if not m:
+            continue
+        uid, text = m.group(1), m.group(2).strip()
+        if uid == exclude_uid:
+            continue
+        if pattern.match(text):
+            return uid
+    return ""
+
+
+def _find_file_input_uid(snapshot: str) -> str:
+    """Find uid of an <input type=file> in the snapshot."""
+    if not snapshot:
+        return ""
+    import re as _re
+    for line in snapshot.split("\n"):
+        if "input" in line.lower() and ("type=\"file\"" in line.lower() or "[file]" in line.lower() or 'value="file"' in line.lower()):
+            m = _re.search(r"uid=(\S+)", line)
+            if m:
+                return m.group(1)
+    # Fallback: any element with file-related label
+    for line in snapshot.split("\n"):
+        if "file_upload" in line.lower() or 'role="file"' in line.lower():
+            m = _re.search(r"uid=(\S+)", line)
+            if m:
+                return m.group(1)
+    return ""
+
+
+async def _wait_for_verification(
+    before_snap: str,
+    timeout: float = 30.0,
+    poll_interval: float = 1.5,
+) -> tuple[str, str, float]:
+    """Poll snapshots after an upload until verification/OCR completes.
+
+    Detects: "Verifying..." / "Processing..." / spinner text disappearing,
+    OR new content appearing that wasn't there before (indicating the next
+    section rendered). Returns (final_snapshot, reason, elapsed_seconds).
+    """
+    import asyncio
+    import re as _re
+
+    loading_patterns = _re.compile(
+        r"(verifying|processing|loading|uploading|please\s+wait|analy[sz]ing)",
+        _re.IGNORECASE,
+    )
+    before_len = len(before_snap or "")
+    start = asyncio.get_event_loop().time()
+    last_snap = before_snap or ""
+    saw_loading = False
+
+    while True:
+        elapsed = asyncio.get_event_loop().time() - start
+        if elapsed >= timeout:
+            return last_snap, f"timeout after {timeout:.0f}s", elapsed
+
+        await asyncio.sleep(poll_interval)
+        snap = await _call_mcp("take_snapshot", {})
+        if not snap:
+            last_snap = last_snap  # keep last good
+            continue
+        last_snap = snap
+
+        is_loading = bool(loading_patterns.search(snap))
+        if is_loading:
+            saw_loading = True
+            continue  # still verifying, keep polling
+
+        # Not currently loading. If we ever saw loading, this means verification
+        # just completed. OR: content size grew noticeably (new section rendered).
+        if saw_loading:
+            return snap, "verification complete (loading signal cleared)", elapsed
+        if len(snap) > before_len + 500:
+            return snap, f"new content rendered (snapshot +{len(snap) - before_len} chars)", elapsed
+
+        # No loading ever seen, no significant new content — stop early if
+        # we've given it at least 3s to be safe.
+        if elapsed >= 3.0:
+            return snap, "no verification step detected", elapsed
+
+
+def _detect_upload_success(before_snap: str, after_snap: str, file_path: str) -> str:
+    """Look for signals that an upload succeeded."""
+    if not after_snap:
+        return ""
+    after_l = after_snap.lower()
+    filename = file_path.rsplit("/", 1)[-1].lower()
+
+    if filename in after_l:
+        return f"filename '{filename}' visible"
+    if "re-upload" in after_l or "reupload" in after_l:
+        return "trigger text changed to Re-upload"
+    if "uploaded" in after_l and "uploaded" not in (before_snap or "").lower():
+        return "'uploaded' text appeared"
+    # Thumbnail — image element added that wasn't there before
+    before_imgs = (before_snap or "").lower().count("image ")
+    after_imgs = after_l.count("image ")
+    if after_imgs > before_imgs:
+        return f"new image element appeared (count {before_imgs} → {after_imgs})"
+    return ""
+
+
 # ── Tool lists ───────────────────────────────────────────────────────────────
 
 EXPLORE_TOOLS = [
@@ -497,12 +935,16 @@ EXPLORE_TOOLS = [
     fill_field_and_verify,
     test_dropdown,
     verify_elements_exist,
+    # Upload available during explore so gated multi-step pages can be advanced
+    # (e.g. "section 2 only unlocks after section 1's document is verified").
+    upload_file_for_field,
 ]
 
 TASK_TOOLS = [
     scan_page_summary,
     test_text_field,
     test_dropdown,
+    upload_file_for_field,
     verify_elements_exist,
 ]
 

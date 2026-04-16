@@ -33,6 +33,10 @@ class ExploreInput(BaseModel):
     provider: str = "openai_chat"
     max_turns: int = 20
     budget: float = 2.0
+    # If True, pause after browser launch and wait for user to press Enter.
+    # Used for manually navigating to a downstream wizard page before
+    # explore captures its KB.
+    wait_for_user: bool = False
 
 
 class ExploreOutput(BaseModel):

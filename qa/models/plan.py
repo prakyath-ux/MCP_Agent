@@ -18,6 +18,7 @@ class TestApproach(str, Enum):
     TAP_VERIFY = "tap_verify"           # Tap element, verify response
     VERIFY_ONLY = "verify_only"         # Check existence/state only
     SELECT_AND_VERIFY = "select_verify" # Open dropdown, click option, verify selection updated
+    UPLOAD_FILE = "upload_file"         # Upload a file via hidden input[type=file]
     SKIP = "skip"                       # Cannot be tested
 
 
