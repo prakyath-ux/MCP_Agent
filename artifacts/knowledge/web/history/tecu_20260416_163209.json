@@ -1,0 +1,582 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - Personal Information",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "Opens profile photo upload flow (button uses camera icon and text 'Add profile picture'). Underlying <input type=file> not exposed in DOM extraction result, likely hidden and associated via JS.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Probably accepts image formats only; not verified in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": "profile_picture"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('Marisa' → 'MARISA') and persisted after blur; likely React-controlled field.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Appears required (* indicator); no inline error shown for alphabetic value. Likely expects alphabetic characters only.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('marisa.qa+tecu1@example.com' → 'MARISA.QA+TECU1@EXAMPLE.COM'); value persisted after blur.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Provided value uses plus-addressing and standard '@' format and was accepted without inline error, indicating at least basic email format validation.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional field; auto-transformed to uppercase ('LYNN'). No validation error shown.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Optional (label explicitly indicates optional). Likely accepts alphabetic characters; length limit not observed.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Prefixed visually by '+1868' and flag image. Raw input '7135554820' was auto-formatted and truncated to '713-5554' in the control, indicating a 7-digit local number mask with pattern 'XXX-XXXX'.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Appears to enforce local 7-digit format; extra digits beyond 7 are dropped or ignored. Only numeric input accepted (implied by formatting).",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transformed to uppercase ('CARTER') and persisted; likely React-controlled.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Alphabetic last name accepted with no error; length constraints not observed in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom button-based dropdown used to select the desired TECU branch. Current selection reflected in button label.",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - POINT FORTIN BRANCH",
+            "400 - TECU - SIPARIA BRANCH",
+            "500 - TECU - SAN FERNANDO BRANCH",
+            "600 - TECU - ONLINE BRANCH"
+          ],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). User must pick one of the listed branches. No inline error visible once a valid branch is selected.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action for exiting the application while saving progress. Not clicked per instructions to avoid navigation.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action to proceed to the next step of the multi-step application. Not clicked per instructions.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_82",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_113",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_129",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_137",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '200 - TECU - COUVA BRANCH')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"200 - TECU - COUVA BRANCH\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_146",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_154",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_158",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683727",
+          "last_seen": "2026-04-15T10:32:18.683727"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683801",
+              "model": "",
+              "value_entered": "Marisa",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683826",
+          "last_seen": "2026-04-15T10:32:18.683826"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683868",
+              "model": "",
+              "value_entered": "marisa.qa+tecu1@example.com",
+              "accepted": true,
+              "issues": "Auto-uppercase email may be unexpected for users, though email local-part is case-insensitive in most systems.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683874",
+          "last_seen": "2026-04-15T10:32:18.683874"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683906",
+              "model": "",
+              "value_entered": "Lynn",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683912",
+          "last_seen": "2026-04-15T10:32:18.683912"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683945",
+              "model": "",
+              "value_entered": "7135554820",
+              "accepted": true,
+              "issues": "Potential issue for users with longer or non-local numbers, as field appears constrained to 7 digits.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683950",
+          "last_seen": "2026-04-15T10:32:18.683950"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683980",
+              "model": "",
+              "value_entered": "Carter",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683984",
+          "last_seen": "2026-04-15T10:32:18.683984"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.684024",
+              "model": "",
+              "value_entered": "200 - TECU - COUVA BRANCH",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684029",
+          "last_seen": "2026-04-15T10:32:18.684029"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684064",
+          "last_seen": "2026-04-15T10:32:18.684064"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684095",
+          "last_seen": "2026-04-15T10:32:18.684095"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-15T10:31:23.510742",
+  "updated_at": "2026-04-16T16:27:24.184463",
+  "version": 7
+}

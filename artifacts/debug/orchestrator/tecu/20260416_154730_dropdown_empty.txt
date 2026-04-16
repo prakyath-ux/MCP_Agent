@@ -1,0 +1,40 @@
+# Context
+dropdown_label: Please select the document type
+section_name: First form of ID
+llm_response: {'options': []}
+
+# Snapshot
+## Latest page snapshot
+uid=1_0 RootWebArea url="https://qa-tq-awp.impactodigifin.xyz/newapplication"
+  uid=1_1 link "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/"
+    uid=1_2 image "tecu logo" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FTECULogo.png&w=256&q=75"
+  uid=1_3 StaticText "Contact Info"
+  uid=1_4 StaticText "Documents"
+  uid=1_5 StaticText "Additional Details"
+  uid=1_6 StaticText "Other Products"
+  uid=1_7 StaticText "PEP / FATCA"
+  uid=1_8 StaticText "PDF / Other Details"
+  uid=1_9 image "Decorator" url="https://qa-tq-awp.impactodigifin.xyz/_next/image?url=%2Fimages%2FDecorator.png&w=640&q=75"
+  uid=1_10 StaticText "Please ensure that the two (2) forms of government-issued identification and the utility bill are in either pdf, png, jpg or jpeg formats."
+  uid=1_11 StaticText "When selecting the National ID, please select both the front and back of the document at the same time."
+  uid=1_12 StaticText "Prospects with only one form of Government issued picture ID are required to visit the branch to apply for membership."
+  uid=1_13 StaticText "Persons required to comply with the United States disclosure requirement for tax purpose (FATCA), must upload a United States identification document."
+  uid=1_14 StaticText "Documents should be clearly visible."
+  uid=1_15 StaticText "Please Manually input the data wherein the OCR system couldn't able to extract."
+  uid=1_16 StaticText "New Member Application"
+  uid=1_17 image "Terri - Virtual Assistant" url="https://qa-tq-awp.impactodigifin.xyz/Terri/Success%201.svg"
+  uid=1_18 StaticText "Time to upload your documents. The system will autofill the relevant fields. Please review the details before proceeding."
+  uid=1_19 button "1. First form of ID"
+  uid=1_20 button "2. Second form of ID"
+  uid=1_21 button "3. Address Proof"
+  uid=1_22 heading "First Form of ID Details" level="2"
+  uid=1_23 button "Reset Form"
+  uid=1_24 StaticText "Please select the document type"
+  uid=1_25 button "Choose an option"
+  uid=1_26 StaticText "No files uploaded yet"
+  uid=1_27 StaticText "Select File"
+  uid=1_28 button "Continue"
+  uid=1_29 button "Details"
+  uid=1_30 button "Images"
+  uid=1_31 StaticText "Please select a document type to view its details"
+  uid=1_32 alert atomic live="assertive" relevant="additions text"

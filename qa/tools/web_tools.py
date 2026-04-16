@@ -584,21 +584,25 @@ async def verify_elements_exist(css_selectors: str) -> str:
     return json.dumps(results, indent=2)
 
 
-@function_tool
-async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
-    """Upload a test file to the named upload field. Python handles the entire
-    sequence: file resolution, trigger click, modal cascade, hidden input
-    exposure, upload_file MCP call, and wait-for-verification.
+async def _upload_file_for_field_impl(
+    field_name: str,
+    file_name: str = "",
+    wait_for_ocr: bool = True,
+    target_input_id: str = "",
+) -> str:
+    """Internal implementation. The decorated @function_tool wrapper below
+    delegates here so orchestrators can call this function directly from
+    Python without going through the LLM's tool-invocation path.
 
-    Args:
-      field_name: Visible upload trigger text (e.g. "Add profile picture",
-                  "First form of ID front image upload"). Match the L0 name.
-      file_name: OPTIONAL. Explicit filename to upload (e.g. "passport.png").
-                 Use this when you've selected a specific dropdown option
-                 (e.g. Passport) and need to pair it with the right file.
-                 Path is resolved relative to artifacts/test_files/{app_name}/
-                 first, then artifacts/test_files/global/. If omitted, Python
-                 picks the best-matching file automatically via token overlap.
+    wait_for_ocr=False → attach the file and return immediately after the
+    DOM settles. Use this from orchestrators that need to click a
+    confirm/Upload/Verify button BEFORE OCR kicks off, then poll for OCR
+    themselves. Default True preserves the existing LLM-facing behavior.
+
+    target_input_id → when a section has multiple input[type=file] elements
+    (e.g. KYC "front of ID" + "back of ID"), the caller can route this
+    upload to a specific input by its DOM id. Empty string keeps the old
+    "grab the last input in the DOM" behavior.
     """
     import asyncio
     import re
@@ -732,16 +736,34 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
     # ── Step 4: Expose hidden <input type=file> AND tag it with a known label ─
     # Setting a unique aria-label gives us a deterministic way to locate the
     # uid in the next snapshot, instead of guessing which element is the input.
+    # When target_input_id is given, pick that specific input; otherwise fall
+    # back to the last input[type=file] in the DOM (prior behavior).
+    #
+    # CRITICAL: clear the marker from ALL other inputs first. Leftover
+    # markers from a prior upload cause _find_uid_by_text to return the
+    # wrong uid (the first still-tagged input), which silently routes the
+    # current file to the previous input's slot.
     MARKER = "qa-upload-target-input"
+    target_id_json = json.dumps(target_input_id)
     expose_js = (
         "() => {"
         "  const inps = [...document.querySelectorAll('input[type=file]')];"
         "  if (inps.length === 0) return JSON.stringify({status: 'NO_FILE_INPUT'});"
-        "  const inp = inps[inps.length - 1];"
+        "  inps.forEach(el => {"
+        f"    if (el.getAttribute('aria-label') === '{MARKER}') "
+        "      el.removeAttribute('aria-label');"
+        "  });"
+        f"  const targetId = {target_id_json};"
+        "  let inp = null;"
+        "  if (targetId) {"
+        "    inp = document.getElementById(targetId);"
+        "    if (!inp || inp.type !== 'file') inp = inps.find(el => el.id === targetId);"
+        "  }"
+        "  if (!inp) inp = inps[inps.length - 1];"
         "  inp.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important; position:static !important; width:200px; height:30px; pointer-events:auto;';"
         f"  inp.setAttribute('aria-label', '{MARKER}');"
         f"  inp.setAttribute('id', inp.id || '{MARKER}');"
-        "  return JSON.stringify({status: 'EXPOSED', count: inps.length, name: inp.name||'', id: inp.id||''});"
+        "  return JSON.stringify({status: 'EXPOSED', count: inps.length, name: inp.name||'', id: inp.id||'', targeted: Boolean(targetId)});"
         "}"
     )
     print(f"  [upload] Step 4: exposing hidden input via JS")
@@ -758,18 +780,17 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
             "modal_button_clicked": bool(modal_button_uid),
         })
 
-    # ── Step 5: Snapshot — find the input by our marker ─────────────────────
-    print(f"  [upload] Step 5: snapshot to find marked input uid")
+    # ── Step 5: Snapshot — find the input by our MARKER. ───────────────────
+    # Safe because expose_js cleared the MARKER off every other input first,
+    # so only this one carries it. The DOM id is unreliable for snapshot
+    # lookup — TECU (and similar apps) render labels with `for="<input_id>"`
+    # which puts the id string on MULTIPLE lines and _find_uid_by_text would
+    # return the first match, which isn't necessarily the input itself.
+    print(f"  [upload] Step 5: snapshot to find input uid")
     exposed_snapshot = await _call_mcp("take_snapshot", {})
     file_input_uid = _find_uid_by_text(exposed_snapshot, MARKER)
-    if not file_input_uid:
-        reported_id = expose.get("id", "")
-        if reported_id:
-            file_input_uid = _find_uid_by_text(exposed_snapshot, reported_id)
-            if file_input_uid:
-                print(f"  [upload] Found input via reported id '{reported_id}'")
-    else:
-        print(f"  [upload] Found input via marker '{MARKER}'")
+    if file_input_uid:
+        print(f"  [upload] Found input via marker '{MARKER}' → uid={file_input_uid}")
     if not file_input_uid:
         print(f"  [upload] ✗ BLOCKED — exposed input not in a11y tree")
         return json.dumps({
@@ -788,9 +809,24 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
     print(f"  [upload] upload_file MCP returned: {str(upload_result)[:150]}")
 
     # ── Step 7: Wait for verification / OCR processing ──────────────────────
-    # Some apps (banking, KYC) validate uploaded docs via backend OCR before
-    # rendering the next section. Poll snapshots until loading/verifying
-    # signals disappear, new content appears, or we hit the timeout.
+    # Orchestrators set wait_for_ocr=False so they can click a confirm
+    # button (Upload / Verify / Continue) BEFORE OCR starts, then handle
+    # the wait themselves. LLM-facing default stays True for back-compat.
+    if not wait_for_ocr:
+        # Give the DOM a brief moment to settle after attachment so the
+        # caller's next snapshot reflects any immediate filename/thumbnail.
+        await asyncio.sleep(1.0)
+        post_attach_snap = await _call_mcp("take_snapshot", {})
+        return json.dumps({
+            "status": "ATTACHED",
+            "file_uploaded": file_path,
+            "trigger_uid": trigger_uid,
+            "file_input_uid": file_input_uid,
+            "modal_button_clicked": bool(modal_button_uid),
+            "post_attach_snapshot_len": len(post_attach_snap or ""),
+            "upload_result_excerpt": str(upload_result)[:200],
+        }, indent=2)
+
     print(f"  [upload] Step 7: polling for verification complete (max 30s)")
     verify_snapshot, wait_signal, elapsed = await _wait_for_verification(
         post_click_snapshot, timeout=30.0, poll_interval=1.5,
@@ -810,6 +846,25 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
         "success_signal": success_signal or "none detected (no Re-upload text, filename, or thumbnail)",
         "upload_result_excerpt": str(upload_result)[:200],
     }, indent=2)
+
+
+@function_tool
+async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
+    """Upload a test file to the named upload field. Python handles the entire
+    sequence: file resolution, trigger click, modal cascade, hidden input
+    exposure, upload_file MCP call, and wait-for-verification.
+
+    Args:
+      field_name: Visible upload trigger text (e.g. "Add profile picture",
+                  "First form of ID front image upload"). Match the L0 name.
+      file_name: OPTIONAL. Explicit filename to upload (e.g. "passport.png").
+                 Use this when you've selected a specific dropdown option
+                 (e.g. Passport) and need to pair it with the right file.
+                 Path is resolved relative to artifacts/test_files/{app_name}/
+                 first, then artifacts/test_files/global/. If omitted, Python
+                 picks the best-matching file automatically via token overlap.
+    """
+    return await _upload_file_for_field_impl(field_name, file_name)
 
 
 # ── Internal helpers for upload_file_for_field ───────────────────────────────
