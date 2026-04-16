@@ -607,32 +607,39 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
     print(f"\n  [upload] Starting upload for field '{field_name}'" + (f" with explicit file '{file_name}'" if file_name else ""))
 
     # ── Step 0: Resolve which file to upload ─────────────────────────────────
-    if _kb is None:
-        print(f"  [upload] ✗ KB not injected")
-        return json.dumps({"status": "ERROR", "reason": "KB not injected — set_kb() never called"})
-
+    # Try to find a matching L0 entry in KB (normal execute path).
+    # If KB is empty or has no match AND an explicit file_name was given,
+    # proceed anyway — we're likely running during explore where the KB is
+    # being built and doesn't yet have entries for the current screen.
     upload_l0 = None
-    name_lower = field_name.lower()
-    for screen in _kb.screens:
-        for el in screen.l0:
-            if el.type.value != "file_upload":
-                continue
-            if el.name.lower() == name_lower or name_lower in el.name.lower() or el.name.lower() in name_lower:
-                upload_l0 = el
+    if _kb is not None:
+        name_lower = field_name.lower()
+        for screen in _kb.screens:
+            for el in screen.l0:
+                if el.type.value != "file_upload":
+                    continue
+                if (el.name.lower() == name_lower
+                    or name_lower in el.name.lower()
+                    or el.name.lower() in name_lower):
+                    upload_l0 = el
+                    break
+            if upload_l0:
                 break
-        if upload_l0:
-            break
 
-    if upload_l0 is None:
-        available = [el.name for s in _kb.screens for el in s.l0 if el.type.value == "file_upload"]
-        print(f"  [upload] ✗ No matching L0 element. Available: {available}")
+    if upload_l0 is None and not file_name:
+        available = [el.name for s in _kb.screens for el in s.l0 if el.type.value == "file_upload"] if _kb else []
+        print(f"  [upload] ✗ No matching L0 element AND no explicit file_name provided.")
         return json.dumps({
             "status": "ERROR",
-            "reason": f"No file_upload L0 element found matching '{field_name}'",
+            "reason": f"No file_upload L0 element found matching '{field_name}' and no file_name override given",
             "available": available,
+            "hint": "During explore (when KB is still being built), call this tool with both field_name AND file_name.",
         })
 
-    print(f"  [upload] L0 matched: {upload_l0.element_id} (hint={upload_l0.semantic_hint!r})")
+    if upload_l0:
+        print(f"  [upload] L0 matched: {upload_l0.element_id} (hint={upload_l0.semantic_hint!r})")
+    else:
+        print(f"  [upload] No L0 yet (explore mode) — proceeding with explicit file_name '{file_name}'")
 
     # Explicit file_name override takes priority over auto-resolution
     file_path = ""
@@ -663,6 +670,8 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
 
     from qa.knowledge.file_resolver import resolve_upload_path
     if not file_path:
+        # Only reached when no explicit file_name was given — upload_l0 must
+        # exist (we errored earlier if both were missing).
         file_path = resolve_upload_path(
             element_id=upload_l0.element_id,
             semantic_hint=upload_l0.semantic_hint or "other",
@@ -684,7 +693,9 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
     print(f"  [upload] input[type=file] in DOM at start: {initial_count}")
 
     pre_snapshot = await _call_mcp("take_snapshot", {})
-    trigger_uid = _find_uid_by_text(pre_snapshot, upload_l0.name) or _find_uid_by_text(pre_snapshot, field_name)
+    # Look for the trigger by L0 name if available, else use the LLM-provided field_name
+    l0_name = upload_l0.name if upload_l0 else field_name
+    trigger_uid = _find_uid_by_text(pre_snapshot, l0_name) or _find_uid_by_text(pre_snapshot, field_name)
     print(f"  [upload] Trigger uid (kept for verification only): {trigger_uid or 'NOT_FOUND'}")
 
     # ── Step 2: If no input on page, ONLY THEN click the trigger ───────────

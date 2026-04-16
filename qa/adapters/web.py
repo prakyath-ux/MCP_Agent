@@ -4,7 +4,7 @@ import asyncio
 import json
 import time
 
-from agents.mcp import MCPServerStdio
+from agents.mcp import MCPServerStdio, create_static_tool_filter
 
 from qa.adapters.snapshot_filter import filter_snapshot
 from qa.models.common import Platform, TargetApp
@@ -27,6 +27,13 @@ class WebAdapter:
         # with "browser already running for /path/to/chrome-profile".
         self._cleanup_stale_chrome()
 
+        # Block tools that the LLM keeps reaching for as "shortcuts" and
+        # that bypass our compound logic (OCR wait, modal cascade, etc.).
+        # Raw `upload_file` in particular leaves the app in a broken state
+        # — use upload_file_for_field compound tool instead.
+        # Tab management tools hidden so LLM doesn't create new tabs.
+        blocked_tools = ["upload_file", "new_page", "close_page", "list_pages", "select_page"]
+
         self._server = MCPServerStdio(
             name="Chrome DevTools MCP",
             params={
@@ -44,6 +51,7 @@ class WebAdapter:
             },
             cache_tools_list=True,
             client_session_timeout_seconds=30.0,
+            tool_filter=create_static_tool_filter(blocked_tool_names=blocked_tools),
         )
         await self._server.__aenter__()
 

@@ -574,9 +574,508 @@
           "last_seen": "2026-04-15T10:32:18.684095"
         }
       ]
+    },
+    {
+      "screen_name": "Newapplication",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "newapplication:1_first_form_of_id:button",
+          "name": "1. First form of ID",
+          "type": "button",
+          "required": false,
+          "behavior": "Step/tab button for first ID; currently active section title is 'First Form of ID Details'. Not clicked in this turn.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:2_second_form_of_id:button",
+          "name": "2. Second form of ID",
+          "type": "button",
+          "required": false,
+          "behavior": "Step/tab button for second ID. Not clicked in this turn.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:3_address_proof:button",
+          "name": "3. Address Proof",
+          "type": "button",
+          "required": false,
+          "behavior": "Step/tab button for address proof section. Not clicked in this turn.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:reset_form:button",
+          "name": "Reset Form",
+          "type": "button",
+          "required": false,
+          "behavior": "Resets the current First Form of ID Details form. Not activated in this turn, so reset behavior not observed.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:please_select_the_document_type_choose_an_option:dropdown",
+          "name": "Please select the document type - Choose an option",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom combobox-style dropdown. Clicking the button opened a popup with a search textbox and three options.",
+          "options": [
+            "Passport",
+            "Drivers Permit",
+            "National Identification Card"
+          ],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Appears required, based on helper text 'Please select a document type' and message 'Please select a document type to view its details', but no error state observed yet.",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "newapplication:search:text_input",
+          "name": "Search...",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Search box inside the document-type dropdown for filtering options. Not interacted with in this turn; no filtering behavior observed.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "No validation messages observed; likely free-form filter text.",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:upload_front_input:file_upload",
+          "name": "upload-front-input",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "File input for uploading the front image/document for the First form of ID. Not directly visible in the a11y tree; likely associated with visible 'Select File' label and 'No files uploaded yet' status text.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Not observed yet. Likely constrained to image/PDF types per instructions on page.",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "newapplication:continue:button",
+          "name": "Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Navigational button to advance from Documents section. Not clicked as per instructions.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:details:button",
+          "name": "Details",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab-like button toggling between Details and Images views for the selected ID document. Currently active view shows helper text 'Please select a document type to view its details'. Not toggled in this turn.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "newapplication:images:button",
+          "name": "Images",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab-like button likely switching to an images/preview view for uploaded documents. Not clicked in this turn, so panel content unknown.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Newapplication",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "newapplication:1_first_form_of_id:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '1. First form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"1. First form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_94",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:2_second_form_of_id:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '2. Second form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"2. Second form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:3_address_proof:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '3. Address Proof')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"3. Address Proof\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_98",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:reset_form:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Reset Form')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Reset Form\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:please_select_the_document_type_choose_an_option:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose an option')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose an option\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_112",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:search:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[type=\"text\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type=\"text\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "2_0",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:upload_front_input:file_upload",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[id=\"upload-front-input\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='upload-front-input']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_127",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:details:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Details')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Details\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_132",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        },
+        {
+          "element_id": "newapplication:images:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Images')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Images\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_135",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Newapplication"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "newapplication:1_first_form_of_id:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828113",
+          "last_seen": "2026-04-16T11:29:05.828113"
+        },
+        {
+          "element_id": "newapplication:2_second_form_of_id:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828191",
+          "last_seen": "2026-04-16T11:29:05.828191"
+        },
+        {
+          "element_id": "newapplication:3_address_proof:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828230",
+          "last_seen": "2026-04-16T11:29:05.828230"
+        },
+        {
+          "element_id": "newapplication:reset_form:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828264",
+          "last_seen": "2026-04-16T11:29:05.828264"
+        },
+        {
+          "element_id": "newapplication:please_select_the_document_type_choose_an_option:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828302",
+          "last_seen": "2026-04-16T11:29:05.828302"
+        },
+        {
+          "element_id": "newapplication:search:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828339",
+          "last_seen": "2026-04-16T11:29:05.828339"
+        },
+        {
+          "element_id": "newapplication:upload_front_input:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828366",
+          "last_seen": "2026-04-16T11:29:05.828366"
+        },
+        {
+          "element_id": "newapplication:continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828405",
+          "last_seen": "2026-04-16T11:29:05.828405"
+        },
+        {
+          "element_id": "newapplication:details:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828436",
+          "last_seen": "2026-04-16T11:29:05.828436"
+        },
+        {
+          "element_id": "newapplication:images:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:29:05.828466",
+          "last_seen": "2026-04-16T11:29:05.828466"
+        }
+      ]
     }
   ],
   "created_at": "2026-04-15T10:31:23.510742",
-  "updated_at": "2026-04-16T12:14:14.710029",
-  "version": 7
+  "updated_at": "2026-04-16T11:29:07.933722",
+  "version": 3
 }

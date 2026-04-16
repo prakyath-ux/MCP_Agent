@@ -1,0 +1,1618 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - Personal Information",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "Opens profile photo upload flow (button uses camera icon and text 'Add profile picture'). Underlying <input type=file> not exposed in DOM extraction result, likely hidden and associated via JS.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Probably accepts image formats only; not verified in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": "profile_picture"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('Marisa' → 'MARISA') and persisted after blur; likely React-controlled field.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Appears required (* indicator); no inline error shown for alphabetic value. Likely expects alphabetic characters only.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('marisa.qa+tecu1@example.com' → 'MARISA.QA+TECU1@EXAMPLE.COM'); value persisted after blur.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Provided value uses plus-addressing and standard '@' format and was accepted without inline error, indicating at least basic email format validation.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional field; auto-transformed to uppercase ('LYNN'). No validation error shown.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Optional (label explicitly indicates optional). Likely accepts alphabetic characters; length limit not observed.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Prefixed visually by '+1868' and flag image. Raw input '7135554820' was auto-formatted and truncated to '713-5554' in the control, indicating a 7-digit local number mask with pattern 'XXX-XXXX'.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Appears to enforce local 7-digit format; extra digits beyond 7 are dropped or ignored. Only numeric input accepted (implied by formatting).",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transformed to uppercase ('CARTER') and persisted; likely React-controlled.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Alphabetic last name accepted with no error; length constraints not observed in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom button-based dropdown used to select the desired TECU branch. Current selection reflected in button label.",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - POINT FORTIN BRANCH",
+            "400 - TECU - SIPARIA BRANCH",
+            "500 - TECU - SAN FERNANDO BRANCH",
+            "600 - TECU - ONLINE BRANCH"
+          ],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). User must pick one of the listed branches. No inline error visible once a valid branch is selected.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action for exiting the application while saving progress. Not clicked per instructions to avoid navigation.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action to proceed to the next step of the multi-step application. Not clicked per instructions.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_82",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_113",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_129",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_137",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '200 - TECU - COUVA BRANCH')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"200 - TECU - COUVA BRANCH\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_146",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_154",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_158",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683727",
+          "last_seen": "2026-04-15T10:32:18.683727"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683801",
+              "model": "",
+              "value_entered": "Marisa",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683826",
+          "last_seen": "2026-04-15T10:32:18.683826"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683868",
+              "model": "",
+              "value_entered": "marisa.qa+tecu1@example.com",
+              "accepted": true,
+              "issues": "Auto-uppercase email may be unexpected for users, though email local-part is case-insensitive in most systems.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683874",
+          "last_seen": "2026-04-15T10:32:18.683874"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683906",
+              "model": "",
+              "value_entered": "Lynn",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683912",
+          "last_seen": "2026-04-15T10:32:18.683912"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683945",
+              "model": "",
+              "value_entered": "7135554820",
+              "accepted": true,
+              "issues": "Potential issue for users with longer or non-local numbers, as field appears constrained to 7 digits.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683950",
+          "last_seen": "2026-04-15T10:32:18.683950"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683980",
+              "model": "",
+              "value_entered": "Carter",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683984",
+          "last_seen": "2026-04-15T10:32:18.683984"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.684024",
+              "model": "",
+              "value_entered": "200 - TECU - COUVA BRANCH",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684029",
+          "last_seen": "2026-04-15T10:32:18.684029"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684064",
+          "last_seen": "2026-04-15T10:32:18.684064"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684095",
+          "last_seen": "2026-04-15T10:32:18.684095"
+        }
+      ]
+    },
+    {
+      "screen_name": "New Member Application - Documents",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_documents:1_first_form_of_id:button",
+          "name": "1. First form of ID",
+          "type": "button",
+          "required": false,
+          "behavior": "Acts as a primary tab/step selector for the first ID document section. Clicking when already active keeps current content; no navigation.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:2_second_form_of_id:button",
+          "name": "2. Second form of ID",
+          "type": "button",
+          "required": false,
+          "behavior": "Tab/step selector for second ID section. When clicked while first ID has no file uploaded, a toast alert appears: \"Please upload a file for 1. First form of ID\". Does not navigate away or change main content.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Indirectly gated by presence of uploaded file for first form of ID.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:3_address_proof:button",
+          "name": "3. Address Proof",
+          "type": "button",
+          "required": false,
+          "behavior": "Third step/tab in the documents flow, presumably for address proof upload. Not interacted with in this run after latest snapshot.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Likely gated by completion of previous steps, but not verified.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "proof_of_address"
+        },
+        {
+          "element_id": "new_member_application_documents:reset_form:button",
+          "name": "Reset Form",
+          "type": "button",
+          "required": false,
+          "behavior": "Visible within the first ID section. Not clicked, but implied to clear document selection and any derived details.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "other"
+        },
+        {
+          "element_id": "new_member_application_documents:please_select_the_document_type:dropdown",
+          "name": "Please select the document type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom dropdown for selecting the first ID document type. Initial label 'Choose an option'; clicking opens a search box and list; selecting an option closes the list and updates the button label to the chosen value. Selecting 'Passport' renders a disabled 'Passport Details' section below (fields gated until file upload).",
+          "options": [
+            "Passport",
+            "Drivers Permit",
+            "National Identification Card"
+          ],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required prior to uploading and before details can be auto-filled. Shows helper text 'Please select the document type'.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:upload_front_input:file_upload",
+          "name": "upload-front-input",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Underlying file input for the first ID upload. Associated visible label text 'Select File' and status text 'No files uploaded yet'. Not directly clicked in this run; discovered via script. Upload is required before proceeding to second form of ID or unlocking disabled Passport detail fields.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required; accepts only listed MIME extensions.",
+          "screen_name": "New Member Application - Documents",
+          "accept": ".png,.jpg,.jpeg,.pdf",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:continue_documents_step:button",
+          "name": "Continue (Documents step)",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary action in the document upload step; likely advances to next main section. Not clicked to avoid navigation.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Likely requires at least required documents to be uploaded before enabling navigation; current enable/disable state not validated.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "other"
+        },
+        {
+          "element_id": "new_member_application_documents:details_sub_tab:button",
+          "name": "Details (sub-tab)",
+          "type": "button",
+          "required": false,
+          "behavior": "Appears as a sub-tab (paired with 'Images') likely to switch between textual details and image view for the selected document. Not toggled in this run.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "other"
+        },
+        {
+          "element_id": "new_member_application_documents:images_sub_tab:button",
+          "name": "Images (sub-tab)",
+          "type": "button",
+          "required": false,
+          "behavior": "Sub-tab likely showing uploaded ID images. Not clicked in this run; underlying content (if any) not visible because no file uploaded.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "other"
+        },
+        {
+          "element_id": "new_member_application_documents:first_name_passport_details:text_input",
+          "name": "First Name* (Passport Details)",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Disabled textbox; appears after 'Passport' is selected as document type. Meant to be auto-populated via OCR from uploaded passport. User cannot type into it in current state.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "Required for passport, but value can only be set once field becomes enabled (likely after OCR).",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:middle_name_passport_details:text_input",
+          "name": "Middle Name (Passport Details)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Disabled textbox; intended for passport middle name, auto-filled from OCR.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:last_name_passport_details:text_input",
+          "name": "Last Name* (Passport Details)",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Disabled textbox for passport last name; to be auto-filled.",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "Required once editable.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:full_name_passport_details:text_input",
+          "name": "Full Name (Passport Details)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Disabled full-name textbox; auto-derived from other OCR fields.",
+          "options": [],
+          "interaction_order": 12,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:sex_passport_details:button",
+          "name": "Sex (Passport Details)",
+          "type": "button",
+          "required": true,
+          "behavior": "Disabled button, likely a dropdown selector for sex (e.g., M/F). Not clickable until unlocked.",
+          "options": [],
+          "interaction_order": 13,
+          "default_value": "",
+          "validation_rules": "Required; options not visible because disabled.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:passport_number:text_input",
+          "name": "Passport Number*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Disabled textbox intended for passport number. To be filled via OCR, with possibility of manual edit once enabled.",
+          "options": [],
+          "interaction_order": 14,
+          "default_value": "",
+          "validation_rules": "Required; format not enforced at this disabled stage.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:age_passport_details:text_input",
+          "name": "Age (Passport Details)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Disabled textbox, presumably auto-calculated from Date of Birth and Date of Issue/Expiry.",
+          "options": [],
+          "interaction_order": 15,
+          "default_value": "",
+          "validation_rules": "Numeric only once enabled (implied).",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_birth_passport_details:other",
+          "name": "Date Of Birth (Passport Details)",
+          "type": "other",
+          "required": true,
+          "behavior": "Composite disabled date control with spinbuttons for Year, Month, Day and a disabled 'Choose date' button.",
+          "options": [],
+          "interaction_order": 16,
+          "default_value": "",
+          "validation_rules": "Required; date range and format not testable while disabled.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_issue_passport_details:other",
+          "name": "Date Of Issue (Passport Details)",
+          "type": "other",
+          "required": true,
+          "behavior": "Disabled date control with spinbuttons and 'Choose date' button.",
+          "options": [],
+          "interaction_order": 17,
+          "default_value": "",
+          "validation_rules": "Required; expected to enforce logical relation (issue < expiry) when enabled.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_expiry_passport_details:other",
+          "name": "Date Of Expiry (Passport Details)",
+          "type": "other",
+          "required": true,
+          "behavior": "Disabled date control with spinbuttons and 'Choose date' button.",
+          "options": [],
+          "interaction_order": 18,
+          "default_value": "",
+          "validation_rules": "Required; logical validation (expiry after issue) not testable while disabled.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:remainder_term_passport_details:text_input",
+          "name": "Remainder Term (Passport Details)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Disabled textbox, likely auto-calculated term until expiry.",
+          "options": [],
+          "interaction_order": 19,
+          "default_value": "",
+          "validation_rules": "Numeric/derived; not testable.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:id_type_passport_details:text_input",
+          "name": "Id Type (Passport Details)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Disabled textbox auto-filled with ID type (e.g., 'Passport').",
+          "options": [],
+          "interaction_order": 20,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:country_passport_details:button",
+          "name": "Country (Passport Details)",
+          "type": "button",
+          "required": true,
+          "behavior": "Disabled dropdown/button for selecting issuing country. Options not visible.",
+          "options": [],
+          "interaction_order": 21,
+          "default_value": "",
+          "validation_rules": "Required; list of countries not observable while disabled.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "new_member_application_documents:error_toast_please_upload_a_file_for_1_first_form_of_id:button",
+          "name": "Error toast: Please upload a file for 1. First form of ID",
+          "type": "button",
+          "required": false,
+          "behavior": "Toast alert appears as an `alert` region with text 'Please upload a file for 1. First form of ID' when attempting to move to '2. Second form of ID' without an upload. Contains a small 'close' button to dismiss. Progressbar indicates auto-dismiss timer.",
+          "options": [],
+          "interaction_order": 22,
+          "default_value": "",
+          "validation_rules": "Provides immediate feedback requiring upload before proceeding.",
+          "screen_name": "New Member Application - Documents",
+          "accept": "",
+          "semantic_hint": "other"
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_documents:1_first_form_of_id:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '1. First form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"1. First form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_94",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:2_second_form_of_id:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '2. Second form of ID')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"2. Second form of ID\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:3_address_proof:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '3. Address Proof')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"3. Address Proof\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_98",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:reset_form:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Reset Form')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Reset Form\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:please_select_the_document_type:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose an option')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose an option\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_112",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:upload_front_input:file_upload",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[id=\"upload-front-input\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='upload-front-input']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:continue_documents_step:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_127",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:details_sub_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Details')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Details\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_132",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:images_sub_tab:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Images')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Images\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_135",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:first_name_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_3",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:middle_name_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_5",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:last_name_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_8",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:full_name_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_10",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:sex_passport_details:button",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_13",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:passport_number:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_16",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:age_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_18",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_birth_passport_details:other",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_21",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_issue_passport_details:other",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_30",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_expiry_passport_details:other",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_39",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:remainder_term_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_47",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:id_type_passport_details:text_input",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_49",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:country_passport_details:button",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "4_52",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        },
+        {
+          "element_id": "new_member_application_documents:error_toast_please_upload_a_file_for_1_first_form_of_id:button",
+          "locators": [
+            {
+              "strategy": "uid",
+              "value": "5_2",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Documents"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_documents:1_first_form_of_id:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153720",
+          "last_seen": "2026-04-16T11:37:42.153720"
+        },
+        {
+          "element_id": "new_member_application_documents:2_second_form_of_id:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153796",
+          "last_seen": "2026-04-16T11:37:42.153796"
+        },
+        {
+          "element_id": "new_member_application_documents:3_address_proof:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153838",
+          "last_seen": "2026-04-16T11:37:42.153838"
+        },
+        {
+          "element_id": "new_member_application_documents:reset_form:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153871",
+          "last_seen": "2026-04-16T11:37:42.153871"
+        },
+        {
+          "element_id": "new_member_application_documents:please_select_the_document_type:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-16T11:37:42.153914",
+              "model": "",
+              "value_entered": "Passport",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153936",
+          "last_seen": "2026-04-16T11:37:42.153936"
+        },
+        {
+          "element_id": "new_member_application_documents:upload_front_input:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.153964",
+          "last_seen": "2026-04-16T11:37:42.153964"
+        },
+        {
+          "element_id": "new_member_application_documents:continue_documents_step:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154000",
+          "last_seen": "2026-04-16T11:37:42.154000"
+        },
+        {
+          "element_id": "new_member_application_documents:details_sub_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154030",
+          "last_seen": "2026-04-16T11:37:42.154030"
+        },
+        {
+          "element_id": "new_member_application_documents:images_sub_tab:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154065",
+          "last_seen": "2026-04-16T11:37:42.154065"
+        },
+        {
+          "element_id": "new_member_application_documents:first_name_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154090",
+          "last_seen": "2026-04-16T11:37:42.154090"
+        },
+        {
+          "element_id": "new_member_application_documents:middle_name_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154115",
+          "last_seen": "2026-04-16T11:37:42.154115"
+        },
+        {
+          "element_id": "new_member_application_documents:last_name_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154137",
+          "last_seen": "2026-04-16T11:37:42.154137"
+        },
+        {
+          "element_id": "new_member_application_documents:full_name_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154161",
+          "last_seen": "2026-04-16T11:37:42.154161"
+        },
+        {
+          "element_id": "new_member_application_documents:sex_passport_details:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154184",
+          "last_seen": "2026-04-16T11:37:42.154184"
+        },
+        {
+          "element_id": "new_member_application_documents:passport_number:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154208",
+          "last_seen": "2026-04-16T11:37:42.154208"
+        },
+        {
+          "element_id": "new_member_application_documents:age_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154230",
+          "last_seen": "2026-04-16T11:37:42.154230"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_birth_passport_details:other",
+          "runs": [
+            {
+              "date": "2026-04-16T11:37:42.154258",
+              "model": "",
+              "value_entered": "Year=0, Month=0, Day=0",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154263",
+          "last_seen": "2026-04-16T11:37:42.154263"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_issue_passport_details:other",
+          "runs": [
+            {
+              "date": "2026-04-16T11:37:42.154289",
+              "model": "",
+              "value_entered": "Year=0, Month=0, Day=0",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154294",
+          "last_seen": "2026-04-16T11:37:42.154294"
+        },
+        {
+          "element_id": "new_member_application_documents:date_of_expiry_passport_details:other",
+          "runs": [
+            {
+              "date": "2026-04-16T11:37:42.154317",
+              "model": "",
+              "value_entered": "Year=0, Month=0, Day=0",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154321",
+          "last_seen": "2026-04-16T11:37:42.154321"
+        },
+        {
+          "element_id": "new_member_application_documents:remainder_term_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154344",
+          "last_seen": "2026-04-16T11:37:42.154344"
+        },
+        {
+          "element_id": "new_member_application_documents:id_type_passport_details:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154369",
+          "last_seen": "2026-04-16T11:37:42.154369"
+        },
+        {
+          "element_id": "new_member_application_documents:country_passport_details:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154397",
+          "last_seen": "2026-04-16T11:37:42.154397"
+        },
+        {
+          "element_id": "new_member_application_documents:error_toast_please_upload_a_file_for_1_first_form_of_id:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T11:37:42.154425",
+          "last_seen": "2026-04-16T11:37:42.154425"
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-15T10:31:23.510742",
+  "updated_at": "2026-04-16T11:37:44.259306",
+  "version": 4
+}
