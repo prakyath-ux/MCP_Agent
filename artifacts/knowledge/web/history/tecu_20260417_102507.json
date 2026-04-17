@@ -1,0 +1,3984 @@
+{
+  "app": {
+    "platform": "web",
+    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "package_name": null,
+    "app_name": "TECU",
+    "device_id": null
+  },
+  "screens": [
+    {
+      "screen_name": "New Member Application - Personal Information",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "Opens profile photo upload flow (button uses camera icon and text 'Add profile picture'). Underlying <input type=file> not exposed in DOM extraction result, likely hidden and associated via JS.",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Probably accepts image formats only; not verified in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": "profile_picture"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "name": "First Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('Marisa' → 'MARISA') and persisted after blur; likely React-controlled field.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Appears required (* indicator); no inline error shown for alphabetic value. Likely expects alphabetic characters only.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "name": "Email ID",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Input auto-transformed to uppercase ('marisa.qa+tecu1@example.com' → 'MARISA.QA+TECU1@EXAMPLE.COM'); value persisted after blur.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Provided value uses plus-addressing and standard '@' format and was accepted without inline error, indicating at least basic email format validation.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Optional field; auto-transformed to uppercase ('LYNN'). No validation error shown.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "Optional (label explicitly indicates optional). Likely accepts alphabetic characters; length limit not observed.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "name": "Mobile Number",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Prefixed visually by '+1868' and flag image. Raw input '7135554820' was auto-formatted and truncated to '713-5554' in the control, indicating a 7-digit local number mask with pattern 'XXX-XXXX'.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Appears to enforce local 7-digit format; extra digits beyond 7 are dropped or ignored. Only numeric input accepted (implied by formatting).",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "name": "Last Name",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transformed to uppercase ('CARTER') and persisted; likely React-controlled.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). Alphabetic last name accepted with no error; length constraints not observed in this run.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "name": "Branch",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Custom button-based dropdown used to select the desired TECU branch. Current selection reflected in button label.",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - POINT FORTIN BRANCH",
+            "400 - TECU - SIPARIA BRANCH",
+            "500 - TECU - SAN FERNANDO BRANCH",
+            "600 - TECU - ONLINE BRANCH"
+          ],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (* indicator). User must pick one of the listed branches. No inline error visible once a valid branch is selected.",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action for exiting the application while saving progress. Not clicked per instructions to avoid navigation.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "Primary navigation action to proceed to the next step of the multi-step application. Not clicked per instructions.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Add profile picture')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Add profile picture\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_82",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter first name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName' and @id='firstName' and @placeholder='Enter first name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_96",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter email address\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email' and @id='email' and @placeholder='Enter email address']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_105",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter middle name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName' and @id='middleName' and @placeholder='Enter middle name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_113",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter mobile number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo' and @id='mobileNumber' and @placeholder='Enter mobile number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_129",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter last name\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName' and @id='lastName' and @placeholder='Enter last name']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_137",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === '200 - TECU - COUVA BRANCH')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"200 - TECU - COUVA BRANCH\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_146",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Exit')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Exit\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_154",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save & Continue')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Save & Continue\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_158",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683727",
+          "last_seen": "2026-04-15T10:32:18.683727"
+        },
+        {
+          "element_id": "new_member_application_personal_information:first_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683801",
+              "model": "",
+              "value_entered": "Marisa",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683826",
+          "last_seen": "2026-04-15T10:32:18.683826"
+        },
+        {
+          "element_id": "new_member_application_personal_information:email_id:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683868",
+              "model": "",
+              "value_entered": "marisa.qa+tecu1@example.com",
+              "accepted": true,
+              "issues": "Auto-uppercase email may be unexpected for users, though email local-part is case-insensitive in most systems.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683874",
+          "last_seen": "2026-04-15T10:32:18.683874"
+        },
+        {
+          "element_id": "new_member_application_personal_information:middle_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683906",
+              "model": "",
+              "value_entered": "Lynn",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683912",
+          "last_seen": "2026-04-15T10:32:18.683912"
+        },
+        {
+          "element_id": "new_member_application_personal_information:mobile_number:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683945",
+              "model": "",
+              "value_entered": "7135554820",
+              "accepted": true,
+              "issues": "Potential issue for users with longer or non-local numbers, as field appears constrained to 7 digits.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683950",
+          "last_seen": "2026-04-15T10:32:18.683950"
+        },
+        {
+          "element_id": "new_member_application_personal_information:last_name:text_input",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.683980",
+              "model": "",
+              "value_entered": "Carter",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.683984",
+          "last_seen": "2026-04-15T10:32:18.683984"
+        },
+        {
+          "element_id": "new_member_application_personal_information:branch:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-15T10:32:18.684024",
+              "model": "",
+              "value_entered": "200 - TECU - COUVA BRANCH",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684029",
+          "last_seen": "2026-04-15T10:32:18.684029"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684064",
+          "last_seen": "2026-04-15T10:32:18.684064"
+        },
+        {
+          "element_id": "new_member_application_personal_information:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-04-15: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-15T10:32:18.684095",
+          "last_seen": "2026-04-15T10:32:18.684095"
+        }
+      ]
+    },
+    {
+      "screen_name": "First form of ID",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "first_form_of_id:please_select_the_document_type:dropdown",
+          "name": "Please select the document type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Choose document type for First form of ID",
+          "options": [
+            "Passport",
+            "Drivers Permit",
+            "National Identification Card"
+          ],
+          "interaction_order": 0,
+          "default_value": "Passport",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:select_file:file_upload",
+          "name": "Select File",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Upload document for First form of ID (OCR-verified)",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "passport.png",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "first_form_of_id:first_name:text_input",
+          "name": "First Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "AVINASH",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:last_name:text_input",
+          "name": "Last Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "PERSAD",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:full_name:text_input",
+          "name": "Full Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "AVINASH PERSAD",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:sex:button",
+          "name": "Sex",
+          "type": "button",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "MALE",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:passport_number:text_input",
+          "name": "Passport Number*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "TB576646",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:age:text_input",
+          "name": "Age",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "28",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:date_of_birth:text_input",
+          "name": "Date Of Birth",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "1998-03-09",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:date_of_issue:text_input",
+          "name": "Date Of Issue",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "2017-10-17",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:date_of_expiry:text_input",
+          "name": "Date Of Expiry",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "2027-10-16",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:remainder_term:text_input",
+          "name": "Remainder Term",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "547",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:id_type:text_input",
+          "name": "Id Type",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "PASSPORT",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "first_form_of_id:country:dropdown",
+          "name": "Country*",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "TRINIDAD AND TOBAGO",
+          "validation_rules": "",
+          "screen_name": "First form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "first_form_of_id:please_select_the_document_type:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:select_file:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:first_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:middle_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:last_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:full_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:sex:button",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:passport_number:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:age:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:date_of_birth:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:date_of_issue:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:date_of_expiry:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:remainder_term:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:id_type:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        },
+        {
+          "element_id": "first_form_of_id:country:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "First form of ID"
+        }
+      ],
+      "l2": []
+    },
+    {
+      "screen_name": "Second form of ID",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "second_form_of_id:please_select_the_document_type:dropdown",
+          "name": "Please select the document type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Choose document type for Second form of ID",
+          "options": [
+            "Drivers Permit",
+            "National Identification Card"
+          ],
+          "interaction_order": 0,
+          "default_value": "National Identification Card",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:select_file_1:file_upload",
+          "name": "Select File #1",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Upload document for Second form of ID (OCR-verified)",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "national_id_front.png",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "second_form_of_id:select_file_2:file_upload",
+          "name": "Select File #2",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Upload document for Second form of ID (OCR-verified)",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "national_id_back.png",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "second_form_of_id:registration_number:text_input",
+          "name": "Registration Number*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "19830519001",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:sex:dropdown",
+          "name": "Sex*",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "FEMALE",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:date_of_birth:text_input",
+          "name": "Date of Birth*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "1983-05-19",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:date_of_issue:text_input",
+          "name": "Date of Issue*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "2019-01-04",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:date_of_expiry:text_input",
+          "name": "Date of Expiry*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "2029-01-04",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:first_name:text_input",
+          "name": "First Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "FIONA",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:middle_name:text_input",
+          "name": "Middle Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "NICOLA MELISSA",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:last_name:text_input",
+          "name": "Last Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "ALLEYNE",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:full_name:text_input",
+          "name": "Full Name",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "FIONA NICOLA MELISSA ALLEYNE",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:age:text_input",
+          "name": "Age*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "42",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:remainder_term:text_input",
+          "name": "Remainder Term",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "993",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:id_type:text_input",
+          "name": "ID Type",
+          "type": "text_input",
+          "required": false,
+          "behavior": "auto_filled, read_only",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "NATIONAL IDENTIFICATION CARD",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "second_form_of_id:country:dropdown",
+          "name": "Country*",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "TRINIDAD AND TOBAGO",
+          "validation_rules": "",
+          "screen_name": "Second form of ID",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "second_form_of_id:please_select_the_document_type:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:select_file_1:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:select_file_2:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:registration_number:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:sex:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:date_of_birth:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:date_of_issue:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:date_of_expiry:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:first_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:middle_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:last_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:full_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:age:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:remainder_term:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:id_type:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        },
+        {
+          "element_id": "second_form_of_id:country:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Second form of ID"
+        }
+      ],
+      "l2": []
+    },
+    {
+      "screen_name": "3. Address Proof",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "3_address_proof:please_select_the_document_type:dropdown",
+          "name": "Please select the document type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Choose document type for 3. Address Proof",
+          "options": [
+            "FLOW BILL",
+            "WASA BILL",
+            "TSTT BILL",
+            "T&TEC BILL",
+            "Other Document"
+          ],
+          "interaction_order": 0,
+          "default_value": "WASA BILL",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:select_file_1:file_upload",
+          "name": "Select File #1",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Upload document for 3. Address Proof (OCR-verified)",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "address_proof_wasa_bill.PNG",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "3_address_proof:select_file_2:file_upload",
+          "name": "Select File #2",
+          "type": "file_upload",
+          "required": true,
+          "behavior": "Upload document for 3. Address Proof (OCR-verified)",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "lease_agreement.png",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": "id_document"
+        },
+        {
+          "element_id": "3_address_proof:utility_document_type:text_input",
+          "name": "Utility Document type*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "WATER AND SEWERAGE AUTHORITY OF TRINIDAD AND TOBAGO",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:full_name:text_input",
+          "name": "Full Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "AGNITA LAWRENCE",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:address_line_1:text_input",
+          "name": "Address Line 1*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "31 KALLOO ROAD",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:address_line_2:text_input",
+          "name": "Address Line 2*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "POINT FORTIN",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:city:text_input",
+          "name": "City*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "Point Fortin",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:mailing_zipcode:text_input",
+          "name": "Mailing Zipcode",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "3_address_proof:country:dropdown",
+          "name": "Country*",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "auto_filled",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "TRINIDAD AND TOBAGO",
+          "validation_rules": "",
+          "screen_name": "3. Address Proof",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "3_address_proof:please_select_the_document_type:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:select_file_1:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:select_file_2:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:utility_document_type:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:full_name:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:address_line_1:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:address_line_2:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:city:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:mailing_zipcode:text_input",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        },
+        {
+          "element_id": "3_address_proof:country:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "3. Address Proof"
+        }
+      ],
+      "l2": []
+    },
+    {
+      "screen_name": "New Member Application - Additional Details",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "new_member_application_additional_details:select_employment_status:dropdown",
+          "name": "Select Employment Status",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Opens a searchable listbox with options; after selecting, the button label updates to the chosen status.",
+          "options": [
+            "FULL TIME PERMANENT",
+            "FULL TIME TEMPORARY",
+            "OTHER",
+            "PART TIME",
+            "RETIRED NON PENSIONED",
+            "RETIRED PENSIONED",
+            "SELF EMPLOYED",
+            "UNEMPLOYED"
+          ],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "Field marked with *; selection required before progressing.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:select_employer:dropdown",
+          "name": "Select Employer",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Button is disabled; cannot open employer list.",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "Employer is marked required (*), but control remains disabled until prior conditions are satisfied.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:employerdesc:text_input",
+          "name": "employerDesc",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Input rendered as a disabled textbox labelled 'Employer Description'. Attempts to fill via standard fill() time out.",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "Not required; cannot be edited while disabled.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:r_s:text_input",
+          "name": "_r_s_",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Technical/input field present in DOM; not surfaced in accessibility snapshot; behavior not directly observable.",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:occupation:text_input",
+          "name": "occupation",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transforms text to uppercase with some character reordering; displayed value becomes 'PRJECOT MAANGRE'.",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "Required (label has *). Likely expects non-empty string; format enforcement beyond capitalization is unclear.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_sector:dropdown",
+          "name": "Choose sector",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Button is disabled; sector selection cannot be made yet.",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "Field marked required; likely enabled after Employment Status and/or Employer are set.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_employment_type:dropdown",
+          "name": "Choose Employment Type",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Button is disabled; cannot open employment type options.",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "Required (label has *); conditions for enabling not exposed.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline1:text_input",
+          "name": "employerAddressLine1",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Auto-transforms text to uppercase and slightly reorders characters; displayed as '12 3QENUE SRTEET'.",
+          "options": [],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "Likely optional; no asterisk on label.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline2:text_input",
+          "name": "employerAddressLine2",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Auto-transforms text to uppercase with some reordering; displayed as 'SIUT E400'.",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "Optional field.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:employercity:text_input",
+          "name": "employerCity",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transforms to uppercase; displayed as 'PORT OF SPAIN'.",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "Required (label has *). Likely checks non-empty value.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_country:dropdown",
+          "name": "Choose Country",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Standard button-style dropdown trigger; options not yet opened in this exploration step.",
+          "options": [],
+          "interaction_order": 10,
+          "default_value": "",
+          "validation_rules": "Required field (Employer Country label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:workphoneno:text_input",
+          "name": "workPhoneNo",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Input is paired with fixed country code '+1868'. Number re-displayed formatted as '555-1234'.",
+          "options": [],
+          "interaction_order": 11,
+          "default_value": "",
+          "validation_rules": "Likely numeric with length constraints; no error shown for 7 digits.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:workemail:text_input",
+          "name": "workEmail",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Auto-converts email to uppercase ('WORK.APPLICANT37@EXAMPLE.COM').",
+          "options": [],
+          "interaction_order": 12,
+          "default_value": "",
+          "validation_rules": "Likely standard email pattern; no validation error appeared for the provided format.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:purpose_of_business_relationship:dropdown",
+          "name": "Purpose Of Business Relationship",
+          "type": "dropdown",
+          "required": false,
+          "behavior": "Button opens a dropdown (not yet exercised).",
+          "options": [],
+          "interaction_order": 13,
+          "default_value": "",
+          "validation_rules": "No asterisk; appears optional.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_an_option:dropdown",
+          "name": "Choose an option",
+          "type": "dropdown",
+          "required": false,
+          "behavior": "Dropdown for Income Range; current label shows placeholder 'Choose an option'.",
+          "options": [],
+          "interaction_order": 14,
+          "default_value": "",
+          "validation_rules": "An inline message 'Please choose the Income range' is visible, implying this field is required when Salary is provided.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary_frequency:dropdown",
+          "name": "Salary Frequency",
+          "type": "dropdown",
+          "required": false,
+          "behavior": "Button-style dropdown; not yet opened.",
+          "options": [],
+          "interaction_order": 15,
+          "default_value": "",
+          "validation_rules": "Label lacks asterisk; might still be logically required depending on business rules.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary:text_input",
+          "name": "salary",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Numeric input is reformatted with currency prefix and decimal: '8500' becomes '$ 85.00'.",
+          "options": [],
+          "interaction_order": 16,
+          "default_value": "",
+          "validation_rules": "Appears to expect numeric input; scale/decimal logic seems off (could treat input as cents or divide by 100).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:account_funded:dropdown",
+          "name": "Account Funded",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown trigger; options not yet opened.",
+          "options": [],
+          "interaction_order": 17,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_yes:radio",
+          "name": "nationalOfTTPrimary_yes",
+          "type": "radio",
+          "required": true,
+          "behavior": "One of a pair of radio inputs answering 'Are you a national of Trinidad and Tobago?'; label 'Yes'.",
+          "options": [],
+          "interaction_order": 18,
+          "default_value": "",
+          "validation_rules": "Question marked *; one of Yes/No must be selected.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_no:radio",
+          "name": "nationalOfTTPrimary_no",
+          "type": "radio",
+          "required": true,
+          "behavior": "Second radio for 'Are you a national of Trinidad and Tobago?'; label 'No'.",
+          "options": [],
+          "interaction_order": 19,
+          "default_value": "",
+          "validation_rules": "Mutually exclusive with Yes.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationality:dropdown",
+          "name": "Nationality",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown to choose applicant nationality; not yet opened.",
+          "options": [],
+          "interaction_order": 20,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_birth:dropdown",
+          "name": "Country of birth",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown to choose country of birth; options not yet opened.",
+          "options": [],
+          "interaction_order": 21,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:placeofbirth:text_input",
+          "name": "placeOfBirth",
+          "type": "text_input",
+          "required": true,
+          "behavior": "Auto-transforms to uppercase and reorders characters; displayed as 'SNA FRENANDO'.",
+          "options": [],
+          "interaction_order": 22,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:birthcertificatepinno:text_input",
+          "name": "birthCertificatePinNo",
+          "type": "text_input",
+          "required": false,
+          "behavior": "Value auto-transformed; final displayed as 'BC977889' (dash removed, digits reordered).",
+          "options": [],
+          "interaction_order": 23,
+          "default_value": "",
+          "validation_rules": "Format rules unclear; no validation error displayed.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_issuance:dropdown",
+          "name": "Country of Issuance",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown for country where birth certificate was issued; not opened.",
+          "options": [],
+          "interaction_order": 24,
+          "default_value": "",
+          "validation_rules": "An asterisk appears beside the label; likely required.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_yes:radio",
+          "name": "nationalOfTTSecondary_yes",
+          "type": "radio",
+          "required": true,
+          "behavior": "Yes option for 'Are you a resident of Trinidad and Tobago?'.",
+          "options": [],
+          "interaction_order": 25,
+          "default_value": "",
+          "validation_rules": "Required question.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_no:radio",
+          "name": "nationalOfTTSecondary_no",
+          "type": "radio",
+          "required": true,
+          "behavior": "No option for 'Are you a resident of Trinidad and Tobago?'.",
+          "options": [],
+          "interaction_order": 26,
+          "default_value": "",
+          "validation_rules": "Mutually exclusive with Yes.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:marital_status:dropdown",
+          "name": "Marital Status",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown trigger; options not opened.",
+          "options": [],
+          "interaction_order": 27,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:highest_level_of_education:dropdown",
+          "name": "Highest Level of Education",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown trigger; options not opened.",
+          "options": [],
+          "interaction_order": 28,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:communication_method:dropdown",
+          "name": "Communication Method",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Dropdown for preferred communication method; not opened.",
+          "options": [],
+          "interaction_order": 29,
+          "default_value": "",
+          "validation_rules": "Required (label has *).",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_yes:radio",
+          "name": "memberOfOtherCreditUnion_yes",
+          "type": "radio",
+          "required": true,
+          "behavior": "Yes option for 'Are you a member of any other Credit Union?'.",
+          "options": [],
+          "interaction_order": 30,
+          "default_value": "",
+          "validation_rules": "Required question; must choose Yes or No.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_no:radio",
+          "name": "memberOfOtherCreditUnion_no",
+          "type": "radio",
+          "required": true,
+          "behavior": "No option for 'Are you a member of any other Credit Union?'.",
+          "options": [],
+          "interaction_order": 31,
+          "default_value": "",
+          "validation_rules": "Mutually exclusive with Yes.",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "new_member_application_additional_details:select_employment_status:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Employment Status')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Employment Status\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_95",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:select_employer:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Select Employer')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Select Employer\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_106",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employerdesc:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"employerDesc\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"employerDesc\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='employerDesc' and @id='employerDesc']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_116",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:r_s:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[id=\"_r_s_\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='_r_s_']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:occupation:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"occupation\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"occupation\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter Occupation\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='occupation' and @id='occupation' and @placeholder='Enter Occupation']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_147",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_sector:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose sector')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose sector\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_155",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_employment_type:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose Employment Type')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose Employment Type\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_165",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline1:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"employerAddressLine1\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"employerAddressLine1\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter your Address Line 1\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='employerAddressLine1' and @id='employerAddressLine1' and @placeholder='Enter your Address Line 1']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_174",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline2:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"employerAddressLine2\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"employerAddressLine2\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter your Address Line 2\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='employerAddressLine2' and @id='employerAddressLine2' and @placeholder='Enter your Address Line 2']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_181",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employercity:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"employerCity\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"employerCity\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter your City\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='employerCity' and @id='employerCity' and @placeholder='Enter your City']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_190",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_country:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose Country')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose Country\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_198",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:workphoneno:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"workPhoneNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"workPhoneNo\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter Work Phone Number\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='workPhoneNo' and @id='workPhoneNo' and @placeholder='Enter Work Phone Number']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_216",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:workemail:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"workEmail\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"workEmail\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter your email\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='workEmail' and @id='workEmail' and @placeholder='Enter your email']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_225",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:purpose_of_business_relationship:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Purpose Of Business Relationship')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Purpose Of Business Relationship\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_233",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_an_option:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Choose an option')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Choose an option\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_242",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary_frequency:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Salary Frequency')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Salary Frequency\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_251",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"salary\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter salary\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='salary' and @placeholder='Enter salary']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_264",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:account_funded:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Account Funded')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Account Funded\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_272",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"nationalOfTTPrimary\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='nationalOfTTPrimary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_no:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"nationalOfTTPrimary\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='nationalOfTTPrimary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationality:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Nationality')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Nationality\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_308",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_birth:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Country of birth')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Country of birth\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_318",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:placeofbirth:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"placeOfBirth\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"placeOfBirth\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter place of birth\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='placeOfBirth' and @id='placeOfBirth' and @placeholder='Enter place of birth']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_329",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:birthcertificatepinno:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"birthCertificatePinNo\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"birthCertificatePinNo\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Birth Certificate\"]",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='birthCertificatePinNo' and @id='birthCertificatePinNo' and @placeholder='Birth Certificate']",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_336",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_issuance:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Country of Issuance')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Country of Issuance\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_343",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"nationalOfTTSecondary\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='nationalOfTTSecondary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_no:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"nationalOfTTSecondary\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='nationalOfTTSecondary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:marital_status:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Marital Status')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Marital Status\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_378",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:highest_level_of_education:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Highest Level of Education')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Highest Level of Education\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_392",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:communication_method:dropdown",
+          "locators": [
+            {
+              "strategy": "js",
+              "value": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Communication Method')",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()=\"Communication Method\"]",
+              "confidence": 0.8
+            },
+            {
+              "strategy": "uid",
+              "value": "1_406",
+              "confidence": 0.5
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"memberOfOtherCreditUnion\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='memberOfOtherCreditUnion']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_no:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"memberOfOtherCreditUnion\"]",
+              "confidence": 1.0
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='memberOfOtherCreditUnion']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "new_member_application_additional_details:select_employment_status:dropdown",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213150",
+              "model": "",
+              "value_entered": "FULL TIME PERMANENT",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213191",
+          "last_seen": "2026-04-16T18:07:48.213191"
+        },
+        {
+          "element_id": "new_member_application_additional_details:select_employer:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213260",
+          "last_seen": "2026-04-16T18:07:48.213260"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employerdesc:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213301",
+              "model": "",
+              "value_entered": "Acme Holdings Ltd",
+              "accepted": false,
+              "issues": "Field disabled, so value cannot be entered despite being logically useful when Employer is 'Other'.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213308",
+          "last_seen": "2026-04-16T18:07:48.213308"
+        },
+        {
+          "element_id": "new_member_application_additional_details:r_s:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213337",
+          "last_seen": "2026-04-16T18:07:48.213337"
+        },
+        {
+          "element_id": "new_member_application_additional_details:occupation:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213368",
+              "model": "",
+              "value_entered": "Project Manager",
+              "accepted": true,
+              "issues": "Transformation appears lossy (letters reordered), which may reduce data quality and user trust.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213373",
+          "last_seen": "2026-04-16T18:07:48.213373"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_sector:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213407",
+          "last_seen": "2026-04-16T18:07:48.213407"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_employment_type:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213438",
+          "last_seen": "2026-04-16T18:07:48.213438"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline1:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213467",
+              "model": "",
+              "value_entered": "123 Queen Street",
+              "accepted": true,
+              "issues": "Transform appears to scramble spelling, which may be unintended.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213472",
+          "last_seen": "2026-04-16T18:07:48.213472"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employeraddressline2:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213502",
+              "model": "",
+              "value_entered": "Suite 400",
+              "accepted": true,
+              "issues": "Letter order changes ('SUITE' → 'SIUTE'/'SIUT'), likely a bug.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213507",
+          "last_seen": "2026-04-16T18:07:48.213507"
+        },
+        {
+          "element_id": "new_member_application_additional_details:employercity:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213536",
+              "model": "",
+              "value_entered": "Port of Spain",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213541",
+          "last_seen": "2026-04-16T18:07:48.213541"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_country:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213581",
+          "last_seen": "2026-04-16T18:07:48.213581"
+        },
+        {
+          "element_id": "new_member_application_additional_details:workphoneno:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213610",
+              "model": "",
+              "value_entered": "5551234",
+              "accepted": true,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213615",
+          "last_seen": "2026-04-16T18:07:48.213615"
+        },
+        {
+          "element_id": "new_member_application_additional_details:workemail:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213649",
+              "model": "",
+              "value_entered": "work.applicant37@example.com",
+              "accepted": true,
+              "issues": "Forced uppercase may reduce readability but should not affect email delivery.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213653",
+          "last_seen": "2026-04-16T18:07:48.213653"
+        },
+        {
+          "element_id": "new_member_application_additional_details:purpose_of_business_relationship:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213684",
+          "last_seen": "2026-04-16T18:07:48.213684"
+        },
+        {
+          "element_id": "new_member_application_additional_details:choose_an_option:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213715",
+          "last_seen": "2026-04-16T18:07:48.213715"
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary_frequency:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213745",
+          "last_seen": "2026-04-16T18:07:48.213745"
+        },
+        {
+          "element_id": "new_member_application_additional_details:salary:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213772",
+              "model": "",
+              "value_entered": "8500",
+              "accepted": true,
+              "issues": "Potential currency scaling bug; amount 8500 should more plausibly show '$ 8,500.00'.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213776",
+          "last_seen": "2026-04-16T18:07:48.213776"
+        },
+        {
+          "element_id": "new_member_application_additional_details:account_funded:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213806",
+          "last_seen": "2026-04-16T18:07:48.213806"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_yes:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213832",
+              "model": "",
+              "value_entered": "true",
+              "accepted": false,
+              "issues": "Both true/false radios share same selector; disambiguation by position/label required.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213836",
+          "last_seen": "2026-04-16T18:07:48.213836"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttprimary_no:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213863",
+              "model": "",
+              "value_entered": "false",
+              "accepted": false,
+              "issues": "Same as above; actual radio elements not surfaced with unique uids in snapshot.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213868",
+          "last_seen": "2026-04-16T18:07:48.213868"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationality:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213898",
+          "last_seen": "2026-04-16T18:07:48.213898"
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_birth:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213929",
+          "last_seen": "2026-04-16T18:07:48.213929"
+        },
+        {
+          "element_id": "new_member_application_additional_details:placeofbirth:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213962",
+              "model": "",
+              "value_entered": "San Fernando",
+              "accepted": true,
+              "issues": "Transformation scrambles spelling, which may be unintended.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.213967",
+          "last_seen": "2026-04-16T18:07:48.213967"
+        },
+        {
+          "element_id": "new_member_application_additional_details:birthcertificatepinno:text_input",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.213997",
+              "model": "",
+              "value_entered": "BC-998877",
+              "accepted": true,
+              "issues": "Reordering digits on official IDs is likely a critical bug.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214001",
+          "last_seen": "2026-04-16T18:07:48.214001"
+        },
+        {
+          "element_id": "new_member_application_additional_details:country_of_issuance:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214032",
+          "last_seen": "2026-04-16T18:07:48.214032"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_yes:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.214057",
+              "model": "",
+              "value_entered": "true",
+              "accepted": false,
+              "issues": "Both yes/no share same selector; must rely on label associations.",
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214061",
+          "last_seen": "2026-04-16T18:07:48.214061"
+        },
+        {
+          "element_id": "new_member_application_additional_details:nationalofttsecondary_no:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.214089",
+              "model": "",
+              "value_entered": "false",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214094",
+          "last_seen": "2026-04-16T18:07:48.214094"
+        },
+        {
+          "element_id": "new_member_application_additional_details:marital_status:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214124",
+          "last_seen": "2026-04-16T18:07:48.214124"
+        },
+        {
+          "element_id": "new_member_application_additional_details:highest_level_of_education:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214155",
+          "last_seen": "2026-04-16T18:07:48.214155"
+        },
+        {
+          "element_id": "new_member_application_additional_details:communication_method:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214185",
+          "last_seen": "2026-04-16T18:07:48.214185"
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_yes:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.214209",
+              "model": "",
+              "value_entered": "true",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214213",
+          "last_seen": "2026-04-16T18:07:48.214213"
+        },
+        {
+          "element_id": "new_member_application_additional_details:memberofothercreditunion_no:radio",
+          "runs": [
+            {
+              "date": "2026-04-16T18:07:48.214238",
+              "model": "",
+              "value_entered": "false",
+              "accepted": false,
+              "issues": null,
+              "error_text": "",
+              "duration_ms": 0
+            }
+          ],
+          "change_log": [
+            "2026-04-16: discovered by explore pipeline"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-04-16T18:07:48.214242",
+          "last_seen": "2026-04-16T18:07:48.214242"
+        }
+      ]
+    },
+    {
+      "screen_name": "Additional Details",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "additional_details:employer_description:text_input",
+          "name": "Employer Description",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details::text_input",
+          "name": "​",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:occupation:text_input",
+          "name": "Occupation",
+          "type": "text_input",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:employer_address_line_1:text_input",
+          "name": "Employer Address Line 1",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:employer_address_line_2:text_input",
+          "name": "Employer Address Line 2",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:employer_city:text_input",
+          "name": "Employer City",
+          "type": "text_input",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:work_phone:text_input",
+          "name": "Work Phone",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:work_email:text_input",
+          "name": "Work Email",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:enter_salary:text_input",
+          "name": "Enter salary",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:place_of_birth:text_input",
+          "name": "Place of Birth",
+          "type": "text_input",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:birth_certificate:text_input",
+          "name": "Birth Certificate",
+          "type": "text_input",
+          "required": false,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "name": "Yes",
+          "type": "radio",
+          "required": false,
+          "behavior": "",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "name": "Yes",
+          "type": "radio",
+          "required": false,
+          "behavior": "",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "name": "Yes",
+          "type": "radio",
+          "required": false,
+          "behavior": "",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details::dropdown",
+          "name": "",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:dd:dropdown",
+          "name": "DD",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:purpose_of_business_relationship:dropdown",
+          "name": "Purpose Of Business Relationship",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:income_range:dropdown",
+          "name": "Income Range",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:salary_frequency:dropdown",
+          "name": "Salary Frequency",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        },
+        {
+          "element_id": "additional_details:country_of_issuance:dropdown",
+          "name": "Country of Issuance",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "Additional Details",
+          "accept": "",
+          "semantic_hint": ""
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "additional_details:employer_description:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#employerDesc",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='employerDesc']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details::text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#_r_s_",
+              "confidence": 0.9
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:occupation:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#occupation",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='occupation']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:employer_address_line_1:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#employerAddressLine1",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='employerAddressLine1']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:employer_address_line_2:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#employerAddressLine2",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='employerAddressLine2']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:employer_city:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#employerCity",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='employerCity']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:work_phone:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#workPhoneNo",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='workPhoneNo']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:work_email:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#workEmail",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='workEmail']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:enter_salary:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name='salary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:place_of_birth:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#placeOfBirth",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='placeOfBirth']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:birth_certificate:text_input",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "#birthCertificatePinNo",
+              "confidence": 0.9
+            },
+            {
+              "strategy": "css",
+              "value": "input[name='birthCertificatePinNo']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name='nationalOfTTPrimary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name='nationalOfTTSecondary']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:yes:radio",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name='memberOfOtherCreditUnion']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details::dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:dd:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:purpose_of_business_relationship:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:income_range:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:salary_frequency:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        },
+        {
+          "element_id": "additional_details:country_of_issuance:dropdown",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "Additional Details"
+        }
+      ],
+      "l2": []
+    }
+  ],
+  "created_at": "2026-04-15T10:31:23.510742",
+  "updated_at": "2026-04-17T10:03:55.105729",
+  "version": 8
+}
