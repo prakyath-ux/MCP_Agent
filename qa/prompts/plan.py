@@ -32,7 +32,22 @@ Where Approach is one of:
 - Back buttons (backButton, back) — navigation, not testable
 - Headers, images, avatars (headerImage, texture_view) — decorative
 - ANY element with type "nav_tab", "other", or behavior containing "navigation" or "header"
-- ONLY generate tests for: text_input, dropdown, date_picker, and action buttons (like "Find Member")
+- Radio buttons and checkboxes — these need a dedicated RADIO_TOGGLE approach
+  that doesn't exist yet. The upstream L0 filter strips them, but if one
+  leaks through, DO NOT emit a test case for it.
+- ONLY generate tests for: text_input, dropdown, date_picker, file_upload,
+  and action buttons (like "Find Member")
+
+# AUTO-FILLED AND READ-ONLY FIELDS — MUST BE VERIFY_ONLY
+If an L0 element's `behavior` field contains ANY of these markers:
+  "auto_filled", "auto-filled", "autofilled",
+  "read_only",   "read-only",   "readonly",
+  "masked"
+then the field is populated by the app itself (typically OCR from an
+uploaded document, or a pre-filled session value). The test agent MUST
+NOT overwrite these values — doing so breaks the form state for everyone
+downstream. Emit exactly ONE VERIFY_ONLY test per such field to confirm
+it exists and is readable. Never emit FILL_CHECK on them.
 
 # RULES FOR EACH ELEMENT TYPE
 
@@ -78,10 +93,10 @@ Where Approach is one of:
 # STRICT LIMITS
 - Maximum 3 test cases per field
 - Cover EVERY inputtable element — minimum 1 test per text_input, dropdown,
-  date_picker, checkbox, radio group, file_upload. Do NOT skip elements to
-  "stay under a screen budget". The caller sets a hard cap via max_total_cases;
-  within that cap, prioritize breadth (1 test per field) before depth
-  (multiple tests per field).
+  date_picker, file_upload. Do NOT skip elements to "stay under a screen
+  budget". The caller sets a hard cap via max_total_cases; within that cap,
+  prioritize breadth (1 test per field) before depth (multiple tests per
+  field). Radio/checkbox are intentionally excluded — see SKIP list above.
 - Total: obey the max_total_cases cap the caller passes in (default 30).
 - Format with TC prefix: TC1, TC2, TC3...
 
@@ -95,22 +110,40 @@ the executor will fill the field with those literal strings, which is NOT
 an empty-field test.
 
 # ORDERING — CRITICAL
-GROUP all test cases FOR THE SAME FIELD TOGETHER, in the order they will be
-executed. Within a field, order cases HIGH → MED → LOW. Do NOT interleave
-different fields. The executor runs cases top-to-bottom, and jumping between
-fields forces it to re-focus/re-scroll needlessly.
 
-Correct order:
-  TC1 | firstName | empty         | HIGH
+Process fields in the ORDER THEY APPEAR IN THE INPUT ARRAY. That order
+already reflects the screen's top-to-bottom DOM source order, which is
+almost always the dependency order too (e.g. Employment Status comes
+before Employer because Status unlocks Employer).
+
+If `interaction_order` is set (non-zero) on the input elements, use it
+as an ascending sort key; otherwise fall back to input-array order.
+
+Do NOT batch by element type (all text inputs first, then all
+dropdowns). That pattern breaks implicit parent → child unlocks and
+forces the executor to re-setup prior fields for every later test.
+
+Within a single field, GROUP all its test cases together and order them
+HIGH → MED → LOW priority. Do NOT interleave different fields — the
+executor runs cases top-to-bottom and jumping between fields forces it
+to re-focus / re-scroll needlessly.
+
+Correct order (fields in interaction_order, cases grouped per field):
+  TC1 | firstName | empty         | HIGH     # interaction_order=1
   TC2 | firstName | valid value   | HIGH
   TC3 | firstName | numbers only  | MED
-  TC4 | email     | empty         | HIGH
+  TC4 | email     | empty         | HIGH     # interaction_order=2
   TC5 | email     | invalid fmt   | HIGH
   TC6 | email     | valid email   | MED
   ...
 
-Wrong order (interleaved — do NOT do this):
+Wrong — interleaved fields (do NOT do this):
   TC1 | firstName | empty     | HIGH
   TC2 | email     | empty     | HIGH
   TC3 | firstName | valid     | HIGH
+
+Wrong — batched by type (do NOT do this):
+  TC1..TC8  | all text inputs
+  TC9..TC15 | all dropdowns
+  TC16..    | all date pickers
 """

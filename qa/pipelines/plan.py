@@ -31,7 +31,10 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         return PlanOutput(model=inp.model)
 
     # Filter out non-testable elements (nav tabs, back buttons, headers, decorative, labels)
-    skip_types = {"nav_tab", "other"}
+    # Wall E3 — radios need their own approach (Yes/No tap) and don't fit
+    # SELECT_AND_VERIFY or FILL_CHECK patterns. Skip them for now; a
+    # RADIO_TOGGLE approach is future work. Checkboxes likewise.
+    skip_types = {"nav_tab", "other", "radio", "checkbox"}
     skip_name_keywords = {
         "back", "backbutton", "headerimage", "headercontainer", "texture_view",
         "screen title", "title", "label", "tab label", "nav text", "header",
@@ -227,6 +230,43 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
             test_cases.append(new_tc)
             print(f"  ✓ Plan: injected UPLOAD case {new_tc.tc_id} ({upload_l0.name}) → {resolved_path}")
         handled_l0_ids.add(upload_l0.element_id)
+
+    # Wall 1.7 — Auto-fill / read-only guard. Any test case targeting an
+    # L0 element whose behavior declares it populated by the app (OCR,
+    # session pre-fill, computed value) gets forced to VERIFY_ONLY. This
+    # runs regardless of what the LLM emitted — Python enforces the rule
+    # so a missed prompt instruction can't corrupt the form.
+    _AUTOFILL_MARKERS = (
+        "auto_filled", "auto-filled", "autofilled",
+        "read_only",   "read-only",   "readonly",
+        "masked",
+    )
+
+    def _is_autofilled(el) -> bool:
+        b = (getattr(el, "behavior", "") or "").lower()
+        return any(m in b for m in _AUTOFILL_MARKERS)
+
+    deduped: list[TestCase] = []
+    seen_verify_only: set[str] = set()
+    forced_count = 0
+    for tc in test_cases:
+        l0 = inp.knowledge.get_l0_for_element(tc.element_id)
+        if l0 is not None and _is_autofilled(l0):
+            # Keep a single VERIFY_ONLY per field; drop FILL_CHECK/etc.
+            if tc.element_id in seen_verify_only:
+                forced_count += 1
+                continue
+            if tc.approach != TestApproach.VERIFY_ONLY:
+                tc.approach = TestApproach.VERIFY_ONLY
+                tc.test_value = ""
+                tc.expected_result = "field present and populated (auto-fill)"
+                forced_count += 1
+            seen_verify_only.add(tc.element_id)
+        deduped.append(tc)
+    if forced_count:
+        print(f"  ⚠ Wall 1.7: coerced {forced_count} case(s) on auto-fill / "
+              f"read-only fields to VERIFY_ONLY (protects OCR pre-fills)")
+    test_cases = deduped
 
     # Group cases by field so all tests for one field run consecutively.
     # Preserves first-appearance order of fields and HIGH→MED→LOW within field.

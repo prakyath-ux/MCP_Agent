@@ -105,14 +105,15 @@ def _extract_json(raw: str) -> str | None:
             raw = json.loads(raw)
         except (json.JSONDecodeError, ValueError):
             raw = raw[1:-1]
-    # Now `raw` should be a JSON array/object. Return the first complete one.
-    for opener, closer in (("[", "]"), ("{", "}")):
-        i = raw.find(opener)
-        if i != -1:
-            j = raw.rfind(closer)
-            if j > i:
-                return raw[i:j + 1]
-    return raw if (raw.startswith("[") or raw.startswith("{")) else None
+    # After unwrap, the payload itself should be valid JSON — no need to
+    # guess where it starts/ends. The old find-first-`[` / rfind-last-`]`
+    # heuristic would grab brackets embedded in string values (e.g. the
+    # `[for=...]` inside a CSS selector value), producing a mangled
+    # substring. Trust the unwrap instead.
+    raw = raw.strip() if isinstance(raw, str) else raw
+    if isinstance(raw, str) and (raw.startswith("{") or raw.startswith("[")):
+        return raw
+    return None
 
 
 def _safe_parse(raw: str) -> object | None:

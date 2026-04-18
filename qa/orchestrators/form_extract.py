@@ -222,6 +222,7 @@ _JS_ENUMERATE = r"""() => {
       placeholder: el.placeholder || '',
       value: el.value || '',
       section: findSection(el),
+      dom_top: el.getBoundingClientRect().top,
     });
   });
 
@@ -243,6 +244,7 @@ _JS_ENUMERATE = r"""() => {
       name: el.name || '',
       options: opts,
       native: true,
+      dom_top: el.getBoundingClientRect().top,
       section: findSection(el),
     });
   });
@@ -257,6 +259,7 @@ _JS_ENUMERATE = r"""() => {
       id: el.id || '',
       accept: el.accept || '',
       section: findSection(el),
+      dom_top: el.getBoundingClientRect().top,
     });
   });
 
@@ -293,6 +296,7 @@ _JS_ENUMERATE = r"""() => {
         name: grp,
         options: [],
         section: findSection(el),
+        dom_top: el.getBoundingClientRect().top,
       };
     }
     const optLabel = el.closest('label')?.textContent?.trim()
@@ -321,11 +325,272 @@ _JS_ENUMERATE = r"""() => {
       required: isRequired(el, label),
       id: el.id || '',
       section: findSection(el),
+      dom_top: el.getBoundingClientRect().top,
     });
   });
 
   return JSON.stringify(results);
 }"""
+
+
+# Walls E1 + E2 — for each custom-dropdown trigger discovered via the
+# a11y snapshot, ask the DOM for a stable locator pair (CSS + XPath) +
+# vertical position. We need the locator so ExecuteOrchestrator.
+# _select_option can find the trigger (Wall 1.1), and the dom_top so
+# _build_screen can sort L0 by true top-to-bottom order.
+#
+# Chrome DevTools MCP `evaluate_script` expects a ZERO-ARG arrow
+# function, so we can't pass `(label) => ...` and call it ourselves —
+# we template the label literal into a zero-arg closure via
+# `_js_locate_trigger_for(label)`.
+#
+# Return JSON shape on success:
+#   {
+#     "css":      "label[for='...'] ~ * button[data-testid='...']",
+#     "xpath":    "//label[@for='...']/following-sibling::*//button[@data-testid='...']",
+#     "strategy": "tecu_label_for" | "mui_formcontrol" | "generic_text_match",
+#     "dom_top":  1234.5
+#   }
+# Return `null` if no trigger is resolvable.
+#
+# Strategies in order — first match wins:
+#   1. TECU / HTML5 — <label for="X"> anchor, sibling button. Works for
+#      Tailwind apps, custom components, anything with semantic HTML.
+#      Selector uses the label's `for` attribute → unique & stable.
+#   2. MUI — <label> wrapped by .MuiFormControl-root, combobox inside.
+#      Works for Material UI apps. Selector uses id / aria-labelledby /
+#      role-based nth-of-type.
+#   3. Generic — text-content match on any button/select/combobox.
+#      Last resort for apps that have no associated <label>.
+_JS_LOCATE_TRIGGER_BODY = r"""
+  if (!TARGET_LABEL) return null;
+  const needle = TARGET_LABEL
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!needle) return null;
+
+  const isVisible = (el) => el && el.offsetParent !== null;
+
+  // Normalize the visible text of a label — strip a trailing '*',
+  // collapse whitespace runs (handles "Employment \n   Status"), lower-case.
+  function labelText(lbl) {
+    return lbl.textContent
+      .replace(/\s*\*\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  function matchLabel(lbl) {
+    const t = labelText(lbl);
+    if (!t) return false;
+    return t === needle
+      || t.startsWith(needle)
+      || needle.startsWith(t);
+  }
+
+  function packResult(css, xpath, anchorEl, strategy) {
+    if (!css || !anchorEl) return null;
+    const r = anchorEl.getBoundingClientRect();
+    return { css, xpath, strategy, dom_top: r.top };
+  }
+
+  // Escape a value for safe embedding in a double-quoted CSS attribute
+  // selector or XPath attribute literal.
+  function escAttr(v) {
+    return String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+  function escXpath(v) {
+    // XPath 1.0 has no escape — if a literal contains both ' and ", we'd
+    // need concat(). Our use case (DOM id/testid strings) almost never
+    // contains both; if it does, fall back to escaping single quotes by
+    // choosing a different delimiter.
+    const s = String(v);
+    if (s.indexOf("'") === -1) return `'${s}'`;
+    if (s.indexOf('"') === -1) return `"${s}"`;
+    // Both quotes present — break into concat pieces. Rare.
+    const parts = s.split("'").map((p, i, a) => {
+      const lit = `'${p}'`;
+      return i < a.length - 1 ? lit + `, "'", ` : lit;
+    });
+    return 'concat(' + parts.join('') + ')';
+  }
+
+  // ── Strategy 1: TECU / HTML5 — label[for=X] as anchor ──────────
+  //
+  // Structure TECU and most Tailwind-style apps use:
+  //   <div>
+  //     <label for="fieldKey">Employment Status<span>*</span></label>
+  //     <div class="relative ..."> <button data-testid="dropdown-button">
+  //   </div>
+  //
+  // The label's `for` attribute is the only author-supplied identifier
+  // that's guaranteed unique per field. We use it as the CSS/XPath anchor
+  // and walk forward to the button/select that lives alongside it.
+  {
+    const labels = [...document.querySelectorAll('label')].filter(isVisible);
+    for (const lbl of labels) {
+      if (!matchLabel(lbl)) continue;
+      const forAttr = lbl.getAttribute('for');
+      if (!forAttr) continue;
+
+      // Walk forward from the label to find the actual trigger element.
+      let tr = null;
+
+      // Case A: <label for="id"> pointing at a real <select> / <input>.
+      const directTarget = document.getElementById(forAttr);
+      if (isVisible(directTarget)) {
+        const tag = directTarget.tagName;
+        if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA'
+            || tag === 'BUTTON') {
+          tr = directTarget;
+        }
+      }
+
+      // Case B: custom dropdown — button lives in a sibling div.
+      if (!tr) {
+        for (let s = lbl.nextElementSibling; s && !tr; s = s.nextElementSibling) {
+          tr = s.querySelector(
+            'button, [role=combobox], [role=button], select, textarea, input:not([type=hidden])'
+          ) || (s.matches('button, [role=combobox], select') ? s : null);
+          if (tr && !isVisible(tr)) tr = null;
+        }
+      }
+
+      // Case C: last resort — look within the label's parent.
+      if (!tr && lbl.parentElement) {
+        tr = lbl.parentElement.querySelector(
+          'button, [role=combobox], [role=button], select'
+        );
+        if (tr && !isVisible(tr)) tr = null;
+      }
+
+      if (!isVisible(tr)) continue;
+
+      // Build the CSS + XPath using the `for` attribute as anchor.
+      const forCss = escAttr(forAttr);
+      const forXp  = escXpath(forAttr);
+      const tagLower = (tr.tagName || '').toLowerCase();
+      const dtid = tr.getAttribute('data-testid');
+      let css = '';
+      let xpath = '';
+
+      if (tr === directTarget) {
+        // Label points directly at the control.
+        css = `#${CSS.escape(forAttr)}`;
+        xpath = `//*[@id=${forXp}]`;
+      } else if (dtid) {
+        const dtidCss = escAttr(dtid);
+        const dtidXp  = escXpath(dtid);
+        css = `label[for="${forCss}"] ~ * ${tagLower}[data-testid="${dtidCss}"]`;
+        xpath = `//label[@for=${forXp}]/following-sibling::*`
+              + `//${tagLower}[@data-testid=${dtidXp}]`;
+      } else {
+        css = `label[for="${forCss}"] ~ * ${tagLower}`;
+        xpath = `//label[@for=${forXp}]/following-sibling::*//${tagLower}`;
+      }
+
+      const result = packResult(css, xpath, tr, 'tecu_label_for');
+      if (result) return JSON.stringify(result);
+    }
+  }
+
+  // ── Strategy 2: MUI — .MuiFormControl-root container ───────────
+  //
+  // Structure:
+  //   <div class="MuiFormControl-root">
+  //     <label class="MuiFormLabel-root MuiInputLabel-root">Name</label>
+  //     <div>...</div>
+  //     <div role="combobox" aria-labelledby="..." />
+  //   </div>
+  //
+  // Selector: prefer id → aria-labelledby → role-based nth-of-type.
+  {
+    const LABEL_SEL = 'label, legend, .MuiFormLabel-root, .MuiInputLabel-root';
+    const labels = [...document.querySelectorAll(LABEL_SEL)].filter(isVisible);
+    for (const lbl of labels) {
+      if (!matchLabel(lbl)) continue;
+      const fc = lbl.closest(
+        '.MuiFormControl-root, .form-group, .field-wrapper, fieldset'
+      );
+      if (!fc) continue;
+      const tr = fc.querySelector('[role=combobox], [role=button], button, select');
+      if (!isVisible(tr)) continue;
+
+      let css = '';
+      let xpath = '';
+
+      if (tr.id) {
+        css = '#' + CSS.escape(tr.id);
+        xpath = `//*[@id=${escXpath(tr.id)}]`;
+      } else {
+        const labelledby = tr.getAttribute('aria-labelledby');
+        if (labelledby) {
+          const ab = escAttr(labelledby);
+          css = `[aria-labelledby="${ab}"]`;
+          xpath = `//*[@aria-labelledby=${escXpath(labelledby)}]`;
+        } else if (tr.getAttribute('role')) {
+          const role = tr.getAttribute('role');
+          const peers = [...document.querySelectorAll(`[role="${role}"]`)]
+            .filter(isVisible);
+          const idx = peers.indexOf(tr);
+          if (idx >= 0) {
+            css = `[role="${role}"]:nth-of-type(${idx + 1})`;
+            xpath = `(//*[@role=${escXpath(role)}])[${idx + 1}]`;
+          }
+        }
+      }
+
+      const result = packResult(css, xpath, tr, 'mui_formcontrol');
+      if (result) return JSON.stringify(result);
+    }
+  }
+
+  // ── Strategy 3: Generic text-content match ─────────────────────
+  //
+  // For apps with no <label> / .MuiFormLabel-root: match on the
+  // visible text of any combobox / button / select.
+  {
+    const TRIGGER_SEL = '[role=combobox], [role=button], button, select';
+    const triggers = [...document.querySelectorAll(TRIGGER_SEL)].filter(isVisible);
+    let tr = triggers.find(el =>
+      el.textContent.replace(/\s+/g, ' ').trim().toLowerCase() === needle
+    );
+    if (!tr) {
+      tr = triggers.find(el => {
+        const t = el.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+        return t && (t.startsWith(needle) || needle.startsWith(t) || t.includes(needle));
+      });
+    }
+    if (isVisible(tr)) {
+      let css = '';
+      let xpath = '';
+      if (tr.id) {
+        css = '#' + CSS.escape(tr.id);
+        xpath = `//*[@id=${escXpath(tr.id)}]`;
+      } else {
+        const dtid = tr.getAttribute('data-testid');
+        if (dtid) {
+          css = `[data-testid="${escAttr(dtid)}"]`;
+          xpath = `//*[@data-testid=${escXpath(dtid)}]`;
+        }
+      }
+      const result = packResult(css, xpath, tr, 'generic_text_match');
+      if (result) return JSON.stringify(result);
+    }
+  }
+
+  return null;
+"""
+
+
+def _js_locate_trigger_for(label: str) -> str:
+    """Build a zero-arg arrow function that resolves a dropdown trigger's
+    CSS + XPath + dom_top by its label. Three strategies (TECU /
+    HTML5 → MUI → generic text match), first match wins. The label is
+    JSON-encoded so quotes and special chars in the label don't break
+    the JS."""
+    body = _JS_LOCATE_TRIGGER_BODY.replace("TARGET_LABEL", json.dumps(label))
+    return "() => {\n" + body + "\n}"
 
 
 # ── Snapshot parsing: find custom dropdown triggers ─────────────────
@@ -490,8 +755,14 @@ def _build_screen(
     js_elements: list[dict],
     dropdown_data: dict[str, dict],
 ) -> ScreenKnowledge:
+    # Wall E2 — track dom_top per L0 element so we can sort the final
+    # list by DOM source order (not the type-batched order in which
+    # js_elements arrived). Kept as a side-table rather than a new L0
+    # field because dom_top is purely an Extract-time artifact, not
+    # something Plan / Execute need to reason about downstream.
     l0: list[L0Element] = []
     l1: list[L1Element] = []
+    dom_tops: dict[str, float] = {}  # element_id → top (pixels)
 
     for el in js_elements:
         label = _clean_label(el.get("label") or "")
@@ -516,6 +787,8 @@ def _build_screen(
             accept=el.get("accept", ""),
             behavior=(f"Section: {section}" if section else ""),
         ))
+        if isinstance(el.get("dom_top"), (int, float)):
+            dom_tops[eid] = float(el["dom_top"])
 
         locators: list[Locator] = []
         if el.get("id"):
@@ -541,10 +814,17 @@ def _build_screen(
             options = info.get("options", [])
             disabled = bool(info.get("disabled", False))
             section = _clean_label(info.get("section") or "")
+            locator_css = info.get("locator_css", "") or ""
+            locator_xpath = info.get("locator_xpath", "") or ""
+            raw_top = info.get("dom_top")
+            dom_top = float(raw_top) if isinstance(raw_top, (int, float)) else None
         else:
             options = info
             disabled = False
             section = ""
+            locator_css = ""
+            locator_xpath = ""
+            dom_top = None
 
         disabled_note = (
             "Disabled when extracted — likely depends on a prior dropdown being filled. "
@@ -560,7 +840,31 @@ def _build_screen(
             existing.options = options
             if behavior and not existing.behavior:
                 existing.behavior = behavior
+            # Back-fill dom_top if this dropdown was a native-select
+            # we already picked up in step 1 — trust the locator pass
+            # over the JS rect since it's measured after any layout shifts.
+            if dom_top is not None:
+                dom_tops[eid] = dom_top
+            # Attach the CSS selector to the matching L1 if we have one
+            # and the L1 is currently empty — Wall E1 unblocking.
+            if locator_css:
+                l1_existing = next(
+                    (x for x in l1 if x.element_id == eid), None
+                )
+                if l1_existing is not None:
+                    if not any(loc.strategy == "css" for loc in l1_existing.locators):
+                        l1_existing.locators.append(Locator(
+                            strategy="css", value=locator_css, confidence=0.85,
+                        ))
+                    # Also back-fill xpath if missing
+                    if locator_xpath and not any(
+                        loc.strategy == "xpath" for loc in l1_existing.locators
+                    ):
+                        l1_existing.locators.append(Locator(
+                            strategy="xpath", value=locator_xpath, confidence=0.80,
+                        ))
             continue
+
         l0.append(L0Element(
             element_id=eid,
             name=trigger_label,
@@ -570,7 +874,43 @@ def _build_screen(
             behavior=behavior,
             screen_name=screen_name,
         ))
-        l1.append(L1Element(element_id=eid, screen_name=screen_name))
+        if dom_top is not None:
+            dom_tops[eid] = dom_top
+
+        # Wall E1 — attach CSS locator captured by _JS_LOCATE_TRIGGER so
+        # SELECT_AND_VERIFY can target the trigger via document.querySelector.
+        dd_locators: list[Locator] = []
+        if locator_css:
+            dd_locators.append(Locator(
+                strategy="css", value=locator_css, confidence=0.85,
+            ))
+        if locator_xpath:
+            dd_locators.append(Locator(
+                strategy="xpath", value=locator_xpath, confidence=0.80,
+            ))
+        l1.append(L1Element(
+            element_id=eid,
+            locators=dd_locators,
+            screen_name=screen_name,
+        ))
+
+    # Wall E2 — sort L0 by dom_top ascending. Elements without a
+    # captured rect sink to the bottom (preserving their relative order)
+    # — this keeps legacy extractors that didn't populate dom_top from
+    # breaking. L1 is a lookup table, not an ordered sequence, but we
+    # mirror the L0 sort for JSON readability.
+    def _sort_key(el: L0Element) -> tuple[int, float, int]:
+        top = dom_tops.get(el.element_id)
+        if top is None:
+            return (1, 0.0, 0)  # unranked bucket
+        return (0, top, 0)
+
+    l0_sorted = sorted(enumerate(l0), key=lambda pair: (_sort_key(pair[1]), pair[0]))
+    l0 = [pair[1] for pair in l0_sorted]
+
+    # Sort L1 to mirror L0 order (stable for unmatched entries).
+    l0_index = {el.element_id: i for i, el in enumerate(l0)}
+    l1.sort(key=lambda x: l0_index.get(x.element_id, 10_000_000))
 
     return ScreenKnowledge(
         screen_name=screen_name,
@@ -694,6 +1034,33 @@ async def extract_form(
         section_info = _safe_parse(section_raw) or {}
         trig["section"] = section_info.get("section", "") or ""
 
+        # Walls E1 + E2 — resolve a stable locator (CSS + XPath) + dom_top
+        # for this trigger BEFORE clicking it. The locator lets
+        # ExecuteOrchestrator target the dropdown via document.querySelector
+        # (Wall 1.1); dom_top lets _build_screen sort L0 in true
+        # top-to-bottom order. Resolver tries TECU/HTML5 → MUI → generic
+        # text match and returns whichever strategy won.
+        locator_css = ""
+        locator_xpath = ""
+        locator_strategy = ""
+        dom_top: float | None = None
+        loc_raw = await adapter.evaluate_script(_js_locate_trigger_for(label))
+        loc_info = _safe_parse(loc_raw) or {}
+        if isinstance(loc_info, dict):
+            locator_css = loc_info.get("css", "") or ""
+            locator_xpath = loc_info.get("xpath", "") or ""
+            locator_strategy = loc_info.get("strategy", "") or ""
+            if isinstance(loc_info.get("dom_top"), (int, float)):
+                dom_top = float(loc_info["dom_top"])
+        if not locator_css:
+            print(f"  [form]        ⚠ no CSS selector resolved for {label!r} "
+                  "— SELECT_AND_VERIFY will block until fixed")
+        else:
+            strat = f" [{locator_strategy}]" if locator_strategy else ""
+            print(f"  [form]        css={locator_css!r}{strat} dom_top={dom_top}")
+            if locator_xpath:
+                print(f"  [form]        xpath={locator_xpath!r}")
+
         # Disabled check BEFORE clicking: MUI marks cascading dependent
         # dropdowns as disabled until their parent field is filled. We
         # can't open those, so record them as dependent and move on.
@@ -709,6 +1076,10 @@ async def extract_form(
                 "options": [],
                 "disabled": True,
                 "section": trig.get("section", ""),
+                "locator_css": locator_css,
+                "locator_xpath": locator_xpath,
+                "locator_strategy": locator_strategy,
+                "dom_top": dom_top,
             }
             await _checkpoint()
             continue
@@ -745,6 +1116,10 @@ async def extract_form(
                 "disabled": False,
                 "section": trig.get("section", ""),
                 "guardrail_exit": e.reason,
+                "locator_css": locator_css,
+                "locator_xpath": locator_xpath,
+                "locator_strategy": locator_strategy,
+                "dom_top": dom_top,
             }
             await _checkpoint()
             # Still try to close any popup we may have opened before exit.
@@ -836,6 +1211,10 @@ async def extract_form(
             "options": clean,
             "disabled": False,
             "section": trig.get("section", ""),
+            "locator_css": locator_css,
+            "locator_xpath": locator_xpath,
+            "locator_strategy": locator_strategy,
+            "dom_top": dom_top,
         }
 
         # Checkpoint AFTER dropdown_data is updated but BEFORE close —
