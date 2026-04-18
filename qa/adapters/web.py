@@ -172,11 +172,17 @@ class WebAdapter:
         await asyncio.sleep(0.5)
 
     async def navigate_to_screen(self, screen_name: str) -> bool:
+        # Take a pre-nav snapshot so we can verify the click actually
+        # changed the page. MCP "click succeeded" != "page advanced" —
+        # on a validation-gated wizard a blocked submit still registers
+        # as a successful click.
+        pre_snap = await self._call("take_snapshot", {})
+
         # Case 1: absolute URL → direct navigation
         if screen_name.startswith("http"):
             await self._call("navigate_page", {"url": screen_name})
             await asyncio.sleep(1.5)
-            return True
+            return await self._verify_navigated(pre_snap, f"url={screen_name}")
 
         # Case 2: text-match a link / button / tab whose visible text matches.
         # Works for in-page tabs (e.g. TECU page 2's section buttons).
@@ -193,7 +199,7 @@ class WebAdapter:
         result = await self._call("evaluate_script", {"function": fn})
         if "OK" in result:
             await asyncio.sleep(1.5)
-            return True
+            return await self._verify_navigated(pre_snap, f"tab={screen_name!r}")
 
         # Case 3: no matching tab — try clicking a wizard advance button
         # (Save & Continue / Continue / Next). Used when moving between
@@ -223,6 +229,52 @@ class WebAdapter:
             # Page transitions take longer than in-page tab switches — give
             # the app time to validate, submit, and render the next page.
             await asyncio.sleep(3.0)
+            label = adv_result.split("ADVANCED:", 1)[-1].strip().strip('"').strip("'")
+            return await self._verify_navigated(pre_snap, f"advance-button={label!r}")
+        return False
+
+    async def _verify_navigated(self, pre_snap: str, label: str) -> bool:
+        """Compare a fresh snapshot to `pre_snap`; return True iff the page
+        actually changed. One bounded retry with extra wait in case the
+        new page is slow to render. Prints a clear pass/fail line so
+        multi-screen execute loops can trace where navigation stalls."""
+        post_snap = await self._call("take_snapshot", {})
+        if self._snapshot_changed(pre_snap, post_snap):
+            print(f"  [nav] {label}: ✓ page changed (verified)")
+            return True
+
+        # Bounded retry for slow renders (gated-submit validation, OCR redraws).
+        await asyncio.sleep(2.0)
+        post_snap = await self._call("take_snapshot", {})
+        if self._snapshot_changed(pre_snap, post_snap):
+            print(f"  [nav] {label}: ✓ page changed after retry (verified)")
+            return True
+
+        print(
+            f"  [nav] {label}: ✗ click succeeded but page unchanged — "
+            f"nav FAILED (pre={len(pre_snap)}ch, post={len(post_snap)}ch)"
+        )
+        return False
+
+    @staticmethod
+    def _snapshot_changed(pre: str, post: str) -> bool:
+        """Best-effort page-change detection. True when the post snapshot
+        is substantially different from pre — indicating navigation
+        actually occurred. Intentionally loose: real page transitions
+        change hundreds to thousands of chars + the top of the a11y tree.
+        Inline validation errors change <50 chars and leave the heading
+        region untouched."""
+        if not pre or not post:
+            # Can't compare reliably — fail open (assume changed). Better
+            # to proceed with a possibly-wrong snapshot than halt a run.
+            return True
+        # Substantial length delta almost always means new page rendered.
+        if abs(len(post) - len(pre)) > 80:
+            return True
+        # Same-ish length: the head region (heading + top nav) is the
+        # most stable part of any page. If it differs, we changed pages.
+        head_len = 300
+        if pre[:head_len].strip() != post[:head_len].strip():
             return True
         return False
 

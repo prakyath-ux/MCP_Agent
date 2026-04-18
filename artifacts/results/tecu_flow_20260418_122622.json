@@ -1,0 +1,747 @@
+{
+  "app_name": "TECU",
+  "model": "gpt-5.1",
+  "updated_at": "2026-04-18T12:27:46.492071",
+  "cost_usd": 0.1625,
+  "duration_sec": 84.0,
+  "summary": {
+    "total": 44,
+    "passed": 15,
+    "failed": 1,
+    "skipped": 0,
+    "blocked": 28
+  },
+  "results": [
+    {
+      "tc_id": "TC1",
+      "element_id": "new_member_application_additional_details:occupation:text_input",
+      "field_name": "Occupation",
+      "test_value": "",
+      "expected": "error_shown",
+      "actual": "No validation error message or visual change related to the empty Occupation field is visible in the post-snapshot compared to the pre-snapshot, and the alert node has no readable text content.",
+      "status": "blocked",
+      "notes": "conf=0.77 | restored_to='Software Engineer'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "No validation error message or visual change related to the empty Occupation field is visible in the post-snapshot compared to the pre-snapshot, and the alert node has no readable text content.",
+          "error_text": "",
+          "confidence": 0.77
+        }
+      },
+      "duration_ms": 3232
+    },
+    {
+      "tc_id": "TC2",
+      "element_id": "new_member_application_additional_details:occupation:text_input",
+      "field_name": "Occupation",
+      "test_value": "Teacher",
+      "expected": "accepted",
+      "actual": "The Occupation textbox value changed from 'SOFTWARE ENGINEER' to 'TEACHER' with no error or rejection shown.",
+      "status": "pass",
+      "notes": "conf=0.98 | restored_to='Software Engineer'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Occupation textbox value changed from 'SOFTWARE ENGINEER' to 'TEACHER' with no error or rejection shown.",
+          "error_text": "",
+          "confidence": 0.98
+        }
+      },
+      "duration_ms": 3285
+    },
+    {
+      "tc_id": "TC3",
+      "element_id": "new_member_application_additional_details:occupation:text_input",
+      "field_name": "Occupation",
+      "test_value": "Dev_ops-Lead!",
+      "expected": "accepted",
+      "actual": "The Occupation textbox value remains 'SOFTWARE ENGINEER' before and after the test, so the entered value 'Dev_ops-Lead!' is not visible and no validation behavior can be observed.",
+      "status": "blocked",
+      "notes": "conf=0.97 | restored_to='Software Engineer'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Occupation textbox value remains 'SOFTWARE ENGINEER' before and after the test, so the entered value 'Dev_ops-Lead!' is not visible and no validation behavior can be observed.",
+          "error_text": "",
+          "confidence": 0.97
+        }
+      },
+      "duration_ms": 2971
+    },
+    {
+      "tc_id": "TC4",
+      "element_id": "new_member_application_additional_details:employer_city:text_input",
+      "field_name": "Employer City",
+      "test_value": "",
+      "expected": "error_shown",
+      "actual": "After leaving the Employer City field empty, the post-snapshot shows no visible validation or error message related to this field compared to the pre-snapshot, but it is unclear whether an error should appear inline or elsewhere.",
+      "status": "blocked",
+      "notes": "conf=0.66 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "After leaving the Employer City field empty, the post-snapshot shows no visible validation or error message related to this field compared to the pre-snapshot, but it is unclear whether an error should appear inline or elsewhere.",
+          "error_text": "",
+          "confidence": 0.66
+        }
+      },
+      "duration_ms": 3769
+    },
+    {
+      "tc_id": "TC5",
+      "element_id": "new_member_application_additional_details:employer_city:text_input",
+      "field_name": "Employer City",
+      "test_value": "San Fernando",
+      "expected": "accepted",
+      "actual": "The Employer City field value changed from 'PORT OF SPAIN' to 'SAN FERNANDO' with no error or validation message shown.",
+      "status": "pass",
+      "notes": "conf=1.00 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Employer City field value changed from 'PORT OF SPAIN' to 'SAN FERNANDO' with no error or validation message shown.",
+          "error_text": "",
+          "confidence": 1.0
+        }
+      },
+      "duration_ms": 2991
+    },
+    {
+      "tc_id": "TC6",
+      "element_id": "new_member_application_additional_details:employer_city:text_input",
+      "field_name": "Employer City",
+      "test_value": "Couva-Town_1.",
+      "expected": "accepted",
+      "actual": "The Employer City field value remained as 'PORT OF SPAIN' with no visible change or error after the test, so it is unclear whether the test value 'Couva-Town_1.' was accepted or applied at all.",
+      "status": "blocked",
+      "notes": "conf=0.63 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Employer City field value remained as 'PORT OF SPAIN' with no visible change or error after the test, so it is unclear whether the test value 'Couva-Town_1.' was accepted or applied at all.",
+          "error_text": "",
+          "confidence": 0.63
+        }
+      },
+      "duration_ms": 3019
+    },
+    {
+      "tc_id": "TC7",
+      "element_id": "new_member_application_additional_details:place_of_birth:text_input",
+      "field_name": "Place Of Birth",
+      "test_value": "",
+      "expected": "error_shown",
+      "actual": "The Place of Birth field remains empty and no visible validation or error message is present in the snapshot after leaving it blank.",
+      "status": "blocked",
+      "notes": "conf=0.86 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Place of Birth field remains empty and no visible validation or error message is present in the snapshot after leaving it blank.",
+          "error_text": "",
+          "confidence": 0.86
+        }
+      },
+      "duration_ms": 2717
+    },
+    {
+      "tc_id": "TC8",
+      "element_id": "new_member_application_additional_details:place_of_birth:text_input",
+      "field_name": "Place Of Birth",
+      "test_value": "Port of Spain",
+      "expected": "accepted",
+      "actual": "The 'Place of Birth *' textbox successfully contains the value (in uppercase) with no error or validation message shown.",
+      "status": "pass",
+      "notes": "conf=0.91 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The 'Place of Birth *' textbox successfully contains the value (in uppercase) with no error or validation message shown.",
+          "error_text": "",
+          "confidence": 0.91
+        }
+      },
+      "duration_ms": 2940
+    },
+    {
+      "tc_id": "TC9",
+      "element_id": "new_member_application_additional_details:place_of_birth:text_input",
+      "field_name": "Place Of Birth",
+      "test_value": "St. James-West_1!",
+      "expected": "accepted",
+      "actual": "The Place of Birth textbox value remained as 'PORT OF SPAIN' in both pre- and post-snapshots, with no visible change or validation message related to the test value.",
+      "status": "blocked",
+      "notes": "conf=0.84 | restored_to='Port of Spain'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Place of Birth textbox value remained as 'PORT OF SPAIN' in both pre- and post-snapshots, with no visible change or validation message related to the test value.",
+          "error_text": "",
+          "confidence": 0.84
+        }
+      },
+      "duration_ms": 3141
+    },
+    {
+      "tc_id": "TC10",
+      "element_id": "new_member_application_additional_details:employer_description:text_input",
+      "field_name": "Employer Description",
+      "test_value": "TECU Credit Union",
+      "expected": "accepted",
+      "actual": "The disabled 'Employer Description' textbox was populated with the value 'TECU CREDIT UNION' and no validation errors appeared.",
+      "status": "pass",
+      "notes": "conf=0.92 | restored_to='Independent Consulting'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The disabled 'Employer Description' textbox was populated with the value 'TECU CREDIT UNION' and no validation errors appeared.",
+          "error_text": "",
+          "confidence": 0.92
+        }
+      },
+      "duration_ms": 2800
+    },
+    {
+      "tc_id": "TC11",
+      "element_id": "new_member_application_additional_details:employer_description:text_input",
+      "field_name": "Employer Description",
+      "test_value": "Gov't-owned company",
+      "expected": "accepted",
+      "actual": "The disabled 'Employer Description' textbox value was updated to \"GOV'T-OWNED COMPANY\" with no error shown.",
+      "status": "pass",
+      "notes": "conf=0.90 | restored_to='Independent Consulting'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The disabled 'Employer Description' textbox value was updated to \"GOV'T-OWNED COMPANY\" with no error shown.",
+          "error_text": "",
+          "confidence": 0.9
+        }
+      },
+      "duration_ms": 2906
+    },
+    {
+      "tc_id": "TC12",
+      "element_id": "new_member_application_additional_details:employer_address_line_1:text_input",
+      "field_name": "Employer Address Line 1",
+      "test_value": "12 High Street",
+      "expected": "accepted",
+      "actual": "The Employer Address Line 1 textbox accepted the value, displaying it as '12 HIGH STREET' with no error shown.",
+      "status": "pass",
+      "notes": "conf=0.97 | restored_to='1 Main Street'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Employer Address Line 1 textbox accepted the value, displaying it as '12 HIGH STREET' with no error shown.",
+          "error_text": "",
+          "confidence": 0.97
+        }
+      },
+      "duration_ms": 2925
+    },
+    {
+      "tc_id": "TC13",
+      "element_id": "new_member_application_additional_details:employer_address_line_1:text_input",
+      "field_name": "Employer Address Line 1",
+      "test_value": "Bldg-2, Suite_4A.",
+      "expected": "accepted",
+      "actual": "After attempting to fill Employer Address Line 1 with 'Bldg-2, Suite_4A.', the field value in the post-snapshot remains '1 MAIN STREET' with no visible validation error.",
+      "status": "blocked",
+      "notes": "conf=0.76 | restored_to='1 Main Street'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "After attempting to fill Employer Address Line 1 with 'Bldg-2, Suite_4A.', the field value in the post-snapshot remains '1 MAIN STREET' with no visible validation error.",
+          "error_text": "",
+          "confidence": 0.76
+        }
+      },
+      "duration_ms": 3171
+    },
+    {
+      "tc_id": "TC14",
+      "element_id": "new_member_application_additional_details:employer_address_line_2:text_input",
+      "field_name": "Employer Address Line 2",
+      "test_value": "2nd Floor",
+      "expected": "accepted",
+      "actual": "The Employer Address Line 2 textbox was successfully populated with '2ND FLOOR' and no validation error appeared.",
+      "status": "pass",
+      "notes": "conf=0.98",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Employer Address Line 2 textbox was successfully populated with '2ND FLOOR' and no validation error appeared.",
+          "error_text": "",
+          "confidence": 0.98
+        }
+      },
+      "duration_ms": 2123
+    },
+    {
+      "tc_id": "TC15",
+      "element_id": "new_member_application_additional_details:employer_address_line_2:text_input",
+      "field_name": "Employer Address Line 2",
+      "test_value": "Attn: HR_Dept.",
+      "expected": "accepted",
+      "actual": "The Employer Address Line 2 field value remained as '2ND FLOOR' with no visible change or validation feedback related to the test value.",
+      "status": "blocked",
+      "notes": "conf=0.77",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Employer Address Line 2 field value remained as '2ND FLOOR' with no visible change or validation feedback related to the test value.",
+          "error_text": "",
+          "confidence": 0.77
+        }
+      },
+      "duration_ms": 2381
+    },
+    {
+      "tc_id": "TC16",
+      "element_id": "new_member_application_additional_details:work_phone:text_input",
+      "field_name": "Work Phone",
+      "test_value": "",
+      "expected": "accepted",
+      "actual": "The Work Phone textbox remained empty with no validation or error message shown after leaving it blank.",
+      "status": "pass",
+      "notes": "conf=0.97 | restored_to='5551234567'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Work Phone textbox remained empty with no validation or error message shown after leaving it blank.",
+          "error_text": "",
+          "confidence": 0.97
+        }
+      },
+      "duration_ms": 2767
+    },
+    {
+      "tc_id": "TC17",
+      "element_id": "new_member_application_additional_details:work_phone:text_input",
+      "field_name": "Work Phone",
+      "test_value": "8686221234",
+      "expected": "accepted",
+      "actual": "After entering the work phone value, the Work Phone textbox still appears without any visible value or validation message, so it is unclear whether the value was accepted or not.",
+      "status": "blocked",
+      "notes": "conf=0.65 | restored_to='5551234567'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "After entering the work phone value, the Work Phone textbox still appears without any visible value or validation message, so it is unclear whether the value was accepted or not.",
+          "error_text": "",
+          "confidence": 0.65
+        }
+      },
+      "duration_ms": 2956
+    },
+    {
+      "tc_id": "TC18",
+      "element_id": "new_member_application_additional_details:work_phone:text_input",
+      "field_name": "Work Phone",
+      "test_value": "868-622-1234",
+      "expected": "accepted",
+      "actual": "After entering the value, the Work Phone textbox still shows no value and there is no visible validation or confirmation indicating acceptance or rejection.",
+      "status": "blocked",
+      "notes": "conf=0.77 | restored_to='5551234567'",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "After entering the value, the Work Phone textbox still shows no value and there is no visible validation or confirmation indicating acceptance or rejection.",
+          "error_text": "",
+          "confidence": 0.77
+        }
+      },
+      "duration_ms": 2998
+    },
+    {
+      "tc_id": "TC19",
+      "element_id": "new_member_application_additional_details:work_email:text_input",
+      "field_name": "Work Email",
+      "test_value": "",
+      "expected": "accepted",
+      "actual": "When the empty Work Email field was submitted, a validation message 'Please enter an email' was shown instead of accepting the empty value.",
+      "status": "fail",
+      "notes": "conf=1.00 | err='Please enter an email' | restored_to='john.doe.work@example.com'",
+      "evidence": {
+        "classification": {
+          "status": "fail",
+          "observed": "When the empty Work Email field was submitted, a validation message 'Please enter an email' was shown instead of accepting the empty value.",
+          "error_text": "Please enter an email",
+          "confidence": 1.0
+        }
+      },
+      "duration_ms": 2643
+    },
+    {
+      "tc_id": "TC20",
+      "element_id": "new_member_application_additional_details:work_email:text_input",
+      "field_name": "Work Email",
+      "test_value": "user@example.com",
+      "expected": "accepted",
+      "actual": "The Work Email field value was updated to USER@EXAMPLE.COM with no validation error shown.",
+      "status": "pass",
+      "notes": "conf=0.97 | restored_to='john.doe.work@example.com'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Work Email field value was updated to USER@EXAMPLE.COM with no validation error shown.",
+          "error_text": "",
+          "confidence": 0.97
+        }
+      },
+      "duration_ms": 2951
+    },
+    {
+      "tc_id": "TC21",
+      "element_id": "new_member_application_additional_details:work_email:text_input",
+      "field_name": "Work Email",
+      "test_value": "user.name+hr@example.co",
+      "expected": "accepted",
+      "actual": "The Work Email field accepted the value 'user.name+hr@example.co' (stored uppercased) with no validation error shown.",
+      "status": "pass",
+      "notes": "conf=0.98 | restored_to='john.doe.work@example.com'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Work Email field accepted the value 'user.name+hr@example.co' (stored uppercased) with no validation error shown.",
+          "error_text": "",
+          "confidence": 0.98
+        }
+      },
+      "duration_ms": 3080
+    },
+    {
+      "tc_id": "TC22",
+      "element_id": "new_member_application_additional_details:salary:text_input",
+      "field_name": "Salary",
+      "test_value": "",
+      "expected": "accepted",
+      "actual": "The Salary field textbox remains present with an empty value and no validation or error message is shown after leaving it blank.",
+      "status": "pass",
+      "notes": "conf=0.88 | restored_to='25000'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Salary field textbox remains present with an empty value and no validation or error message is shown after leaving it blank.",
+          "error_text": "",
+          "confidence": 0.88
+        }
+      },
+      "duration_ms": 3252
+    },
+    {
+      "tc_id": "TC23",
+      "element_id": "new_member_application_additional_details:salary:text_input",
+      "field_name": "Salary",
+      "test_value": "7500",
+      "expected": "accepted",
+      "actual": "The Salary field accepted the input and updated its value from \"$ 250.00\" to \"$ 75.00\" with no validation error shown.",
+      "status": "pass",
+      "notes": "conf=0.86 | restored_to='25000'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Salary field accepted the input and updated its value from \"$ 250.00\" to \"$ 75.00\" with no validation error shown.",
+          "error_text": "",
+          "confidence": 0.86
+        }
+      },
+      "duration_ms": 2985
+    },
+    {
+      "tc_id": "TC24",
+      "element_id": "new_member_application_additional_details:salary:text_input",
+      "field_name": "Salary",
+      "test_value": "7,500.00",
+      "expected": "accepted",
+      "actual": "The Salary textbox updated from \"$ 250.00\" to \"$ 7,500.00\" with no validation error shown.",
+      "status": "pass",
+      "notes": "conf=1.00 | restored_to='25000'",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Salary textbox updated from \"$ 250.00\" to \"$ 7,500.00\" with no validation error shown.",
+          "error_text": "",
+          "confidence": 1.0
+        }
+      },
+      "duration_ms": 2969
+    },
+    {
+      "tc_id": "TC25",
+      "element_id": "new_member_application_additional_details:birth_certificate:text_input",
+      "field_name": "Birth Certificate",
+      "test_value": "123456789",
+      "expected": "accepted",
+      "actual": "The Birth Certificate textbox accepted the value '123456789' with no validation error shown.",
+      "status": "pass",
+      "notes": "conf=0.98",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "The Birth Certificate textbox accepted the value '123456789' with no validation error shown.",
+          "error_text": "",
+          "confidence": 0.98
+        }
+      },
+      "duration_ms": 2264
+    },
+    {
+      "tc_id": "TC26",
+      "element_id": "new_member_application_additional_details:birth_certificate:text_input",
+      "field_name": "Birth Certificate",
+      "test_value": "BC-2024_001.",
+      "expected": "accepted",
+      "actual": "The Birth Certificate field value remains '123456789' in both pre- and post-snapshots, with no visible error or indication that 'BC-2024_001.' was entered or accepted.",
+      "status": "blocked",
+      "notes": "conf=0.90",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The Birth Certificate field value remains '123456789' in both pre- and post-snapshots, with no visible error or indication that 'BC-2024_001.' was entered or accepted.",
+          "error_text": "",
+          "confidence": 0.9
+        }
+      },
+      "duration_ms": 2739
+    },
+    {
+      "tc_id": "TC27",
+      "element_id": "new_member_application_additional_details:are_you_a_national_of_trinidad_and_tobago:radio",
+      "field_name": "Are You A National Of Trinidad And Tobago",
+      "test_value": "Yes",
+      "expected": "selection_updated",
+      "actual": "The UI shows the Yes/No labels for 'Are you a national of Trinidad and Tobago?' but there is no indication in the snapshots that the Yes option was actually selected or changed state after tapping.",
+      "status": "blocked",
+      "notes": "conf=0.63",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The UI shows the Yes/No labels for 'Are you a national of Trinidad and Tobago?' but there is no indication in the snapshots that the Yes option was actually selected or changed state after tapping.",
+          "error_text": "",
+          "confidence": 0.63
+        }
+      },
+      "duration_ms": 2415
+    },
+    {
+      "tc_id": "TC28",
+      "element_id": "new_member_application_additional_details:are_you_a_resident_of_trinidad_and_tobago:radio",
+      "field_name": "Are You A Resident Of Trinidad And Tobago",
+      "test_value": "Yes",
+      "expected": "selection_updated",
+      "actual": "The UI around 'Are you a resident of Trinidad and Tobago ?' appears identical before and after, with only static 'Yes' and 'No' labels and no visible change in selection state.",
+      "status": "blocked",
+      "notes": "conf=0.69",
+      "evidence": {
+        "classification": {
+          "status": "blocked",
+          "observed": "The UI around 'Are you a resident of Trinidad and Tobago ?' appears identical before and after, with only static 'Yes' and 'No' labels and no visible change in selection state.",
+          "error_text": "",
+          "confidence": 0.69
+        }
+      },
+      "duration_ms": 2698
+    },
+    {
+      "tc_id": "TC29",
+      "element_id": "new_member_application_additional_details:are_you_a_member_of_any_other_credit_union:radio",
+      "field_name": "Are You A Member Of Any Other Credit Union",
+      "test_value": "No",
+      "expected": "selection_updated",
+      "actual": "After tapping the 'No' option for 'Are you a member of any other Credit Union?', the selection triggered a state change that revealed the 'Credit Union Name' required field section.",
+      "status": "pass",
+      "notes": "conf=0.88",
+      "evidence": {
+        "classification": {
+          "status": "pass",
+          "observed": "After tapping the 'No' option for 'Are you a member of any other Credit Union?', the selection triggered a state change that revealed the 'Credit Union Name' required field section.",
+          "error_text": "",
+          "confidence": 0.88
+        }
+      },
+      "duration_ms": 2766
+    },
+    {
+      "tc_id": "TC30",
+      "element_id": "new_member_application_additional_details:employment_status:dropdown",
+      "field_name": "Employment Status",
+      "test_value": "FULL TIME PERMANENT",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC31",
+      "element_id": "new_member_application_additional_details:employer:dropdown",
+      "field_name": "Employer",
+      "test_value": "",
+      "expected": "visible_and_disabled_or_enabled_per_flow",
+      "actual": "",
+      "status": "blocked",
+      "notes": "no CSS locator for element_id=new_member_application_additional_details:employer:dropdown",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC32",
+      "element_id": "new_member_application_additional_details:sector:dropdown",
+      "field_name": "Sector",
+      "test_value": "",
+      "expected": "visible_and_disabled_or_enabled_per_flow",
+      "actual": "",
+      "status": "blocked",
+      "notes": "no CSS locator for element_id=new_member_application_additional_details:sector:dropdown",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC33",
+      "element_id": "new_member_application_additional_details:employment_type:dropdown",
+      "field_name": "Employment Type",
+      "test_value": "",
+      "expected": "visible_and_disabled_or_enabled_per_flow",
+      "actual": "",
+      "status": "blocked",
+      "notes": "no CSS locator for element_id=new_member_application_additional_details:employment_type:dropdown",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC34",
+      "element_id": "new_member_application_additional_details:country:dropdown",
+      "field_name": "Country",
+      "test_value": "TRINIDAD AND TOBAGO",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC35",
+      "element_id": "new_member_application_additional_details:purpose_of_business_relationship:dropdown",
+      "field_name": "Purpose Of Business Relationship",
+      "test_value": "Shares",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC36",
+      "element_id": "new_member_application_additional_details:income_range:dropdown",
+      "field_name": "Income Range",
+      "test_value": "$12,001-$17,000",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC37",
+      "element_id": "new_member_application_additional_details:salary_frequency:dropdown",
+      "field_name": "Salary Frequency",
+      "test_value": "ANNUALLY",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC38",
+      "element_id": "new_member_application_additional_details:account_funded:dropdown",
+      "field_name": "Account Funded",
+      "test_value": "Via Salary",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC39",
+      "element_id": "new_member_application_additional_details:nationality:dropdown",
+      "field_name": "Nationality",
+      "test_value": "TRINIDAD AND TOBAGO",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC40",
+      "element_id": "new_member_application_additional_details:country_of_birth:dropdown",
+      "field_name": "Country Of Birth",
+      "test_value": "TRINIDAD AND TOBAGO",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC41",
+      "element_id": "new_member_application_additional_details:country_of_issuance:dropdown",
+      "field_name": "Country Of Issuance",
+      "test_value": "TRINIDAD AND TOBAGO",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC42",
+      "element_id": "new_member_application_additional_details:marital_status:dropdown",
+      "field_name": "Marital Status",
+      "test_value": "COMMON LAW",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC43",
+      "element_id": "new_member_application_additional_details:highest_level_of_education:dropdown",
+      "field_name": "Highest Level Of Education",
+      "test_value": "OTHER",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC44",
+      "element_id": "new_member_application_additional_details:preferred_method_of_communication:dropdown",
+      "field_name": "Preferred Method Of Communication",
+      "test_value": "Email",
+      "expected": "selection_updated",
+      "actual": "",
+      "status": "blocked",
+      "notes": "SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
+      "evidence": {},
+      "duration_ms": 0
+    }
+  ]
+}

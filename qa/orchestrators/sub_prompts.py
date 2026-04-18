@@ -251,3 +251,107 @@ EXTRACT_POST_OCR_FIELDS_SCHEMA = {
         "required": ["fields"],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task 5: Classify a single test-case outcome from pre+post snapshots.
+# Used by ExecuteOrchestrator — Python fills the field, LLM observes the
+# result, returns PASS/FAIL with evidence. Python does NOT rely on this
+# for navigation or state mutation — purely an observer role.
+# ──────────────────────────────────────────────────────────────────────
+
+CLASSIFY_TEST_RESULT_PROMPT = """You are observing the outcome of a single
+test case on a web form field. Python has already filled the field with
+the test value; your job is ONLY to observe what happened and classify.
+
+Given:
+  - field_name: the label of the tested field
+  - approach: how the test was performed (fill_check / tap_verify / verify_only)
+  - test_value: what was entered (may be empty for verify_only)
+  - expected_result: what SHOULD happen (e.g. "error_shown", "no_error", "accepts_value")
+  - pre_snapshot: state before the test was performed
+  - post_snapshot: state after the test was performed
+
+Classify as one of:
+  - PASS: observed behavior matches expected_result
+  - FAIL: observed behavior differs from expected — this is a real bug
+  - BLOCKED: could not observe cleanly (field not visible, page in unexpected state)
+
+Provide:
+  - observed: one-sentence description of what actually happened
+  - error_text: the exact error/validation text if one appeared, else empty string
+  - confidence: 0.0-1.0 — how confident you are in the classification
+
+Be STRICT. If you can't confirm the expected behavior from the snapshots,
+mark BLOCKED. Do not guess. Do not suggest fixes. Your job is only to
+report what the snapshots literally show."""
+
+CLASSIFY_TEST_RESULT_SCHEMA = {
+    "name": "classify_test_result",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "status": {
+                "type": "string",
+                "enum": ["pass", "fail", "blocked"],
+            },
+            "observed": {
+                "type": "string",
+                "description": "One sentence on what happened",
+            },
+            "error_text": {
+                "type": "string",
+                "description": "Exact error/validation text if shown, else empty",
+            },
+            "confidence": {
+                "type": "number",
+                "description": "0.0 - 1.0 confidence in the classification",
+            },
+        },
+        "required": ["status", "observed", "error_text", "confidence"],
+    },
+}
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task 6: Chain-of-Verification — is a list of claimed items actually
+# supported by the snapshot? Used by qa.orchestrators.verify for Tier 2
+# semantic rescue when deterministic string-match is too strict.
+# ──────────────────────────────────────────────────────────────────────
+
+VERIFY_CLAIM_PROMPT = """You are verifying whether a list of claims is
+supported by a source snapshot. For each claim item, decide:
+
+- Supported (literally or semantically present in the snapshot) → verified_items
+- NOT present (hallucinated / invented) → unsupported_items
+
+Be STRICT. If you aren't sure an item is in the snapshot, put it in
+unsupported_items. Return items verbatim as given — do not rewrite."""
+
+VERIFY_CLAIM_SCHEMA = {
+    "name": "verify_claim",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "verified_items": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Items from the claim that ARE supported by the snapshot, verbatim",
+            },
+            "unsupported_items": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Items from the claim that are NOT in the snapshot (hallucinated)",
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "One short sentence on how the verification was decided",
+            },
+        },
+        "required": ["verified_items", "unsupported_items", "reasoning"],
+    },
+}

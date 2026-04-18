@@ -77,10 +77,22 @@ Where Approach is one of:
 
 # STRICT LIMITS
 - Maximum 3 test cases per field
-- Total: 8-12 test cases per screen (not more)
-- Cover ALL form elements (minimum 1 test per text_input, dropdown, date_picker)
+- Cover EVERY inputtable element — minimum 1 test per text_input, dropdown,
+  date_picker, checkbox, radio group, file_upload. Do NOT skip elements to
+  "stay under a screen budget". The caller sets a hard cap via max_total_cases;
+  within that cap, prioritize breadth (1 test per field) before depth
+  (multiple tests per field).
+- Total: obey the max_total_cases cap the caller passes in (default 30).
 - Format with TC prefix: TC1, TC2, TC3...
-- Include screen_name in each test case
+
+# EMPTY-VALUE TEST CASES
+When testing required-field validation with an empty value, leave the
+test_value column EMPTY (just the separators around it):
+  TC1 | screen:first_name:text_input | First Name | FILL_CHECK |  | error_shown | HIGH
+
+Do NOT write the literal word "EMPTY" or "BLANK" in the test_value column —
+the executor will fill the field with those literal strings, which is NOT
+an empty-field test.
 
 # ORDERING — CRITICAL
 GROUP all test cases FOR THE SAME FIELD TOGETHER, in the order they will be

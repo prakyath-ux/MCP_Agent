@@ -5,12 +5,14 @@
 # stateless call — system prompt + one user message + structured JSON out.
 # No tools, no history, no reasoning chain to unwind.
 
+
 import json
 import os
 
 from openai import AsyncOpenAI
 
 from qa.engine.budget import BudgetTracker
+from qa.engine.guardrails import GuardrailContext
 from qa.engine.model_factory import compute_cost
 
 
@@ -22,6 +24,7 @@ async def llm_classify(
     model: str = "gpt-5.1",
     budget: BudgetTracker | None = None,
     label: str = "subtask",
+    guardrails: GuardrailContext | None = None,
 ) -> dict:
     """Run ONE stateless LLM call with JSON schema output.
 
@@ -32,11 +35,18 @@ async def llm_classify(
         model: override default model.
         budget: if provided, tokens/cost are added to the shared run tracker.
         label: short tag shown in per-call console output.
+        guardrails: if provided, enforces scope-level caps on calls / cost /
+            time. Raises GuardrailExit from `qa.engine.guardrails` when a
+            hard cap is hit — caller should catch, save partial, continue.
 
     Returns:
         Parsed JSON matching `schema`. Returns {} on parse failure — caller
         decides whether that's fatal.
     """
+    # Check guardrails BEFORE spending any money on this call.
+    if guardrails is not None:
+        guardrails.check()
+
     client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
     response = await client.chat.completions.create(
@@ -63,6 +73,12 @@ async def llm_classify(
 
     if budget is not None:
         budget.record_turn(input_toks, output_toks, cached_toks)
+
+    # Record call + cost in guardrails (propagates to parent scopes).
+    # This happens AFTER the API call returns so guardrails reflect
+    # actual spend, not projected.
+    if guardrails is not None:
+        guardrails.record(cost=cost)
 
     print(
         f"    [llm {label}] in={input_toks} out={output_toks} "

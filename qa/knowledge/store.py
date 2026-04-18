@@ -1,5 +1,6 @@
 # qa/knowledge/store.py — Knowledge base persistence, delta detection, and merging
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,17 @@ from pathlib import Path
 from qa.models.common import TargetApp
 from qa.models.knowledge import KnowledgeBase, ScreenKnowledge, L0Element
 from qa.models.explore import DeltaReport, DeltaChange
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Write `content` to `path` atomically.
+    Uses temp-file + os.replace (atomic on POSIX and Windows 10+).
+    A crash mid-write leaves either the original file intact OR the
+    fully-written new file — never a partial/corrupted file."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content)
+    # os.replace is atomic at the OS level on all supported platforms.
+    os.replace(tmp, path)
 
 
 class KnowledgeStore:
@@ -21,7 +33,9 @@ class KnowledgeStore:
         return platform_dir / f"{safe_name}.json"
 
     def save(self, kb: KnowledgeBase) -> Path:
-        # Don't overwrite good data with empty knowledge
+        """Final-state save. Archives the previous version to history/ and
+        writes the new KB atomically. Use at the end of a run — not in a
+        hot loop (use save_checkpoint for that)."""
         path = self._path_for(kb.app)
         if not kb.screens or all(len(s.l0) == 0 for s in kb.screens):
             print(f"  WARNING: Not saving empty knowledge base to {path}")
@@ -38,7 +52,29 @@ class KnowledgeStore:
             archive.write_bytes(path.read_bytes())
 
         kb.updated_at = datetime.now().isoformat()
-        path.write_text(kb.model_dump_json(indent=2))
+        _atomic_write_text(path, kb.model_dump_json(indent=2))
+        return path
+
+    def save_checkpoint(self, kb: KnowledgeBase) -> Path:
+        """Per-element atomic save. Safe to call from a hot loop.
+
+        Differences from save():
+          • Does NOT archive to history/ (avoids history pollution when
+            called 100× per run).
+          • Empty-KB guard still applies — never clobbers good data with
+            nothing.
+
+        Crash safety: uses temp-file + os.replace, so even a SIGKILL
+        mid-write leaves either the old file or the new file intact —
+        never a corrupted one. Aligns with principle N16 (atomic write
+        after every element).
+        """
+        path = self._path_for(kb.app)
+        if not kb.screens or all(len(s.l0) == 0 for s in kb.screens):
+            return path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        kb.updated_at = datetime.now().isoformat()
+        _atomic_write_text(path, kb.model_dump_json(indent=2))
         return path
 
     def load(self, app: TargetApp) -> KnowledgeBase | None:

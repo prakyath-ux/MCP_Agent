@@ -8,6 +8,7 @@
 # match. The a11y snapshot + narrow LLM classification handles that
 # variability for ~$0.03-0.05 per page.
 #
+
 # Usage:
 #   python -m qa.orchestrators.form_extract <url> --app-name TECU --wait
 #
@@ -43,6 +44,41 @@ from qa.orchestrators.sub_prompts import (
     EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
 )
 from qa.tools.web_tools import _safe_parse
+
+
+def _js_section_for_text(button_text: str) -> str:
+    """Build a JS snippet that returns the nearest preceding section
+    heading for a button with the given visible text. Used to enrich
+    custom dropdown triggers (which we find via snapshot, not DOM
+    enumeration) with the same section context we attach to standard
+    form elements. Returns {"found": bool, "section": str}."""
+    text_js = json.dumps(button_text)
+    return (
+        "() => {"
+        f"  const t = {text_js}.trim();"
+        "  if (!t) return JSON.stringify({found: false, section: ''});"
+        "  const btns = [...document.querySelectorAll("
+        "    'button, [role=\"combobox\"], [role=\"button\"]'"
+        "  )];"
+        "  const target = btns.find(b => (b.textContent || '').trim() === t);"
+        "  if (!target) return JSON.stringify({found: false, section: ''});"
+        "  const HEADING_SEL = 'h1, h2, h3, h4, h5, h6, fieldset > legend, [role=\"heading\"]';"
+        "  const headings = [...document.querySelectorAll(HEADING_SEL)].filter(h => {"
+        "    const hv = (h.textContent || '').trim();"
+        "    return hv.length > 0 && hv.length < 120;"
+        "  });"
+        "  let best = '';"
+        "  for (const h of headings) {"
+        "    const pos = h.compareDocumentPosition(target);"
+        "    if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {"
+        "      best = (h.textContent || '').trim();"
+        "    } else {"
+        "      break;"
+        "    }"
+        "  }"
+        "  return JSON.stringify({found: true, section: best.slice(0, 80)});"
+        "}"
+    )
 
 
 def _js_is_disabled_for(button_text: str) -> str:
@@ -106,6 +142,34 @@ _JS_ENUMERATE = r"""() => {
   const results = [];
   const seen = new Set();
 
+  // Collect all section-header candidates in DOM order. We use these to
+  // label each element with its nearest preceding section, so that forms
+  // with repeating sub-sections (Nominee / Joint Partner / Beneficiary 1 /
+  // Beneficiary 2 all containing "First Name") produce distinct KB ids.
+  const HEADING_SEL = 'h1, h2, h3, h4, h5, h6, fieldset > legend, [role="heading"]';
+  const headings = [...document.querySelectorAll(HEADING_SEL)].filter(h => {
+    const t = (h.textContent || '').trim();
+    return t.length > 0 && t.length < 120;
+  });
+
+  function findSection(el) {
+    // The nearest heading that precedes `el` in DOM order IS our section.
+    // compareDocumentPosition: DOCUMENT_POSITION_FOLLOWING (0x04) set on
+    // `el` relative to `heading` means heading comes before el.
+    let best = '';
+    for (const h of headings) {
+      const pos = h.compareDocumentPosition(el);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+        // heading h precedes el → candidate, keep going to find the nearest
+        best = (h.textContent || '').trim();
+      } else {
+        // heading is at or after el → stop (headings are in DOM order)
+        break;
+      }
+    }
+    return best.slice(0, 80);
+  }
+
   function findLabel(el) {
     if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
     if (el.id) {
@@ -152,6 +216,7 @@ _JS_ENUMERATE = r"""() => {
       name: el.name || '',
       placeholder: el.placeholder || '',
       value: el.value || '',
+      section: findSection(el),
     });
   });
 
@@ -173,6 +238,7 @@ _JS_ENUMERATE = r"""() => {
       name: el.name || '',
       options: opts,
       native: true,
+      section: findSection(el),
     });
   });
 
@@ -185,6 +251,7 @@ _JS_ENUMERATE = r"""() => {
       required: isRequired(el, label),
       id: el.id || '',
       accept: el.accept || '',
+      section: findSection(el),
     });
   });
 
@@ -220,6 +287,7 @@ _JS_ENUMERATE = r"""() => {
         required: isRequired(el, groupLabel),
         name: grp,
         options: [],
+        section: findSection(el),
       };
     }
     const optLabel = el.closest('label')?.textContent?.trim()
@@ -247,6 +315,7 @@ _JS_ENUMERATE = r"""() => {
       type: 'checkbox',
       required: isRequired(el, label),
       id: el.id || '',
+      section: findSection(el),
     });
   });
 
@@ -428,7 +497,8 @@ def _build_screen(
             continue
         etype_str = el.get("type", "text_input")
         etype = _TYPE_MAP.get(etype_str, ElementType.OTHER)
-        eid = make_element_id(screen_name, label, etype.value)
+        section = _clean_label(el.get("section") or "")
+        eid = make_element_id(screen_name, label, etype.value, section=section)
 
         l0.append(L0Element(
             element_id=eid,
@@ -439,6 +509,7 @@ def _build_screen(
             screen_name=screen_name,
             default_value=el.get("value", ""),
             accept=el.get("accept", ""),
+            behavior=(f"Section: {section}" if section else ""),
         ))
 
         locators: list[Locator] = []
@@ -461,14 +532,24 @@ def _build_screen(
 
     # Merge custom dropdown options discovered via LLM
     for trigger_label, info in dropdown_data.items():
-        options = info.get("options", []) if isinstance(info, dict) else info
-        disabled = bool(info.get("disabled", False)) if isinstance(info, dict) else False
-        behavior = (
+        if isinstance(info, dict):
+            options = info.get("options", [])
+            disabled = bool(info.get("disabled", False))
+            section = _clean_label(info.get("section") or "")
+        else:
+            options = info
+            disabled = False
+            section = ""
+
+        disabled_note = (
             "Disabled when extracted — likely depends on a prior dropdown being filled. "
             "Execute pipeline should fill parent field first."
             if disabled else ""
         )
-        eid = make_element_id(screen_name, trigger_label, "dropdown")
+        section_note = f"Section: {section}" if section else ""
+        behavior = " | ".join(p for p in [section_note, disabled_note] if p)
+
+        eid = make_element_id(screen_name, trigger_label, "dropdown", section=section)
         existing = next((e for e in l0 if e.element_id == eid), None)
         if existing:
             existing.options = options
@@ -502,7 +583,17 @@ async def extract_form(
     screen_name: str,
     budget: BudgetTracker,
     page_url: str = "",
+    on_progress=None,
 ) -> ScreenKnowledge:
+    """Extract all form elements from the currently-loaded page.
+
+    Args:
+        on_progress: optional async callback `(ScreenKnowledge) -> None`
+            invoked after each custom-dropdown extraction with the
+            current partial ScreenKnowledge. Callers typically use this
+            to checkpoint the KB so a mid-loop crash never loses more
+            than one element of work. See Wall 2.5f / principle N16.
+    """
     server = adapter.get_mcp_server()
     t0 = time.time()
 
@@ -521,6 +612,31 @@ async def extract_form(
     for t, c in sorted(type_counts.items()):
         print(f"  [form]        {t}: {c}")
 
+    # dropdown_data is populated in step 3 as we iterate triggers, but we
+    # need to declare it up here so the _checkpoint helper (used after
+    # step 1 and in step 3) sees it in scope.
+    dropdown_data: dict[str, dict] = {}
+
+    # Local helper that builds a partial ScreenKnowledge from whatever
+    # data we've captured so far and passes it to the caller's on_progress
+    # callback. Invoked after every meaningful step so a mid-loop crash
+    # never loses more than one dropdown of work (principle N16).
+    async def _checkpoint() -> None:
+        if on_progress is None:
+            return
+        partial = _build_screen(
+            screen_name=screen_name,
+            page_url=page_url,
+            js_elements=js_elements,
+            dropdown_data=dropdown_data,
+        )
+        await on_progress(partial)
+
+    # Step 1 result is already enough for a first checkpoint — all the
+    # text fields, radios, checkboxes, and file inputs are captured
+    # deterministically, no LLM risk.
+    await _checkpoint()
+
     # ── Step 2: snapshot → find custom dropdown triggers ──────────
     print("  [form] 2/3  snapshot: find custom dropdown triggers")
     snap_result = await server.call_tool("take_snapshot", {})
@@ -533,13 +649,20 @@ async def extract_form(
 
     # ── Step 3: open each dropdown → LLM extracts options → close ─
     print("  [form] 3/3  open each dropdown → LLM extracts options → close")
-    dropdown_data: dict[str, dict] = {}
 
     for i, trig in enumerate(triggers):
         uid = trig["uid"]
         label = trig["label"]
         trigger_text = trig["trigger_text"]
         print(f"  [form]      [{i+1}/{len(triggers)}] {label!r} (uid={uid})")
+
+        # Enrich trigger with its nearest section heading — matches what
+        # the JS enumerate already attaches to standard form elements.
+        section_raw = await adapter.evaluate_script(
+            _js_section_for_text(trigger_text)
+        )
+        section_info = _safe_parse(section_raw) or {}
+        trig["section"] = section_info.get("section", "") or ""
 
         # Disabled check BEFORE clicking: MUI marks cascading dependent
         # dropdowns as disabled until their parent field is filled. We
@@ -555,7 +678,9 @@ async def extract_form(
             dropdown_data[label] = {
                 "options": [],
                 "disabled": True,
+                "section": trig.get("section", ""),
             }
+            await _checkpoint()
             continue
 
         async def _open_and_read() -> list[str]:
@@ -620,7 +745,16 @@ async def extract_form(
             if len(clean) > 5:
                 print(f"  [form]          ... +{len(clean) - 5} more")
 
-        dropdown_data[label] = {"options": clean, "disabled": False}
+        dropdown_data[label] = {
+            "options": clean,
+            "disabled": False,
+            "section": trig.get("section", ""),
+        }
+
+        # Checkpoint AFTER dropdown_data is updated but BEFORE close —
+        # on_progress sees the most up-to-date state; close is cleanup
+        # and doesn't affect what we persist.
+        await _checkpoint()
 
         # Close before moving to next trigger
         try:
@@ -661,9 +795,26 @@ async def main() -> int:
     )
     ap.add_argument("--model", default="gpt-5.1", help="Model for option extraction")
     ap.add_argument("--budget", type=float, default=0.50, help="Max $ budget cap")
+    ap.add_argument(
+        "--defaults", default="",
+        help=(
+            "Path to a JSON defaults file (valid values for fields). "
+            "If omitted, loads artifacts/defaults/{app_name}.json if present. "
+            "Used by downstream walls to unlock dependent fields and drive "
+            "execute-phase setup. Loaded here to fail fast on bad files."
+        ),
+    )
     args = ap.parse_args()
 
     app = TargetApp(platform=Platform.WEB, url=args.url, app_name=args.app_name)
+
+    # Load user-provided defaults early so a bad file fails BEFORE we
+    # launch Chrome. Consumed by future walls (1.1 dependent dropdown
+    # chaining, 0.1 ExecuteOrchestrator setup phase).
+    from qa.config import load_defaults
+    defaults_path = args.defaults.strip() or None
+    defaults = load_defaults(args.app_name, path=defaults_path)
+    print(f"  {defaults.summary()}")
 
     store = KnowledgeStore()
     kb = store.load(app) or KnowledgeBase(app=app)
@@ -695,6 +846,20 @@ async def main() -> int:
 
     budget = BudgetTracker(model=args.model, max_budget=args.budget)
 
+    # Checkpoint callback: after every meaningful step inside extract_form
+    # (step 1 finished, each dropdown captured), persist a partial KB so a
+    # mid-loop crash loses at most the current dropdown in progress.
+    # Uses save_checkpoint which is atomic (temp-file + rename) and does
+    # NOT archive — so 100 checkpoints don't pollute history/.
+    async def _checkpoint_kb(partial_screen: ScreenKnowledge) -> None:
+        existing = kb.get_screen(partial_screen.screen_name)
+        if existing:
+            kb.screens = [
+                s for s in kb.screens if s.screen_name != partial_screen.screen_name
+            ]
+        kb.screens.append(partial_screen)
+        store.save_checkpoint(kb)
+
     try:
         screen = await extract_form(
             adapter=adapter,
@@ -702,6 +867,7 @@ async def main() -> int:
             screen_name=screen_name,
             budget=budget,
             page_url=args.url,
+            on_progress=_checkpoint_kb,
         )
     finally:
         await adapter.close()

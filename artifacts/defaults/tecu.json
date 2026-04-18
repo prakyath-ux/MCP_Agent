@@ -1,0 +1,49 @@
+{
+  "app_name": "TECU",
+
+  "_comment": "User-provided valid default values for TECU. Orchestrators look these up when they need to fill a field with a known-good value — e.g. to unlock a dependent dropdown during extract, or to reach a target page during execute's setup phase. Keys can be plain labels (First Name) or section-qualified (Nominee Details > First Name). Section-qualified wins when both exist.",
+
+  "defaults": {
+    "First Name": "JOHN",
+    "Middle Name": "A",
+    "Last Name": "DOE",
+    "Email ID": "john.doe@example.com",
+    "Email": "john.doe@example.com",
+    "Mobile Number": "5551234567",
+    "Home Phone": "5551234567",
+    "Work Phone": "5551234567",
+    "Work Email": "john.doe.work@example.com",
+    "Add profile picture": "profile_picture.png",
+
+    "Please select the document type": "Passport",
+    "Select File": "passport.png",
+
+    "Employment Status": "PART TIME",
+    "Employer": "OTHER",
+    "Employer Description": "Independent Consulting",
+    "Occupation": "Software Engineer",
+    "Sector Employed": "INFORMATION & COMMUNICATION",
+    "Employment Type": "PRIVATE",
+    "Employer Address Line 1": "1 Main Street",
+    "Employer City": "Port of Spain",
+    "Purpose Of Business Relationship": "Shares",
+    "Income Range": "$22,001-$27,000",
+    "Salary Frequency": "MONTHLY",
+    "Salary": "25000",
+    "Account Funded": "Via Salary",
+
+    "Nationality": "TRINIDAD AND TOBAGO",
+    "Country of Birth": "TRINIDAD AND TOBAGO",
+    "Country of Issuance": "TRINIDAD AND TOBAGO",
+    "Place of Birth": "Port of Spain",
+    "Marital Status": "SINGLE",
+    "Highest Level of Education": "UNIVERSITY DEGREE",
+    "Preferred Method of communication": "Email",
+
+    "Address Line 1": "1 Test Street",
+    "Address Line 2": "Apt 1",
+    "City": "Port of Spain",
+    "Zip Code": "00000",
+    "Country": "TRINIDAD AND TOBAGO"
+  }
+}

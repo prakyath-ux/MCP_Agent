@@ -105,6 +105,8 @@ Non-negotiable rules every pipeline follows. Violating these IS a bug.
 | N15 | **Every extracted element has a confidence score**                                      | Low confidence is visible, not hidden                 |
 | N16 | **Atomic write after every element** — not just at end                                  | Crash never loses more than 1 element of work         |
 | N17 | **"Unsure" is a valid LLM response**                                                    | Don't force false precision; route to human or retry  |
+| N18 | **Diagnose before you fix.** Classify the error source before touching code            | Half of walls are data / model / prompt, not code     |
+| N19 | **Within a tier, order by dependency, not pipeline.** Shared infra first. Verify each tier exit with an end-to-end run before advancing | Tier = priority; dependency = execution order. Prevents double-work on shared code. |
 
 ---
 
@@ -136,6 +138,15 @@ What's actually working and what's partially working — so we always know where
 | KB captured: TECU page 3                           | ✅ Clean      | 28 elements, 12/15 dropdowns with options, 3 dependent flagged   |
 | KB captured: TECU page 4                           | 🔄 Partial    | 105 elements, but 17 element_id collisions                       |
 | KB captured: TECU pages 5 + 6                      | ❌ Not yet   | Form_extract will handle when we get to them                     |
+
+---
+
+## 📖 Tier / Wall Nomenclature
+
+- **Tier N** = a named group of related walls (e.g. Tier 0 = Critical Blockers)
+- **Wall N.x** = a specific item inside that tier (e.g. Wall 0.2 = Nav verification)
+- Shorthand `T0.2` in commit messages and code comments = same thing (Wall 0.2 in Tier 0)
+- Sub-tiers like **Tier 2.5** are real tiers (not sub-items); they're groups named at a half-step to keep existing numbering stable
 
 ---
 
@@ -347,6 +358,67 @@ Patterns evaluated and rejected for our problem (see `docs/ai-patterns.pdf`): Tr
 
 ---
 
+## 🩺 Wall Diagnosis Protocol
+
+When any pipeline fails or behaves wrong, we follow this flow **in order**. Skipping steps is how we end up editing code when the real fix was "swap the model" or "clean the KB".
+
+### The 5-Step Flow
+
+```
+1. OBSERVE — gather concrete artifacts
+   • Full logs from the run
+   • Input + output of the failing LLM call
+   • Snapshot at the moment of failure
+   • Cost ledger + MCP timings
+   • Exact error message / wrong output
+
+2. CLASSIFY — which bucket is this?
+   ┌─ DATA           → Corrupted KB, stale locators, malformed snapshot, wrong test file
+   ├─ MODEL          → gpt-5.1 satisficing early, gpt-5 looping, haiku too shallow for the task
+   ├─ HALLUCINATION  → LLM output doesn't match anything in the source snapshot
+   ├─ PROMPT         → Ambiguous instruction, missing context, prompt too long, bad examples
+   ├─ INFRASTRUCTURE → MCP timeout, network drop, rate limit, Chrome crash, stale profile
+   └─ CODE           → Actual bug in our Python (selector logic, parsing, flow control)
+
+3. NARROW
+   • Can we reproduce cheaply? What's the smallest repro?
+   • Isolate the single failing operation.
+   • Check: did this ever work? When did it break? What changed?
+
+4. VERIFY THE HYPOTHESIS — cheap experiment before committing to a fix
+   ┌─ DATA?          → Load known-good KB / snapshot, retry same flow
+   ├─ MODEL?         → Swap model (gpt-5.1 ↔ gpt-5 ↔ haiku), retry same input
+   ├─ HALLUCINATION? → Diff LLM output against raw snapshot; search for the claim
+   ├─ PROMPT?        → Rephrase minimally (not a rewrite), retry
+   ├─ INFRA?         → Retry after brief sleep, check MCP health, restart profile
+   └─ CODE?          → Unit-test the function in isolation with known inputs
+
+5. FIX — only now touch code, and only the specific verified cause.
+   Never batch-fix or "while we're here" on a diagnosis run.
+```
+
+### Example Diagnoses From This Week
+
+| Symptom                                    | Initial Reflex       | Actual Root Cause      | Fix                               |
+| ------------------------------------------ | -------------------- | ---------------------- | --------------------------------- |
+| 13/14 dropdowns empty options on page 3    | "Code bug in extractor" | MODEL (gpt-5.1 satisficing after 7 turns) + PROMPT (LLM used XPath in CSS tool) | Path B orchestrator + per-call perception |
+| Section 2 back upload landed on front slot | "Code bug in upload tool" | CODE — stale aria-label marker on front input | Clear marker on all inputs before setting on target |
+| Page 3 dropdowns returned 0 options        | "Increase timeout"    | MODEL — some MUI dropdowns slow to render | Longer wait (1.5s) + retry on empty |
+| Page 4 "First Name" appears 4 times in KB  | "Duplicate labels"    | CODE — element_id missing section prefix | Section-aware element_ids (Wall 0.3) |
+
+The pattern: **first reflex is usually wrong**. The protocol forces us to check data / model / prompt / infra before assuming code.
+
+### When To Skip The Protocol
+
+Only when the cause is **visually self-evident in logs**:
+- Python `TypeError` or `AttributeError` with clear stack trace → definitely CODE
+- HTTP 401 on every request → definitely INFRA (auth)
+- OS-level failures (file not found) → definitely CODE or environment
+
+Everything else: run the protocol.
+
+---
+
 ## 🔑 Operating Rules
 
 1. **One wall at a time, in priority order.** No jumping.
@@ -381,4 +453,6 @@ Then proceed in order through the Build Order above.
 - **Day 2 PM (today)**: **Philosophy shift — precision over speed.** Added Design Philosophy section up top. Added principles N13-N17. New Tier 2.5 (Precision-First Patterns) with 7 walls: confidence scoring, post-action verification, "unsure" routing, multi-pass verification, anomaly detection, atomic per-element writes, capture audit log. CoVe scope upgraded from "key sub-tasks" to "every LLM claim entering KB".
 - **Day 2 PM (today)**: **Bounded precision.** Replaced "however long / as many calls as needed" with explicit Operational Guardrails table (per-element / per-page / per-test / per-run soft + hard caps). Added Graceful Exit Contract. Added T2.5h Guardrail enforcement wall.
 - **Day 2 PM (today)**: **Recalibrated guardrails to actual measured costs.** Earlier proposal of $2/page was 30× inflation. Tightened to $0.30 hard cap per page, $1.50 per full pipeline run. Added "How We Stay Cheap While Adding Precision" section with 8 engineering techniques (prefix caching, compound tools, haiku verify, batch verify, structural pre-checks, etc.). Phase 1 now enforces tight caps from day one via better engineering, not looser budgets.
+- **Day 3 AM**: Added principle N18 (Diagnose before you fix) and a full Wall Diagnosis Protocol section — 5-step flow (Observe → Classify → Narrow → Verify → Fix) with 6 error buckets (data / model / hallucination / prompt / infra / code). Includes retrospective examples from this week showing how "first reflex is usually wrong". Also added Tier/Wall Nomenclature guide clarifying that T0.2 = Wall 0.2 in Tier 0, and Tier 2.5 is a real tier group, not a sub-item.
+- **Day 3 AM**: Added principle N19 — within a tier, order by dependency not pipeline. Shared infrastructure before consumers. Verify each tier with an end-to-end run before advancing. Tier 0 order locked in: 0.3 → 0.2 → 0.4 → 0.1 (with precision primitives 2.5h, 2.7, 2.5f slotted in before 0.1).
 - **[future entries added here as we progress]**

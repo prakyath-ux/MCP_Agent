@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import time
 
 from agents import Agent, Runner
@@ -251,8 +252,48 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
     )
 
 
+_TC_ID_RE = re.compile(r"^TC\d+\b")
+
+
+def _looks_like_element_id(s: str) -> bool:
+    """An element_id is a slug: colon-separated, underscored, no spaces.
+    A screen_name (common swap-target) has spaces and no colons."""
+    if not s:
+        return False
+    return ":" in s and " " not in s.strip()
+
+
+def _looks_like_screen_name(s: str) -> bool:
+    """Screen names have spaces, are longer than 10 chars, and don't
+    contain colons. The LLM sometimes stuffs the screen name into the
+    field_name column when the prompt is ambiguous about where to put it."""
+    s = (s or "").strip()
+    return bool(s) and " " in s and ":" not in s and len(s) > 10
+
+
+def _humanize_element_id(element_id: str) -> str:
+    """Extract the human-readable label from a slug element_id.
+    Format: `screen:label:type` or `screen:section:label:type`.
+    Second-to-last segment is the label slug — reverse the slug-normalization
+    (underscores → spaces, title-case) to recover a readable name.
+    """
+    parts = element_id.split(":")
+    if len(parts) < 2:
+        return element_id
+    return parts[-2].replace("_", " ").strip().title()
+
+
 def _parse_test_plan(raw: str) -> list[TestCase]:
-    """Parse the LLM's test plan output into TestCase models."""
+    """Parse the LLM's test plan output into TestCase models.
+
+    Robust to two common LLM deviations:
+      • Emitting the literal header row `TC# | Element ID | ...` as a row.
+        Solved by requiring TC IDs to match `TC\\d+` (digit after TC).
+      • Swapping element_id and field_name columns when the prompt is
+        ambiguous about where screen_name belongs. Solved by sniffing the
+        content: whichever column has the slug-format string (colons +
+        underscores, no spaces) is the element_id.
+    """
     test_cases: list[TestCase] = []
 
     for line in raw.split("\n"):
@@ -260,8 +301,11 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
         if not line:
             continue
 
-        # Match lines starting with TC or a number followed by |
-        if not (line.startswith("TC") or (line[0].isdigit() and "|" in line)):
+        # Accept numbered rows too (legacy format), but only valid TC IDs
+        # with digits — rejects the literal "TC#" table header.
+        is_tc_id_row = bool(_TC_ID_RE.match(line))
+        is_numbered_row = line[0].isdigit() and "|" in line
+        if not (is_tc_id_row or is_numbered_row):
             continue
 
         parts = [p.strip() for p in line.split("|")]
@@ -272,6 +316,24 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
         tc_id = parts[0].strip().rstrip(".")
         if not tc_id.startswith("TC"):
             tc_id = f"TC{tc_id}"
+
+        # Auto-detect element_id vs field_name columns (see module docstring).
+        col1 = parts[1].strip() if len(parts) > 1 else ""
+        col2 = parts[2].strip() if len(parts) > 2 else ""
+        if _looks_like_element_id(col1):
+            element_id, field_name = col1, col2
+        elif _looks_like_element_id(col2):
+            element_id, field_name = col2, col1
+        else:
+            element_id, field_name = col1, col2
+
+        # Recover field_name if it got corrupted (common: LLM stuffed the
+        # screen name here instead of the human-readable field label).
+        # element_id slugs are canonical — we can always derive a clean
+        # readable label from them.
+        if _looks_like_element_id(element_id):
+            if not field_name or _looks_like_screen_name(field_name):
+                field_name = _humanize_element_id(element_id)
 
         # Map approach
         approach_text = parts[3].strip().upper() if len(parts) > 3 else ""
@@ -297,12 +359,20 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
         elif "LOW" in priority_text:
             priority = TestCasePriority.LOW
 
+        # test_value: LLMs often emit the literal word 'EMPTY' (or similar)
+        # when they mean an empty string. Translate those markers so the
+        # executor actually fills the field with nothing — otherwise the
+        # required-field validation never triggers.
+        test_value = parts[4].strip() if len(parts) > 4 else ""
+        if test_value.upper() in ("EMPTY", "BLANK", "NULL", "NONE", "<EMPTY>", "(EMPTY)"):
+            test_value = ""
+
         test_cases.append(TestCase(
             tc_id=tc_id,
-            element_id=parts[1].strip() if len(parts) > 1 else "",
-            field_name=parts[2].strip() if len(parts) > 2 else "",
+            element_id=element_id,
+            field_name=field_name,
             approach=approach,
-            test_value=parts[4].strip() if len(parts) > 4 else "",
+            test_value=test_value,
             expected_result=parts[5].strip() if len(parts) > 5 else "",
             priority=priority,
         ))

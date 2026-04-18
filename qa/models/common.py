@@ -41,22 +41,39 @@ class TargetApp(BaseModel):
     device_id: str | None = None        # Mobile: ADB device ID
 
 
-def make_element_id(screen_name: str, element_label: str, element_type: str) -> str:
+def make_element_id(
+    screen_name: str,
+    element_label: str,
+    element_type: str,
+    section: str = "",
+) -> str:
     """Deterministic, stable element ID.
 
-    Format: {screen_name}:{element_label}:{element_type}
-    Lowercased, spaces/special chars replaced with underscores.
+    Formats:
+        • 3-part (no section):  {screen}:{label}:{type}
+        • 4-part (with section): {screen}:{section}:{label}:{type}
+
+    Section is optional — pass when a screen has sub-sections that
+    repeat field names (TECU page 4: Nominee Details / Joint Partner /
+    Beneficiary 1 / Beneficiary 2 all have "First Name"). Without a
+    section, collisions silently drop the duplicates.
 
     Examples:
         make_element_id("iTeller", "Select Transaction Type", "dropdown")
         → "iteller:select_transaction_type:dropdown"
 
-        make_element_id("Contact Info", "First Name", "text_input")
-        → "contact_info:first_name:text_input"
+        make_element_id("Other Products", "First Name", "text_input",
+                        section="Beneficiary 1 Details")
+        → "other_products:beneficiary_1_details:first_name:text_input"
     """
     def _normalize(s: str) -> str:
         s = s.lower().strip()
         s = re.sub(r"[^a-z0-9]+", "_", s)
         return s.strip("_")
 
-    return f"{_normalize(screen_name)}:{_normalize(element_label)}:{_normalize(element_type)}"
+    screen = _normalize(screen_name)
+    label = _normalize(element_label)
+    etype = _normalize(element_type)
+    if section:
+        return f"{screen}:{_normalize(section)}:{label}:{etype}"
+    return f"{screen}:{label}:{etype}"
