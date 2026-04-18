@@ -22,6 +22,7 @@
     "Employer": "OTHER",
     "Employer Description": "Independent Consulting",
     "Occupation": "Software Engineer",
+    "Sector": "INFORMATION & COMMUNICATION",
     "Sector Employed": "INFORMATION & COMMUNICATION",
     "Employment Type": "PRIVATE",
     "Employer Address Line 1": "1 Main Street",
@@ -45,5 +46,21 @@
     "City": "Port of Spain",
     "Zip Code": "00000",
     "Country": "TRINIDAD AND TOBAGO"
+  },
+
+  "_dependencies_comment": "Wall 1.1 — child element_id → ordered list of parent element_ids that must be selected first. Page 3 cascade observed in TECU: Employment Status → Employer → Sector → Employment Type. Execute fills each parent with its default before enumerating the child's options.",
+
+  "dependencies": {
+    "new_member_application_additional_details:employer:dropdown": [
+      "new_member_application_additional_details:employment_status:dropdown"
+    ],
+    "new_member_application_additional_details:sector:dropdown": [
+      "new_member_application_additional_details:employment_status:dropdown",
+      "new_member_application_additional_details:employer:dropdown"
+    ],
+    "new_member_application_additional_details:employment_type:dropdown": [
+      "new_member_application_additional_details:employment_status:dropdown",
+      "new_member_application_additional_details:employer:dropdown"
+    ]
   }
 }

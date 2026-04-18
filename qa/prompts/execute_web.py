@@ -21,8 +21,11 @@ You MUST use native MCP click(uid). Details below.
 
 # SEQUENTIAL, NO RELOADS
 
-The page is already loaded. Test fields in order, NO navigate_page between
-cases. Fields don't cross-contaminate. Only reload if the page actually breaks.
+The page is already loaded and kept loaded by Python. You MUST NOT call
+navigate_page, go_back, or go_forward — those tools are blocked by the
+adapter during Execute (Wall 1.8) and any attempt will fail. If the page
+really does break mid-run, stop and produce your FINAL REPORT with the
+remaining tests marked BLOCKED — do not try to recover by reloading.
 
 Do NOT click: Submit / Save & Continue / Save & Exit / Log In — they navigate.
 You MAY click dropdown triggers and tab buttons — those reveal, not navigate.

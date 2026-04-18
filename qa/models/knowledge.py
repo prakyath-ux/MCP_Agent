@@ -24,6 +24,11 @@ class L0Element(BaseModel):
     # a test file path without prompting for one.
     accept: str = ""                                     # "image/*", ".pdf,application/pdf"
     semantic_hint: str = ""                              # profile_picture | id_document | bank_statement | proof_of_address | signature | other
+    # Wall 1.1 — element_ids of fields that must be set before this one
+    # becomes testable (cascaded dropdowns: Employment Status → Sector →
+    # Employment Type). Extract populates when it can detect; callers can
+    # also supply via the defaults sidecar for manual control.
+    depends_on: list[str] = Field(default_factory=list)
 
 
 # ── L1: Execution Details (what tools use, never in LLM context) ─────────────
@@ -91,6 +96,13 @@ class KnowledgeBase(BaseModel):
             screen = self.get_screen(screen_name)
             return screen.l0 if screen else []
         return [el for s in self.screens for el in s.l0]
+
+    def get_l0_for_element(self, element_id: str) -> L0Element | None:
+        for s in self.screens:
+            for el in s.l0:
+                if el.element_id == element_id:
+                    return el
+        return None
 
     def get_l1_for_element(self, element_id: str) -> L1Element | None:
         for s in self.screens:

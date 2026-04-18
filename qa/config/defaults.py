@@ -12,16 +12,27 @@
 #       "defaults": {
 #         "First Name": "JOHN",
 #         "Email": "john.doe@example.com",
-#         "Mobile Number": "5551234567",
-#         "Profile Picture": "profile_picture.png",
-#         "Employment Status": "PART TIME",
-#         "Marital Status": "SINGLE",
-#         "Nominee Details > First Name": "NOMINEE_JOHN"
+#         "Employment Status": "PART TIME"
+#       },
+#       "dependencies": {
+#         "additional_details:sector:dropdown": [
+#           "additional_details:employment_status:dropdown"
+#         ],
+#         "additional_details:employment_type:dropdown": [
+#           "additional_details:employment_status:dropdown",
+#           "additional_details:sector:dropdown"
+#         ]
 #       }
 #     }
 #
 # Keys can be plain labels or section-qualified ("Section > Label").
 # Section-qualified keys always win when both are present.
+#
+# `dependencies` (Wall 1.1) is a manual override channel for cascaded
+# dropdowns where extract hasn't detected the parent → child relationship
+# yet. Key is the child element_id; value is an ordered list of parent
+# element_ids to fill before enumerating the child. Execute prefers the
+# L0 `depends_on` field if populated, and falls back to this sidecar map.
 
 from __future__ import annotations
 
@@ -39,7 +50,22 @@ class Defaults:
     """Resolved user-provided defaults for an app. Immutable once loaded."""
     app_name: str = ""
     mapping: dict[str, str] = field(default_factory=dict)
+    # Wall 1.1 — child element_id → ordered list of parent element_ids
+    # that must be filled before the child becomes testable (cascaded
+    # dropdowns). Optional override channel for manual tuning until the
+    # extract pipeline learns to detect dependencies automatically.
+    dependencies: dict[str, list[str]] = field(default_factory=dict)
     source_path: str = ""
+
+    def get_dependencies(self, element_id: str) -> list[str]:
+        """Return the ordered list of parent element_ids this field
+        depends on. Empty list = no known dependencies."""
+        if not element_id:
+            return []
+        deps = self.dependencies.get(element_id)
+        if isinstance(deps, list):
+            return [d for d in deps if isinstance(d, str) and d]
+        return []
 
     def get(self, label: str, section: str = "") -> str | None:
         """Look up a default. Priority:
@@ -136,8 +162,29 @@ def load_defaults(app_name: str, path: str | Path | None = None) -> Defaults:
             continue
         mapping[k] = str(v) if v is not None else ""
 
+    # Wall 1.1 — optional `dependencies` section: child_element_id → [parent_id, ...]
+    deps_raw = data.get("dependencies", {})
+    dependencies: dict[str, list[str]] = {}
+    if isinstance(deps_raw, dict):
+        for child_id, parents in deps_raw.items():
+            if not isinstance(child_id, str):
+                continue
+            if not isinstance(parents, list):
+                continue
+            clean = [p for p in parents if isinstance(p, str) and p]
+            if clean:
+                dependencies[child_id] = clean
+    elif deps_raw:
+        # Non-dict but truthy — user intent was clearly to provide
+        # dependencies but the shape is wrong. Fail loud.
+        raise ValueError(
+            f"Defaults file {resolved} 'dependencies' must be an object "
+            f"mapping child element_id → list of parent element_ids."
+        )
+
     return Defaults(
         app_name=data.get("app_name", app_name),
         mapping=mapping,
+        dependencies=dependencies,
         source_path=str(resolved),
     )

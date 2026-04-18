@@ -95,6 +95,17 @@ class ExecuteRunContext:
     results_path: Path | None = None       # auto-derived if None
 
 
+# Wall 1.3 — outcome of the per-test restore step. Surfaced in result
+# notes so broken restores are visible instead of silently leaving a
+# page's worth of tests running against an invalid form.
+
+@dataclass
+class RestoreOutcome:
+    status: str  # "restored" | "no_default" | "fill_failed"
+    value: str = ""
+    warning: str = ""
+
+
 # ──────────────────────────────────────────────────────────────────────
 # Utilities
 # ──────────────────────────────────────────────────────────────────────
@@ -245,26 +256,22 @@ class ExecuteOrchestrator:
         if tc.approach == TestApproach.SKIP:
             return _blocked_or_skipped(tc, TestStatus.SKIP, notes="marked SKIP by plan")
 
-        # Approaches deferred to later walls — record as BLOCKED with a
-        # clear reason so the user sees exactly what's not yet supported.
-        if tc.approach == TestApproach.SELECT_AND_VERIFY:
-            return _blocked_or_skipped(
-                tc, TestStatus.BLOCKED,
-                notes="SELECT_AND_VERIFY handled by Wall 1.1 (dependent dropdown chaining)",
-            )
+        # UPLOAD_FILE still deferred to Wall 1.4.
         if tc.approach == TestApproach.UPLOAD_FILE:
             return _blocked_or_skipped(
                 tc, TestStatus.BLOCKED,
                 notes="UPLOAD_FILE handled by Wall 1.4 (OCR-gated replay)",
             )
 
-        # Supported in Wall 0.1:
+        # Supported approaches:
         if tc.approach == TestApproach.FILL_CHECK:
             return await self._fill_check(tc, ctx, test_gc)
         if tc.approach == TestApproach.VERIFY_ONLY:
             return await self._verify_only(tc, ctx, test_gc)
         if tc.approach == TestApproach.TAP_VERIFY:
             return await self._tap_verify(tc, ctx, test_gc)
+        if tc.approach == TestApproach.SELECT_AND_VERIFY:
+            return await self._select_and_verify(tc, ctx, test_gc)
 
         return _blocked_or_skipped(
             tc, TestStatus.BLOCKED,
@@ -340,18 +347,19 @@ class ExecuteOrchestrator:
                     f"LLM claimed error_text={err!r} not found in snapshot"
                 )
 
-        # Restore target field to a valid default so the form stays
-        # submittable for any subsequent navigation / test.
-        default_value = ctx.defaults.get(tc.field_name, section=tc.screen_name)
-        if default_value:
-            await _python_fill(adapter, css, default_value)
-            await asyncio.sleep(0.3)
+        # Wall 1.3 — Python enforces valid state post-test. Restore the
+        # target field to a KB default so the form stays submittable for
+        # any subsequent navigation / test. Outcome is tracked so missing
+        # defaults and silent fill failures show up in the report.
+        restore = await _restore_field_to_default(
+            adapter, css, tc, ctx.defaults,
+        )
 
         return _result_from_classification(
             tc, classification,
             actual=classification.get("observed", ""),
             duration_ms=int((time.time() - t0) * 1000),
-            restored_to=default_value or "",
+            restore=restore,
         )
 
     # ── VERIFY_ONLY ───────────────────────────────────────────────
@@ -445,6 +453,115 @@ class ExecuteOrchestrator:
             duration_ms=int((time.time() - t0) * 1000),
         )
 
+    # ── SELECT_AND_VERIFY ─────────────────────────────────────────
+    #
+    # Wall 1.1 — dependent dropdown chaining. Flow:
+    #   1. Resolve parent deps (L0.depends_on ∪ defaults sidecar)
+    #   2. For each parent: fill/select to KB default
+    #   3. Click child dropdown → enumerate options → click target
+    #   4. Verify: post-snapshot contains the chosen option text
+    #
+    # Deterministic: no LLM call in the happy path. PASS iff
+    # (select returned SELECTED) AND (option text appears in post-snap).
+
+    async def _select_and_verify(
+        self,
+        tc: TestCase,
+        ctx: ExecuteRunContext,
+        test_gc: GuardrailContext,
+    ) -> TestResult:
+        t0 = time.time()
+        setup_notes: list[str] = []
+
+        # 1) Dependencies — L0.depends_on first, defaults sidecar as fallback.
+        l0 = ctx.knowledge.get_l0_for_element(tc.element_id)
+        deps = list(l0.depends_on) if (l0 and l0.depends_on) else []
+        if not deps:
+            deps = ctx.defaults.get_dependencies(tc.element_id)
+
+        for parent_id in deps:
+            ok, note = await _set_parent_value(
+                ctx.adapter, ctx.knowledge, ctx.defaults, parent_id,
+            )
+            setup_notes.append(note)
+            if not ok:
+                print(f"    [select] ⚠ setup failed: {note}")
+                return TestResult(
+                    tc_id=tc.tc_id,
+                    element_id=tc.element_id,
+                    field_name=tc.field_name,
+                    test_value=tc.test_value,
+                    expected=tc.expected_result,
+                    actual="",
+                    status=TestStatus.BLOCKED,
+                    notes=" | ".join(["dep_failed", *setup_notes]),
+                    duration_ms=int((time.time() - t0) * 1000),
+                )
+            await asyncio.sleep(0.4)
+
+        # 2) Child dropdown — locator + select.
+        css = _find_l1_css_selector(ctx.knowledge, tc.element_id)
+        if not css:
+            return _blocked_or_skipped(
+                tc, TestStatus.BLOCKED,
+                notes=f"no CSS locator for element_id={tc.element_id}",
+            )
+
+        status, options = await _select_option(ctx.adapter, css, tc.test_value)
+        print(f"    [select] {tc.tc_id} {tc.test_value!r} → {status} "
+              f"(saw {len(options)} options)")
+
+        # 3) CoVe-style deterministic verify — selection should be visible
+        # in the post-snapshot (MUI renders the chosen label in the trigger).
+        post_snap = await _raw_snapshot(ctx.adapter)
+        selection_visible = (tc.test_value or "").lower() in (post_snap or "").lower()
+
+        # 4) Decide outcome.
+        test_status: TestStatus
+        actual: str
+        notes_parts: list[str] = []
+        if setup_notes:
+            notes_parts.append("setup=" + "; ".join(setup_notes))
+        notes_parts.append(f"options_seen={len(options)}")
+
+        if status == "SELECTED" and selection_visible:
+            test_status = TestStatus.PASS
+            actual = f"selected {tc.test_value!r}; trigger shows selected label"
+        elif status == "SELECTED" and not selection_visible:
+            # Selection clicked but the UI didn't commit it — likely a
+            # framework event-binding gap we need to know about.
+            test_status = TestStatus.FAIL
+            actual = f"option clicked but {tc.test_value!r} not in post-snapshot"
+            notes_parts.append("cove=selection_not_in_snapshot")
+        elif status == "OPTION_NOT_FOUND":
+            test_status = TestStatus.FAIL
+            actual = f"option {tc.test_value!r} not in dropdown"
+            notes_parts.append(f"options_sample={options[:5]}")
+        elif status == "ELEMENT_NOT_FOUND":
+            test_status = TestStatus.BLOCKED
+            actual = f"dropdown trigger not found via CSS={css!r}"
+        else:
+            test_status = TestStatus.BLOCKED
+            actual = f"select failed: {status}"
+
+        return TestResult(
+            tc_id=tc.tc_id,
+            element_id=tc.element_id,
+            field_name=tc.field_name,
+            test_value=tc.test_value,
+            expected=tc.expected_result,
+            actual=actual,
+            status=test_status,
+            notes=" | ".join(notes_parts),
+            evidence={
+                "select_status": status,
+                "options_seen": options,
+                "dependencies_applied": deps,
+                "selection_visible_in_snapshot": selection_visible,
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
+
 
 # ──────────────────────────────────────────────────────────────────────
 # Helpers — module level so they're straightforward to unit-test.
@@ -458,6 +575,205 @@ async def _raw_snapshot(adapter: PlatformAdapter) -> str:
     if result.content:
         return result.content[0].text or ""
     return ""
+
+
+async def _select_option(
+    adapter: PlatformAdapter,
+    css: str,
+    option_text: str,
+) -> tuple[str, list[str]]:
+    """Wall 1.1 — deterministic dropdown select.
+
+    Handles both native <select> and MUI-style custom comboboxes. Returns
+    (status, options_seen) where status is one of:
+        • "SELECTED"          — option clicked, selection committed
+        • "OPTION_NOT_FOUND"  — dropdown opened but target option not present
+        • "ELEMENT_NOT_FOUND" — trigger CSS matched nothing
+        • "OPEN_FAILED"       — click on trigger yielded no popup / no options
+    `options_seen` is the list of visible option texts (for reporting).
+    """
+    # Detect native <select> vs custom combobox.
+    detect_fn = (
+        "() => {"
+        f"  const el = document.querySelector({json.dumps(css)});"
+        "  if (!el) return JSON.stringify({kind: 'none'});"
+        "  if (el.tagName === 'SELECT') {"
+        "    const opts = [...el.options].map(o => o.textContent.trim()).filter(t => t);"
+        "    return JSON.stringify({kind: 'native', options: opts});"
+        "  }"
+        "  return JSON.stringify({kind: 'custom'});"
+        "}"
+    )
+    raw = await adapter.evaluate_script(detect_fn)
+    try:
+        detect = json.loads(_strip_json_wrapper(raw))
+    except (ValueError, TypeError):
+        return ("ELEMENT_NOT_FOUND", [])
+    if detect.get("kind") == "none":
+        return ("ELEMENT_NOT_FOUND", [])
+
+    if detect.get("kind") == "native":
+        options = detect.get("options") or []
+        select_fn = (
+            "() => {"
+            f"  const el = document.querySelector({json.dumps(css)});"
+            f"  const needle = {json.dumps(option_text.lower())};"
+            "  const target = [...el.options].find(o => "
+            "    o.textContent.trim().toLowerCase().includes(needle));"
+            "  if (!target) return 'OPTION_NOT_FOUND';"
+            "  el.value = target.value;"
+            "  el.dispatchEvent(new Event('change', {bubbles: true}));"
+            "  return 'SELECTED';"
+            "}"
+        )
+        result = (await adapter.evaluate_script(select_fn) or "").strip()
+        if "OPTION_NOT_FOUND" in result:
+            return ("OPTION_NOT_FOUND", options)
+        if "SELECTED" in result:
+            return ("SELECTED", options)
+        return ("OPEN_FAILED", options)
+
+    # Custom combobox path — click trigger, wait, read options, click target.
+    open_fn = (
+        "() => {"
+        f"  const el = document.querySelector({json.dumps(css)});"
+        "  if (!el) return 'ELEMENT_NOT_FOUND';"
+        "  el.click();"
+        "  return 'OPENED';"
+        "}"
+    )
+    opened = (await adapter.evaluate_script(open_fn) or "").strip()
+    if "ELEMENT_NOT_FOUND" in opened:
+        return ("ELEMENT_NOT_FOUND", [])
+
+    await asyncio.sleep(0.5)
+
+    read_fn = (
+        "() => {"
+        "  const opts = [...document.querySelectorAll("
+        "    '[role=option], [role=menuitem], li[role=listitem], "
+        ".MuiMenuItem-root, .dropdown-item')]"
+        "    .filter(e => e.offsetParent !== null);"
+        "  return JSON.stringify(opts.map(o => o.textContent.trim()).filter(t => t));"
+        "}"
+    )
+    raw_opts = await adapter.evaluate_script(read_fn)
+    try:
+        options = json.loads(_strip_json_wrapper(raw_opts)) or []
+    except (ValueError, TypeError):
+        options = []
+    if not options:
+        # Close the dropdown so the next test doesn't see a phantom popup.
+        await adapter.evaluate_script(
+            "() => document.body && document.body.click()"
+        )
+        return ("OPEN_FAILED", [])
+
+    click_fn = (
+        "() => {"
+        f"  const needle = {json.dumps(option_text.lower())};"
+        "  const match = [...document.querySelectorAll("
+        "    '[role=option], [role=menuitem], li[role=listitem], "
+        ".MuiMenuItem-root, .dropdown-item')]"
+        "    .filter(e => e.offsetParent !== null)"
+        "    .find(e => e.textContent.trim().toLowerCase().includes(needle));"
+        "  if (!match) return 'OPTION_NOT_FOUND';"
+        "  match.click();"
+        "  return 'SELECTED';"
+        "}"
+    )
+    result = (await adapter.evaluate_script(click_fn) or "").strip()
+    if "OPTION_NOT_FOUND" in result:
+        # Close the popup before continuing.
+        await adapter.evaluate_script(
+            "() => document.body && document.body.click()"
+        )
+        return ("OPTION_NOT_FOUND", options)
+    await asyncio.sleep(0.3)
+    return ("SELECTED", options)
+
+
+def _strip_json_wrapper(raw: str | None) -> str:
+    """Chrome DevTools MCP sometimes wraps evaluate_script results in a
+    thin envelope like `"result": "..."` — accept raw JSON payloads or
+    passthrough strings."""
+    if not raw:
+        return "{}"
+    s = raw.strip()
+    # Strip a leading `Function call returned: ` / `result:` if present.
+    for prefix in ("result:", "Function call returned:"):
+        if s.startswith(prefix):
+            s = s[len(prefix):].strip()
+    return s
+
+
+async def _set_parent_value(
+    adapter: PlatformAdapter,
+    kb: KnowledgeBase,
+    defaults: Defaults,
+    parent_element_id: str,
+) -> tuple[bool, str]:
+    """Wall 1.1 — fill one dependency parent so the child becomes testable.
+
+    Dispatches by parent type: text_input → native-setter fill,
+    dropdown → _select_option. Returns (ok, note).
+    """
+    parent_l0 = kb.get_l0_for_element(parent_element_id)
+    if parent_l0 is None:
+        return (False, f"parent {parent_element_id} not in KB")
+
+    value = defaults.get(parent_l0.name, section=parent_l0.screen_name)
+    if not value:
+        return (
+            False,
+            f"no default for parent {parent_l0.name!r} "
+            f"(add to artifacts/defaults/<app>.json)",
+        )
+
+    css = _find_l1_css_selector(kb, parent_element_id)
+    if not css:
+        return (False, f"no CSS locator for parent {parent_element_id}")
+
+    parent_type = parent_l0.type.value if hasattr(parent_l0.type, "value") else str(parent_l0.type)
+    if parent_type == "dropdown":
+        status, _ = await _select_option(adapter, css, value)
+        if status == "SELECTED":
+            return (True, f"parent {parent_l0.name!r}={value!r} selected")
+        return (False, f"parent select {status} on {parent_l0.name!r}")
+
+    # Text-input style parents (and any other fill-compatible type).
+    ok = await _python_fill(adapter, css, value)
+    if ok:
+        return (True, f"parent {parent_l0.name!r}={value!r} filled")
+    return (False, f"parent fill failed on {parent_l0.name!r}")
+
+
+async def _restore_field_to_default(
+    adapter: PlatformAdapter,
+    css: str,
+    tc: TestCase,
+    defaults: Defaults,
+) -> RestoreOutcome:
+    """Wall 1.3: re-fill target field with its KB default so the form stays
+    submittable for the next test. Returns an explicit outcome — missing
+    defaults and fill failures are surfaced, not silently ignored."""
+    default_value = defaults.get(tc.field_name, section=tc.screen_name)
+    if not default_value:
+        warn = f"no default set for {tc.field_name!r} (add to artifacts/defaults/<app>.json)"
+        print(f"    [restore] ⚠ {warn}")
+        return RestoreOutcome(status="no_default", warning=warn)
+
+    fill_ok = await _python_fill(adapter, css, default_value)
+    if not fill_ok:
+        warn = f"native-setter fill returned non-OK on CSS={css!r}"
+        print(f"    [restore] ⚠ {warn}")
+        return RestoreOutcome(
+            status="fill_failed", value=default_value, warning=warn,
+        )
+
+    await asyncio.sleep(0.3)
+    print(f"    [restore] ✓ {tc.field_name!r} restored to {default_value!r}")
+    return RestoreOutcome(status="restored", value=default_value)
 
 
 async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
@@ -520,7 +836,7 @@ def _result_from_classification(
     *,
     actual: str = "",
     duration_ms: int = 0,
-    restored_to: str = "",
+    restore: RestoreOutcome | None = None,
 ) -> TestResult:
     status_str = (classification.get("status") or "blocked").lower()
     try:
@@ -535,9 +851,22 @@ def _result_from_classification(
         notes_parts.append(f"err={classification['error_text']!r}")
     if classification.get("_verify_warning"):
         notes_parts.append(f"cove_warn={classification['_verify_warning']}")
-    if restored_to:
-        notes_parts.append(f"restored_to={restored_to!r}")
+    if restore is not None:
+        if restore.status == "restored":
+            notes_parts.append(f"restored_to={restore.value!r}")
+        elif restore.status == "no_default":
+            notes_parts.append(f"restore=no_default")
+        elif restore.status == "fill_failed":
+            notes_parts.append(f"restore=fill_failed")
     notes = " | ".join(notes_parts)
+
+    evidence: dict = {"classification": classification}
+    if restore is not None:
+        evidence["restore"] = {
+            "status": restore.status,
+            "value": restore.value,
+            "warning": restore.warning,
+        }
 
     return TestResult(
         tc_id=tc.tc_id,
@@ -548,9 +877,7 @@ def _result_from_classification(
         actual=actual,
         status=status,
         notes=notes,
-        evidence={
-            "classification": classification,
-        },
+        evidence=evidence,
         duration_ms=duration_ms,
     )
 

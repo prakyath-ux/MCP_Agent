@@ -94,9 +94,16 @@ async def main() -> int:
         return 1
     print(f"  Plan generated {len(test_cases)} test case(s)")
 
-    # Launch browser
+    # Launch browser. ExecuteOrchestrator (Path B) uses stateless
+    # llm_classify calls — no tools exposed to the LLM — so Wall 1.8
+    # is already structurally enforced. Block the nav tools anyway in
+    # case anything downstream spawns a tool-enabled agent against the
+    # same server.
     adapter = make_adapter(Platform.WEB)
-    await adapter.launch(app)
+    await adapter.launch(
+        app,
+        extra_blocked_tools=["navigate_page", "go_back", "go_forward"],
+    )
 
     if args.wait:
         print()

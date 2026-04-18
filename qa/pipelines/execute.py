@@ -73,7 +73,13 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
     print(f"  Model: {inp.model}")
     print(f"{'='*60}\n")
 
-    await adapter.launch(inp.app)
+    # Wall 1.8 — Python owns navigation during Execute. Hide the MCP
+    # navigation tools from the LLM so a stray call can't reload the page
+    # or go back a step and lose the setup state we depend on.
+    await adapter.launch(
+        inp.app,
+        extra_blocked_tools=["navigate_page", "go_back", "go_forward"],
+    )
 
     # Optional manual setup pause — useful for multi-step wizards where
     # tests target a downstream page reachable only by manual navigation.

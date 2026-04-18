@@ -40,7 +40,15 @@ class MobileAdapter:
 
     # ── Lifecycle ────────────────────────────────────────────
 
-    async def launch(self, app: TargetApp) -> None:
+    async def launch(
+        self,
+        app: TargetApp,
+        *,
+        extra_blocked_tools: list[str] | None = None,
+    ) -> None:
+        # Mobile MCP has no navigate_page analogue to block; accept the
+        # kwarg for protocol parity with WebAdapter and ignore.
+        _ = extra_blocked_tools
         self._device_id = app.device_id or self._device_id
         self._server = MCPServerStdio(
             name="mobile-mcp",

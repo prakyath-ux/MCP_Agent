@@ -18,10 +18,19 @@ class PlatformAdapter(Protocol):
 
     # ── Lifecycle ────────────────────────────────────────────
 
-    async def launch(self, app: TargetApp) -> None:
+    async def launch(
+        self,
+        app: TargetApp,
+        *,
+        extra_blocked_tools: list[str] | None = None,
+    ) -> None:
         """Open the app/URL and start MCP server.
         Web: start Chrome DevTools MCP, navigate to URL.
         Mobile: start mobile-mcp, launch app package.
+
+        `extra_blocked_tools`: MCP tool names to hide from the LLM on top of
+        the adapter's default block list. Wall 1.8 uses this to lock out
+        navigate_page / go_back / go_forward during Execute runs.
         """
         ...
 

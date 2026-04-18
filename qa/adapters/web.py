@@ -21,7 +21,12 @@ class WebAdapter:
 
     # ── Lifecycle ────────────────────────────────────────────
 
-    async def launch(self, app: TargetApp) -> None:
+    async def launch(
+        self,
+        app: TargetApp,
+        *,
+        extra_blocked_tools: list[str] | None = None,
+    ) -> None:
         # Clean up any leftover chrome process / lock file from a previous run
         # that was Ctrl+C'd. Without this, persistent profile mode would error
         # with "browser already running for /path/to/chrome-profile".
@@ -33,6 +38,11 @@ class WebAdapter:
         # — use upload_file_for_field compound tool instead.
         # Tab management tools hidden so LLM doesn't create new tabs.
         blocked_tools = ["upload_file", "new_page", "close_page", "list_pages", "select_page"]
+        if extra_blocked_tools:
+            # Dedupe while preserving order so blocked_tools stays stable.
+            for t in extra_blocked_tools:
+                if t not in blocked_tools:
+                    blocked_tools.append(t)
 
         self._server = MCPServerStdio(
             name="Chrome DevTools MCP",
