@@ -5,6 +5,7 @@ from typing import Protocol, runtime_checkable
 
 from qa.adapters.protocol import PlatformAdapter
 from qa.engine.budget import BudgetTracker
+from qa.engine.guardrails import GuardrailContext
 from qa.models import ExploreInput, KnowledgeBase
 
 
@@ -20,6 +21,7 @@ class RunContext:
     knowledge: KnowledgeBase
     budget: BudgetTracker
     available_files: list[str] = field(default_factory=list)
+    guardrails: GuardrailContext | None = None
 
 
 @runtime_checkable

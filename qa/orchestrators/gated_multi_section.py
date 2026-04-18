@@ -22,6 +22,10 @@ from qa.models import (
 )
 from qa.models.common import ElementType, make_element_id
 
+from qa.engine.guardrails import (
+    GuardrailContext, GuardrailExit,
+    per_dropdown_scope, per_page_scope, per_verify_scope,
+)
 from qa.orchestrators.base import RunContext
 from qa.orchestrators.llm_subtask import llm_classify
 from qa.orchestrators.sub_prompts import (
@@ -36,6 +40,7 @@ from qa.orchestrators.sub_prompts import (
     EXTRACT_POST_OCR_FIELDS_PROMPT,
     EXTRACT_POST_OCR_FIELDS_SCHEMA,
 )
+from qa.orchestrators.verify import verify_list_field
 
 
 class SectionFailed(Exception):
@@ -56,6 +61,10 @@ class GatedMultiSectionFlow:
         adapter = ctx.adapter
         app_name = ctx.inp.app.app_name
 
+        # Page-level guardrail — if caller didn't supply one, spawn fresh.
+        # Threaded into each LLM sub-task for cost + time bounding.
+        page_gc = ctx.guardrails if ctx.guardrails is not None else per_page_scope()
+
         # Wire up web compound tools so we can call the upload impl directly.
         from qa.tools.web_tools import set_server, set_kb
         set_server(adapter.get_mcp_server())
@@ -66,13 +75,22 @@ class GatedMultiSectionFlow:
         # ── Step 0: detect all section tabs on the page ──────────────────
         print("  [orch] 0    LLM: detect all section tabs")
         initial_snap = await adapter.raw_snapshot_text()
-        detected = await llm_classify(
-            DETECT_ALL_SECTIONS_PROMPT,
-            initial_snap,
-            DETECT_ALL_SECTIONS_SCHEMA,
-            budget=ctx.budget,
-            label="detect_sections",
+        detect_gc = page_gc.child(
+            "detect_sections", hard_max_calls=2, hard_max_cost=0.02,
         )
+        try:
+            detected = await llm_classify(
+                DETECT_ALL_SECTIONS_PROMPT,
+                initial_snap,
+                DETECT_ALL_SECTIONS_SCHEMA,
+                budget=ctx.budget,
+                label="detect_sections",
+                guardrails=detect_gc,
+            )
+        except GuardrailExit as e:
+            raise SectionFailed(
+                f"detect_sections hit guardrail ({e.reason}) before returning data"
+            )
         section_tabs: list[str] = [
             t.strip() for t in detected.get("section_tabs", []) if t.strip()
         ]
@@ -123,6 +141,7 @@ class GatedMultiSectionFlow:
                     app_name=app_name,
                     expected_section_name=tab_label,
                     used_files=used_files,
+                    page_gc=page_gc,
                 )
             except SectionFailed as e:
                 print(f"\n  [orch] ✗ Section {idx + 1} failed: {e}")
@@ -158,25 +177,43 @@ async def _run_single_section(
     app_name: str,
     expected_section_name: str,
     used_files: set[str],
+    page_gc: GuardrailContext | None = None,
 ) -> ScreenKnowledge:
     """Run the 9-step dropdown→upload→OCR→extract flow for whichever
     section is currently active. Returns the ScreenKnowledge on success.
-    """
+
+    page_gc — parent guardrail scope. Per-sub-task child scopes are
+    spawned inside this function for cost bounding. If None, a fresh
+    per_page_scope() is used (less ideal for multi-section runs where
+    you want page-wide ceiling, but safe fallback)."""
     adapter = ctx.adapter
+    if page_gc is None:
+        page_gc = per_page_scope()
 
     # ── Step 1: snapshot the currently active section ────────────────
     print("  [orch] 1/9  take_snapshot")
     snap = await adapter.raw_snapshot_text()
 
     # ── Step 2: LLM finds the active section's dropdown + upload ─────
+    # Bounded sub-task: one call, small cost — if it goes over, the
+    # section can't proceed so we convert to SectionFailed.
     print("  [orch] 2/9  LLM: find active section")
-    section = await llm_classify(
-        FIND_ACTIVE_SECTION_PROMPT,
-        snap,
-        FIND_ACTIVE_SECTION_SCHEMA,
-        budget=ctx.budget,
-        label="find_section",
+    find_gc = page_gc.child(
+        "find_section", hard_max_calls=2, hard_max_cost=0.01,
     )
+    try:
+        section = await llm_classify(
+            FIND_ACTIVE_SECTION_PROMPT,
+            snap,
+            FIND_ACTIVE_SECTION_SCHEMA,
+            budget=ctx.budget,
+            label="find_section",
+            guardrails=find_gc,
+        )
+    except GuardrailExit as e:
+        raise SectionFailed(
+            f"find_section hit guardrail ({e.reason}) in section {expected_section_name!r}"
+        )
     section_name = section.get("section_name", "").strip() or expected_section_name
     dropdown_label = section.get("dropdown_label", "").strip()
     upload_label = section.get("upload_field_label", "").strip()
@@ -208,14 +245,43 @@ async def _run_single_section(
             await asyncio.sleep(0.8)
             open_snap = await adapter.raw_snapshot_text()
             print(f"  [orch]      post-open snapshot: {len(open_snap)} chars")
-            opts = await llm_classify(
-                EXTRACT_DROPDOWN_OPTIONS_PROMPT,
-                open_snap,
-                EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
-                budget=ctx.budget,
-                label="extract_options",
-            )
+            dropdown_gc = per_dropdown_scope(parent=page_gc)
+            try:
+                opts = await llm_classify(
+                    EXTRACT_DROPDOWN_OPTIONS_PROMPT,
+                    open_snap,
+                    EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
+                    budget=ctx.budget,
+                    label="extract_options",
+                    guardrails=dropdown_gc,
+                )
+            except GuardrailExit as e:
+                raise SectionFailed(
+                    f"extract_options hit guardrail ({e.reason}) for "
+                    f"dropdown {dropdown_label!r}"
+                )
             options = opts.get("options", [])
+
+            # ── CoVe on dropdown options (Wall 2.7) ─────────────────
+            # Drop any option the LLM claimed that isn't actually in
+            # the opened popup's snapshot. Tier 1 deterministic only
+            # here — same popup, same snapshot, string-match is enough.
+            if options:
+                verify_result = verify_list_field(
+                    {"options": options},
+                    "options",
+                    open_snap,
+                    label="extract_options_cove",
+                    log=False,
+                )
+                if verify_result.dropped:
+                    print(
+                        f"  [orch]      🔍 CoVe dropped "
+                        f"{len(verify_result.dropped)} hallucinated option(s): "
+                        f"{[d['value'] for d in verify_result.dropped]}"
+                    )
+                options = verify_result.claim.get("options", options)
+
             print(f"  [orch]      extracted options: {options}")
             if not options:
                 dbg = _dump_debug_snapshot(
@@ -326,13 +392,22 @@ async def _run_single_section(
     # ── Step 7: classify post-attach state ───────────────────────────
     print("  [orch] 7/9  LLM: classify post-attach state")
     post_attach_snap = await adapter.raw_snapshot_text()
-    classify = await llm_classify(
-        CLASSIFY_POST_ATTACH_STATE_PROMPT,
-        post_attach_snap,
-        CLASSIFY_POST_ATTACH_STATE_SCHEMA,
-        budget=ctx.budget,
-        label="post_attach",
+    post_attach_gc = page_gc.child(
+        "post_attach", hard_max_calls=2, hard_max_cost=0.01,
     )
+    try:
+        classify = await llm_classify(
+            CLASSIFY_POST_ATTACH_STATE_PROMPT,
+            post_attach_snap,
+            CLASSIFY_POST_ATTACH_STATE_SCHEMA,
+            budget=ctx.budget,
+            label="post_attach",
+            guardrails=post_attach_gc,
+        )
+    except GuardrailExit as e:
+        raise SectionFailed(
+            f"post_attach state classification hit guardrail ({e.reason})"
+        )
     state = classify.get("state", "")
     button_label = (classify.get("button_label") or "").strip()
     button_safe = classify.get("button_is_safe", False)
@@ -387,14 +462,42 @@ async def _run_single_section(
     print("  [orch] 9/9  LLM: extract post-OCR fields")
     await asyncio.sleep(1.0)
     post_snap = await adapter.raw_snapshot_text()
-    post = await llm_classify(
-        EXTRACT_POST_OCR_FIELDS_PROMPT,
-        post_snap,
-        EXTRACT_POST_OCR_FIELDS_SCHEMA,
-        budget=ctx.budget,
-        label="extract_post_ocr",
+    post_ocr_gc = page_gc.child(
+        "extract_post_ocr", hard_max_calls=2, hard_max_cost=0.03,
     )
+    try:
+        post = await llm_classify(
+            EXTRACT_POST_OCR_FIELDS_PROMPT,
+            post_snap,
+            EXTRACT_POST_OCR_FIELDS_SCHEMA,
+            budget=ctx.budget,
+            label="extract_post_ocr",
+            guardrails=post_ocr_gc,
+        )
+    except GuardrailExit as e:
+        print(f"  [orch]      ⚠ post_ocr guardrail hit ({e.reason}) — "
+              "proceeding with no auto-filled fields")
+        post = {"fields": []}
     new_fields = post.get("fields", [])
+
+    # ── CoVe on post-OCR field names (Wall 2.7) ─────────────────────
+    # Verify each claimed field name actually appears in post_snap. This
+    # catches hallucinated fields before they enter the KB. We verify by
+    # the 'name' field of each field dict.
+    if new_fields:
+        claim = {"field_names": [f.get("name", "") for f in new_fields if f.get("name")]}
+        verify_result = verify_list_field(
+            claim, "field_names", post_snap,
+            label="post_ocr_cove", log=False,
+        )
+        verified_names = set(verify_result.claim.get("field_names", []))
+        if verify_result.dropped:
+            print(
+                f"  [orch]      🔍 CoVe dropped "
+                f"{len(verify_result.dropped)} hallucinated field(s): "
+                f"{[d['value'] for d in verify_result.dropped]}"
+            )
+            new_fields = [f for f in new_fields if f.get("name") in verified_names]
     print(f"  [orch]      captured {len(new_fields)} post-OCR fields")
 
     return _build_screen(

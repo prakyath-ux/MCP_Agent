@@ -34,6 +34,10 @@ load_dotenv()
 
 from qa.adapters import make_adapter
 from qa.engine.budget import BudgetTracker
+from qa.engine.guardrails import (
+    GuardrailContext, GuardrailExit,
+    per_dropdown_scope, per_page_scope, per_verify_scope,
+)
 from qa.knowledge.store import KnowledgeStore
 from qa.models import KnowledgeBase, Platform, TargetApp
 from qa.models.common import ElementType, make_element_id
@@ -43,6 +47,7 @@ from qa.orchestrators.sub_prompts import (
     EXTRACT_DROPDOWN_OPTIONS_PROMPT,
     EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
 )
+from qa.orchestrators.verify import verify_list_cascaded
 from qa.tools.web_tools import _safe_parse
 
 
@@ -584,6 +589,7 @@ async def extract_form(
     budget: BudgetTracker,
     page_url: str = "",
     on_progress=None,
+    guardrails: GuardrailContext | None = None,
 ) -> ScreenKnowledge:
     """Extract all form elements from the currently-loaded page.
 
@@ -593,9 +599,18 @@ async def extract_form(
             current partial ScreenKnowledge. Callers typically use this
             to checkpoint the KB so a mid-loop crash never loses more
             than one element of work. See Wall 2.5f / principle N16.
+        guardrails: optional per-page GuardrailContext. If omitted, a
+            fresh per_page_scope() is created. Per-dropdown child scopes
+            are spawned internally — when a single dropdown hits its
+            cap it gets marked empty/partial and the loop continues;
+            when the page-level cap is hit the whole loop exits cleanly.
     """
     server = adapter.get_mcp_server()
     t0 = time.time()
+
+    # Page-level guardrail: if caller didn't provide one, make one fresh
+    # so this function remains usable without explicit budget management.
+    page_gc = guardrails if guardrails is not None else per_page_scope()
 
     # ── Step 1: JS enumerates standard form elements ──────────────
     print("  [form] 1/3  JS: enumerate standard form elements")
@@ -656,6 +671,21 @@ async def extract_form(
         trigger_text = trig["trigger_text"]
         print(f"  [form]      [{i+1}/{len(triggers)}] {label!r} (uid={uid})")
 
+        # Check the page-level guardrail BEFORE spending on this dropdown.
+        # If we've already exhausted the page budget, stop the loop cleanly
+        # instead of grinding through remaining triggers.
+        try:
+            page_gc.check()
+        except GuardrailExit as e:
+            print(f"  [form]      ✗ page guardrail hit ({e.reason}) — "
+                  f"stopping loop at trigger {i+1}/{len(triggers)}")
+            break
+
+        # Per-dropdown guardrail — bounded cost/calls for this one trigger.
+        # When a single dropdown hits its cap it gets recorded as empty and
+        # the loop continues to the next.
+        dropdown_gc = per_dropdown_scope(parent=page_gc)
+
         # Enrich trigger with its nearest section heading — matches what
         # the JS enumerate already attaches to standard form elements.
         section_raw = await adapter.evaluate_script(
@@ -683,7 +713,10 @@ async def extract_form(
             await _checkpoint()
             continue
 
-        async def _open_and_read() -> list[str]:
+        async def _open_and_read(attempt_label: str) -> tuple[list[str], str]:
+            """Click trigger, wait, snapshot, LLM extracts options.
+            Returns (options_list, open_snapshot_text) — snapshot is
+            needed by CoVe below so options can be source-verified."""
             await server.call_tool("click", {"uid": uid})
             await asyncio.sleep(1.5)  # longer wait — some MUI popups are slow
             open_snap = await server.call_tool("take_snapshot", {})
@@ -695,12 +728,31 @@ async def extract_form(
                 snap_text,
                 EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
                 budget=budget,
-                label=f"opts_{i+1}",
+                label=attempt_label,
+                guardrails=dropdown_gc,
             )
-            return result.get("options", []) or []
+            return result.get("options", []) or [], snap_text
 
-        # First attempt
-        options = await _open_and_read()
+        # First attempt — may hit the per-dropdown cap for a weird trigger.
+        open_snap_text = ""
+        try:
+            options, open_snap_text = await _open_and_read(f"opts_{i+1}")
+        except GuardrailExit as e:
+            print(f"  [form]        ✗ dropdown guardrail hit ({e.reason}) — "
+                  f"skipping {label!r}")
+            dropdown_data[label] = {
+                "options": [],
+                "disabled": False,
+                "section": trig.get("section", ""),
+                "guardrail_exit": e.reason,
+            }
+            await _checkpoint()
+            # Still try to close any popup we may have opened before exit.
+            try:
+                await adapter.evaluate_script(_JS_CLOSE_POPUP)
+            except Exception:
+                pass
+            continue
 
         # If empty, close fully and retry once with more patience — some
         # dropdowns (e.g. TECU's Purpose / Country of Issuance / Education)
@@ -713,21 +765,27 @@ async def extract_form(
                 pass
             await adapter.evaluate_script(_JS_CLOSE_POPUP)
             await asyncio.sleep(1.0)
-            # Retry with extra wait
-            await server.call_tool("click", {"uid": uid})
-            await asyncio.sleep(2.5)
-            open_snap = await server.call_tool("take_snapshot", {})
-            snap_text = ""
-            if open_snap.content:
-                snap_text = open_snap.content[0].text or ""
-            result = await llm_classify(
-                EXTRACT_DROPDOWN_OPTIONS_PROMPT,
-                snap_text,
-                EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
-                budget=budget,
-                label=f"opts_{i+1}_retry",
-            )
-            options = result.get("options", []) or []
+            # Retry with extra wait — again bounded by dropdown_gc.
+            try:
+                await server.call_tool("click", {"uid": uid})
+                await asyncio.sleep(2.5)
+                open_snap = await server.call_tool("take_snapshot", {})
+                snap_text_retry = ""
+                if open_snap.content:
+                    snap_text_retry = open_snap.content[0].text or ""
+                open_snap_text = snap_text_retry or open_snap_text
+                result = await llm_classify(
+                    EXTRACT_DROPDOWN_OPTIONS_PROMPT,
+                    snap_text_retry,
+                    EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
+                    budget=budget,
+                    label=f"opts_{i+1}_retry",
+                    guardrails=dropdown_gc,
+                )
+                options = result.get("options", []) or []
+            except GuardrailExit as e:
+                print(f"  [form]        ✗ dropdown retry guardrail hit ({e.reason})")
+                options = []
 
         # Dedupe + drop placeholder-y entries
         seen: set[str] = set()
@@ -738,6 +796,35 @@ async def extract_form(
                     and not re.match(r"^(Select|Choose|--|Please)", o, re.IGNORECASE)):
                 seen.add(o)
                 clean.append(o)
+
+        # ── CoVe verification (Wall 2.7) — every option the LLM claimed must
+        # actually appear in the snapshot we took right after opening the
+        # dropdown. Tier 1 (deterministic string-presence) is free and
+        # catches hallucinations; Tier 2 (LLM rescue) only fires when
+        # confidence drops below 0.5, bounded by a verify-scope guardrail.
+        if clean and open_snap_text:
+            verify_gc = per_verify_scope(parent=dropdown_gc)
+            try:
+                verify_result = await verify_list_cascaded(
+                    {"options": clean},
+                    "options",
+                    open_snap_text,
+                    label=f"opts_{i+1}_cove",
+                    guardrails=verify_gc,
+                    log=False,
+                )
+                verified = verify_result.claim.get("options", clean)
+                if verify_result.dropped:
+                    print(
+                        f"  [form]        🔍 CoVe dropped {len(verify_result.dropped)} "
+                        f"hallucinated option(s): "
+                        f"{[d['value'] for d in verify_result.dropped]}"
+                    )
+                clean = verified
+            except GuardrailExit as e:
+                print(f"  [form]        ⚠ CoVe guardrail hit ({e.reason}) — "
+                      f"keeping raw options unverified")
+
         print(f"  [form]        → {len(clean)} options")
         if clean:
             for o in clean[:5]:
