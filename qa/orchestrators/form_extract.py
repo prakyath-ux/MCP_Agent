@@ -113,6 +113,135 @@ def _js_is_disabled_for(button_text: str) -> str:
     )
 
 
+# ── Wall 1.2: dropdown_data collision-safe insert ───────────────────
+#
+# Repeating sub-forms (e.g. TECU's Beneficiary 1 / Beneficiary 2 sharing
+# field names like "First Name" or "Is Beneficiary a member?") produced
+# silent data loss when two triggers hit the same label: the second
+# write to `dropdown_data[label]` overwrote the first, erasing options,
+# locators, and DOM position for the earlier dropdown.
+#
+# _dd_put() chooses a unique dict key on collision (appends the section,
+# then an index) while persisting the original label + section inside
+# the value dict. Downstream readers always use `info["label"]` +
+# `info["section"]`, never the raw dict key — so this change is transparent
+# to them.
+
+def _dd_put(
+    dropdown_data: dict,
+    label: str,
+    section: str,
+    entry: dict,
+) -> str:
+    """Insert entry into dropdown_data under a collision-free key.
+    Stores the true label + section INSIDE the entry so downstream
+    code reads them from there, not from the dict key. Returns the
+    key used (for callers that need to update the same slot later)."""
+    entry = dict(entry)  # shallow-copy so caller's dict isn't aliased
+    entry["label"] = label
+    entry["section"] = section
+
+    if label not in dropdown_data:
+        dropdown_data[label] = entry
+        return label
+
+    # Collision — try section-qualified key first, then numeric index.
+    if section:
+        key = f"{label}|{section}"
+        if key not in dropdown_data:
+            dropdown_data[key] = entry
+            return key
+    idx = 2
+    while True:
+        key = f"{label}#{idx}"
+        if key not in dropdown_data:
+            dropdown_data[key] = entry
+            return key
+        idx += 1
+
+
+def _dd_label(info: dict) -> str:
+    """Read the true label from a dropdown_data value dict. Falls back
+    to the dict key if the entry predates Wall 1.2 (unlikely but
+    defensive)."""
+    if isinstance(info, dict):
+        return str(info.get("label") or "")
+    return ""
+
+
+# ── Wall 1.6: reveal-trigger detection (conditional UI two-pass) ────
+#
+# TECU and similar wizards hide sub-forms behind "Would you like to add
+# Beneficiary?" Yes/No radios. Without flipping the radio to Yes, the
+# sub-form never renders and we never extract its fields. These are the
+# regex heuristics used to identify candidate reveal radios from the JS
+# enumerate output (label + options). Regex-first keeps this deterministic
+# and free; LLM fallback is deliberately deferred.
+
+_REVEAL_TRIGGER_PATTERNS = re.compile(
+    r"(would you like|do you want|do you wish|do you have|have you|"
+    r"interested in|\badd\b.*\?|include\b.*\?)",
+    re.IGNORECASE,
+)
+
+_YES_OPTION_PATTERN = re.compile(r"^(yes|y)\b", re.IGNORECASE)
+
+
+def _detect_reveal_radios(js_elements: list[dict]) -> list[dict]:
+    """Scan JS-enumerated elements for radio groups whose label matches a
+    "reveal this section?" pattern AND whose options include a Yes-like
+    value. Returns candidates in original DOM order."""
+    out: list[dict] = []
+    for el in js_elements:
+        if el.get("type") != "radio":
+            continue
+        label = str(el.get("label") or "").strip()
+        if not label or not _REVEAL_TRIGGER_PATTERNS.search(label):
+            continue
+        options = el.get("options") or []
+        has_yes = any(
+            _YES_OPTION_PATTERN.match(str(o).strip()) for o in options
+        )
+        if not has_yes:
+            continue
+        out.append(el)
+    return out
+
+
+def _js_click_radio_yes_for(group_name: str) -> str:
+    """JS that clicks the Yes option within a named radio group. We click
+    the enclosing <label> rather than the <input> directly because React
+    / MUI forms usually bind onChange to label clicks (dispatches pointer
+    events) — clicking the bare input can skip state updates. Returns
+    {"clicked": bool, "was_selected": bool, "found": bool}."""
+    name_js = json.dumps(group_name)
+    return (
+        "() => {"
+        f"  const name = {name_js};"
+        "  if (!name) return JSON.stringify({found: false, clicked: false, was_selected: false});"
+        "  const radios = [...document.querySelectorAll("
+        "    'input[type=radio][name=\"' + name + '\"]'"
+        "  )];"
+        "  let target = null;"
+        "  for (const r of radios) {"
+        "    const lbl = r.closest('label')"
+        "      || (r.id ? document.querySelector('label[for=\"' + r.id + '\"]') : null);"
+        "    const t = (lbl ? lbl.textContent : (r.value || '')).trim().toLowerCase();"
+        "    if (/^y(es)?\\b/.test(t)) { target = r; break; }"
+        "  }"
+        "  if (!target) return JSON.stringify({found: false, clicked: false, was_selected: false});"
+        "  const wasSelected = !!target.checked;"
+        "  if (wasSelected) {"
+        "    return JSON.stringify({found: true, clicked: false, was_selected: true});"
+        "  }"
+        "  const lbl = target.closest('label')"
+        "    || (target.id ? document.querySelector('label[for=\"' + target.id + '\"]') : null);"
+        "  if (lbl) lbl.click(); else target.click();"
+        "  return JSON.stringify({found: true, clicked: true, was_selected: false});"
+        "}"
+    )
+
+
 # ── JS: close any open MUI-style popup ──────────────────────────────
 
 _JS_CLOSE_POPUP = r"""() => {
@@ -857,8 +986,13 @@ async def _try_cascade_unlock_for_extract(
     # one field but not its sibling, and the sidecar typically uses the
     # canonical form. Matching both lets either side get away with it.
     dd_by_id: dict[str, tuple[str, dict]] = {}
-    for lbl, info in dropdown_data.items():
-        section = (info.get("section") or "") if isinstance(info, dict) else ""
+    for _key, info in dropdown_data.items():
+        if not isinstance(info, dict):
+            continue
+        # Wall 1.2 — read true label from info, not dict key (the key
+        # may be a collision-resolved alias like "Country|beneficiary_2").
+        lbl = str(info.get("label") or _key)
+        section = info.get("section") or ""
         eid_full = make_element_id(screen_name, lbl, "dropdown", section=section)
         eid_3part = make_element_id(screen_name, lbl, "dropdown", section="")
         dd_by_id[eid_full] = (lbl, info)
@@ -1072,6 +1206,13 @@ def _build_screen(
         section = _clean_label(el.get("section") or "")
         eid = make_element_id(screen_name, label, etype.value, section=section)
 
+        revealed_by = str(el.get("revealed_by") or "").strip()
+        behavior_parts = []
+        if section:
+            behavior_parts.append(f"Section: {section}")
+        if revealed_by:
+            behavior_parts.append(f"Revealed by: {revealed_by}")
+
         l0.append(L0Element(
             element_id=eid,
             name=label,
@@ -1081,7 +1222,7 @@ def _build_screen(
             screen_name=screen_name,
             default_value=el.get("value", ""),
             accept=el.get("accept", ""),
-            behavior=(f"Section: {section}" if section else ""),
+            behavior=" | ".join(behavior_parts),
         ))
         if isinstance(el.get("dom_top"), (int, float)):
             dom_tops[eid] = float(el["dom_top"])
@@ -1105,7 +1246,7 @@ def _build_screen(
         ))
 
     # Merge custom dropdown options discovered via LLM
-    for trigger_label, info in dropdown_data.items():
+    for trigger_key, info in dropdown_data.items():
         if isinstance(info, dict):
             options = info.get("options", [])
             disabled = bool(info.get("disabled", False))
@@ -1114,6 +1255,10 @@ def _build_screen(
             locator_xpath = info.get("locator_xpath", "") or ""
             raw_top = info.get("dom_top")
             dom_top = float(raw_top) if isinstance(raw_top, (int, float)) else None
+            revealed_by = str(info.get("revealed_by") or "").strip()
+            # Wall 1.2 — read the true label from info, not from the dict
+            # key, because _dd_put rewrites the key on collision.
+            trigger_label = str(info.get("label") or trigger_key)
         else:
             options = info
             disabled = False
@@ -1121,6 +1266,8 @@ def _build_screen(
             locator_css = ""
             locator_xpath = ""
             dom_top = None
+            revealed_by = ""
+            trigger_label = str(trigger_key)
 
         disabled_note = (
             "Disabled when extracted — likely depends on a prior dropdown being filled. "
@@ -1128,7 +1275,10 @@ def _build_screen(
             if disabled else ""
         )
         section_note = f"Section: {section}" if section else ""
-        behavior = " | ".join(p for p in [section_note, disabled_note] if p)
+        revealed_note = f"Revealed by: {revealed_by}" if revealed_by else ""
+        behavior = " | ".join(
+            p for p in [section_note, revealed_note, disabled_note] if p
+        )
 
         eid = make_element_id(screen_name, trigger_label, "dropdown", section=section)
         existing = next((e for e in l0 if e.element_id == eid), None)
@@ -1190,6 +1340,66 @@ def _build_screen(
             screen_name=screen_name,
         ))
 
+    # Wall 1.2 — disambiguate duplicate element_ids. When a form has
+    # repeating sub-sections with the same field names (TECU page 4's
+    # Beneficiary 1 / Beneficiary 2 both containing "First Name",
+    # "Country", "Is Beneficiary a member?"), the js_elements enumerate
+    # pass produces multiple entries whose (label, type, section)
+    # collapse to the same element_id. Execute pipeline then can't tell
+    # them apart.
+    #
+    # Fix: for each duplicate element_id, keep the first occurrence as-is
+    # and append "_2", "_3", ... to the section of subsequent occurrences
+    # in DOM order, then re-derive element_id. Uses dom_tops when
+    # available to establish DOM order; falls back to list order.
+    eid_counts: dict[str, int] = {}
+    for el in l0:
+        eid_counts[el.element_id] = eid_counts.get(el.element_id, 0) + 1
+    duplicated = {eid for eid, n in eid_counts.items() if n > 1}
+
+    if duplicated:
+        print(f"  [form] 1.2  disambiguating {len(duplicated)} duplicate "
+              f"element_id(s) (repeating sub-forms)")
+        # Process elements in DOM order so the _1 suffix goes to the
+        # topmost occurrence.
+        def _dom_order_key(idx_el: tuple[int, L0Element]) -> tuple[float, int]:
+            idx, el = idx_el
+            top = dom_tops.get(el.element_id)
+            return (top if top is not None else 1e12, idx)
+
+        ordered = sorted(enumerate(l0), key=_dom_order_key)
+        occurrence_count: dict[str, int] = {}
+        for _orig_idx, el in ordered:
+            if el.element_id not in duplicated:
+                continue
+            occurrence_count[el.element_id] = (
+                occurrence_count.get(el.element_id, 0) + 1
+            )
+            n = occurrence_count[el.element_id]
+            if n == 1:
+                # First in DOM order keeps the plain id.
+                continue
+            # Parse the old eid to extract screen / section / label / type.
+            from qa.knowledge.element_id import parse_element_id_full
+            screen_slug, old_section, label_slug, type_slug = (
+                parse_element_id_full(el.element_id)
+            )
+            new_section = f"{old_section}_{n}" if old_section else f"group_{n}"
+            new_eid = make_element_id(
+                screen_slug, label_slug, type_slug, section=new_section,
+            )
+            # Rewrite the L0 entry + any matching L1 entries.
+            old_eid = el.element_id
+            el.element_id = new_eid
+            for l1_el in l1:
+                if l1_el.element_id == old_eid:
+                    l1_el.element_id = new_eid
+                    break
+            # Preserve dom_top under the new eid so sort still works.
+            if old_eid in dom_tops:
+                dom_tops[new_eid] = dom_tops[old_eid]
+            print(f"  [form]       {old_eid} → {new_eid}")
+
     # Wall E2 — sort L0 by dom_top ascending. Elements without a
     # captured rect sink to the bottom (preserving their relative order)
     # — this keeps legacy extractors that didn't populate dom_top from
@@ -1214,6 +1424,355 @@ def _build_screen(
         l0=l0,
         l1=l1,
     )
+
+
+# ── Wall 1.6: conditional UI two-pass extractor ─────────────────────
+#
+# Called after the main Step 3 loop (and Fix C retry) completes. Scans
+# the already-captured js_elements for reveal-trigger radios, flips each
+# one to Yes, re-enumerates + re-finds triggers, and captures any newly-
+# visible fields / dropdowns into js_elements + dropdown_data in place.
+#
+# Radios are NOT restored — revealed fields need to stay addressable for
+# Execute. Per-test field restore is Wall 1.3's job downstream.
+
+def _find_yes_radio_uid(snapshot: str, group_label: str) -> str:
+    """Find the accessibility-tree uid of the "Yes" radio that belongs to a
+    reveal group. Strategy: locate a StaticText line whose normalized text
+    matches the group label (fuzzy), then walk forward up to 12 lines
+    looking for the first `radio "Yes"` line.
+
+    Returns empty string when no match is found — caller falls back to a
+    JS click (works but invisible to the user)."""
+    if not snapshot or not group_label:
+        return ""
+    lines = snapshot.split("\n")
+    needle = re.sub(r"\s+", " ", group_label).strip().rstrip("?").lower()
+    if not needle:
+        return ""
+
+    # First locate the anchor line (the group's question text).
+    anchor = -1
+    for i, line in enumerate(lines):
+        m = re.search(r'StaticText\s+"([^"]+)"', line)
+        if not m:
+            continue
+        text = re.sub(r"\s+", " ", m.group(1)).strip().rstrip("?").lower()
+        # Fuzzy match: full-equal or anchor-contains-needle (handles
+        # trailing "*" / extra whitespace that _detect saw through).
+        if text == needle or (needle in text and len(needle) > 5):
+            anchor = i
+            break
+    if anchor == -1:
+        return ""
+
+    # Walk forward for the first Yes radio within the question's block.
+    for j in range(anchor + 1, min(anchor + 13, len(lines))):
+        m = re.search(r'uid=(\S+)\s+radio\s+"([^"]+)"', lines[j])
+        if not m:
+            continue
+        if re.match(r"^y(es)?\b", m.group(2).strip(), re.IGNORECASE):
+            return m.group(1)
+    return ""
+
+
+async def _reveal_and_reextract(
+    adapter,
+    *,
+    budget: BudgetTracker,
+    page_gc: GuardrailContext,
+    js_elements: list[dict],
+    triggers: list[dict],
+    dropdown_data: dict[str, dict],
+    checkpoint_fn,
+) -> None:
+    server = adapter.get_mcp_server()
+
+    candidates = _detect_reveal_radios(js_elements)
+    if not candidates:
+        print("  [form] 1.6  no reveal-trigger radios detected — skipping two-pass")
+        return
+
+    print(f"\n  [form] 1.6  reveal pass: {len(candidates)} candidate radio(s)")
+    for c in candidates:
+        print(f"  [form]       - {c.get('label', '')!r} "
+              f"(name={c.get('name', '')!r}, options={c.get('options', [])})")
+
+    # Fingerprints used to diff pre- vs post-reveal DOM state.
+    # Include section so repeating sub-sections (Nominee's Country vs
+    # Joint Partner's Country, Beneficiary 1's First Name vs Beneficiary 2's)
+    # don't get filtered out as "already seen" — Wall 1.2 interaction.
+    def _std_key(el: dict) -> tuple[str, str, str]:
+        return (
+            str(el.get("label", "")).strip().lower(),
+            str(el.get("type", "")),
+            str(el.get("section", "")).strip().lower(),
+        )
+
+    def _trig_key(t: dict) -> tuple[str, str]:
+        return (
+            str(t.get("label", "")).strip().lower(),
+            str(t.get("section", "")).strip().lower(),
+        )
+
+    pre_elem_keys: set[tuple[str, str, str]] = {_std_key(el) for el in js_elements}
+    pre_trigger_keys: set[tuple[str, str]] = {_trig_key(t) for t in triggers}
+
+    for cand in candidates:
+        group_name = str(cand.get("name") or "")
+        cand_label = str(cand.get("label") or "")
+
+        try:
+            page_gc.check()
+        except GuardrailExit as e:
+            print(f"  [form]       ✗ page guardrail hit ({e.reason}) "
+                  "— stopping reveal pass")
+            return
+
+        if not group_name:
+            print(f"  [form]       ⚠ {cand_label!r}: no radio group name, skipping")
+            continue
+
+        # Clear any stray popup before interacting with the radio.
+        await adapter.evaluate_script(_JS_CLOSE_POPUP)
+        await asyncio.sleep(0.2)
+
+        # Prefer an MCP click — the cursor visibly moves to the Yes radio,
+        # matching the visible dropdown behaviour. The MCP click goes
+        # through Chrome DevTools Protocol so the user sees real pointer
+        # motion and a highlighted click. Falls back to JS click when the
+        # snapshot doesn't expose a uid for the Yes option (still correct,
+        # but invisible on screen).
+        #
+        # Clicking an already-selected radio is idempotent in React
+        # (onChange won't fire for value = current). Safe to just click.
+        clicked_ok = False
+        try:
+            pre_snap_result = await server.call_tool("take_snapshot", {})
+            pre_snap_text = ""
+            if pre_snap_result.content:
+                pre_snap_text = pre_snap_result.content[0].text or ""
+            yes_uid = _find_yes_radio_uid(pre_snap_text, cand_label)
+        except Exception:
+            yes_uid = ""
+
+        if yes_uid:
+            try:
+                await server.call_tool("click", {"uid": yes_uid})
+                clicked_ok = True
+                print(f"  [form]       ✓ {cand_label!r}: clicked Yes "
+                      f"via MCP (uid={yes_uid})")
+            except Exception as e:
+                print(f"  [form]       ⚠ {cand_label!r}: MCP click failed "
+                      f"({e}) — falling back to JS")
+
+        if not clicked_ok:
+            click_raw = await adapter.evaluate_script(
+                _js_click_radio_yes_for(group_name)
+            )
+            click_info = _safe_parse(click_raw) or {}
+            if not isinstance(click_info, dict):
+                click_info = {}
+
+            if not click_info.get("found"):
+                print(f"  [form]       ⚠ {cand_label!r}: no Yes option found "
+                      "— skipping")
+                continue
+            if click_info.get("was_selected"):
+                print(f"  [form]       ⏭ {cand_label!r}: Yes already selected "
+                      "(JS fallback — invisible to viewer)")
+            elif click_info.get("clicked"):
+                print(f"  [form]       ✓ {cand_label!r}: clicked Yes "
+                      "(JS fallback — invisible to viewer)")
+            else:
+                print(f"  [form]       ⚠ {cand_label!r}: click did not register "
+                      "— skipping")
+                continue
+
+        await asyncio.sleep(1.5)  # let React / MUI render the revealed fields
+
+        # Re-enumerate standard elements and diff against pre-reveal state.
+        raw = await adapter.evaluate_script(_JS_ENUMERATE)
+        new_js_elements = _safe_parse(raw) or []
+        if not isinstance(new_js_elements, list):
+            new_js_elements = []
+
+        added_std = []
+        for el in new_js_elements:
+            lbl = str(el.get("label", "")).strip()
+            if not lbl:
+                continue
+            if _std_key(el) in pre_elem_keys:
+                continue
+            added_std.append(el)
+
+        if added_std:
+            print(f"  [form]       → {len(added_std)} new standard element(s)")
+            for el in added_std:
+                print(f"  [form]         + {el.get('label', '')!r} "
+                      f"({el.get('type', '')}, "
+                      f"section={el.get('section', '')!r})")
+                el["revealed_by"] = cand_label
+                js_elements.append(el)
+                pre_elem_keys.add(_std_key(el))
+        else:
+            print(f"  [form]       → 0 new standard elements")
+
+        # Find new dropdown triggers in the post-reveal snapshot.
+        snap_result = await server.call_tool("take_snapshot", {})
+        new_snap_text = ""
+        if snap_result.content:
+            new_snap_text = snap_result.content[0].text or ""
+
+        new_triggers = _find_custom_dropdown_triggers(new_snap_text)
+
+        # Resolve section per trigger BEFORE diffing so (label, section)
+        # disambiguates repeats across sub-sections. Nominee's "Country"
+        # and (hypothetical) Joint Partner's "Country" share a label but
+        # live under different headings — both should survive the diff.
+        added_triggers = []
+        for t in new_triggers:
+            t_label = str(t.get("label", "")).strip().lower()
+            try:
+                section_raw = await adapter.evaluate_script(
+                    _js_section_for_text(t.get("trigger_text", ""))
+                )
+                section_info = _safe_parse(section_raw) or {}
+                t_section = str(
+                    section_info.get("section", "") or ""
+                ).strip().lower()
+            except Exception:
+                t_section = ""
+            t["section"] = t_section  # persist for downstream processing
+            if (t_label, t_section) in pre_trigger_keys:
+                continue
+            added_triggers.append(t)
+
+        if not added_triggers:
+            print(f"  [form]       → 0 new custom dropdown triggers")
+            await checkpoint_fn()
+            continue
+
+        print(f"  [form]       → {len(added_triggers)} new custom dropdown "
+              f"trigger(s)")
+
+        # Process each new trigger: locator resolve → open → LLM extract →
+        # CoVe → close. Intentionally simpler than the main Step 3 loop:
+        # no cascade unlock and no default-commit — revealed sections don't
+        # typically depend on outside parents on TECU. If that assumption
+        # fails on another app, the disabled dropdown will just record
+        # empty options (same behaviour as main loop when defaults absent).
+        for j, trig in enumerate(added_triggers):
+            uid = trig["uid"]
+            label = trig["label"]
+            trigger_text = trig["trigger_text"]
+            print(f"  [form]       [{j+1}/{len(added_triggers)}] {label!r} "
+                  f"(uid={uid})")
+
+            try:
+                page_gc.check()
+            except GuardrailExit as e:
+                print(f"  [form]         ✗ page guardrail hit ({e.reason}) "
+                      "— stopping reveal pass")
+                return
+
+            dropdown_gc = per_dropdown_scope(parent=page_gc)
+
+            section_raw = await adapter.evaluate_script(
+                _js_section_for_text(trigger_text)
+            )
+            section_info = _safe_parse(section_raw) or {}
+            trig_section = section_info.get("section", "") or ""
+
+            locator_css = ""
+            locator_xpath = ""
+            locator_strategy = ""
+            dom_top: float | None = None
+            loc_raw = await adapter.evaluate_script(_js_locate_trigger_for(label))
+            loc_info = _safe_parse(loc_raw) or {}
+            if isinstance(loc_info, dict):
+                locator_css = loc_info.get("css", "") or ""
+                locator_xpath = loc_info.get("xpath", "") or ""
+                locator_strategy = loc_info.get("strategy", "") or ""
+                if isinstance(loc_info.get("dom_top"), (int, float)):
+                    dom_top = float(loc_info["dom_top"])
+            if not locator_css and not locator_xpath:
+                print(f"  [form]         ⚠ no locator resolved for {label!r} "
+                      "— SELECT_AND_VERIFY will block until fixed")
+
+            open_snap_text = ""
+            options: list[str] = []
+            try:
+                await server.call_tool("click", {"uid": uid})
+                await asyncio.sleep(1.5)
+                open_snap = await server.call_tool("take_snapshot", {})
+                if open_snap.content:
+                    open_snap_text = open_snap.content[0].text or ""
+                result = await llm_classify(
+                    EXTRACT_DROPDOWN_OPTIONS_PROMPT,
+                    open_snap_text,
+                    EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
+                    budget=budget,
+                    label=f"reveal_opts_{j+1}",
+                    guardrails=dropdown_gc,
+                )
+                options = result.get("options", []) or []
+            except GuardrailExit as e:
+                print(f"  [form]         ✗ dropdown guardrail ({e.reason})")
+            except Exception as e:
+                print(f"  [form]         ⚠ open/read failed: {e}")
+
+            seen: set[str] = set()
+            clean: list[str] = []
+            for o in options:
+                o = str(o).strip()
+                if (o and o not in seen and not re.match(
+                        r"^(Select|Choose|--|Please)", o, re.IGNORECASE)):
+                    seen.add(o)
+                    clean.append(o)
+
+            if clean and open_snap_text:
+                verify_gc = per_verify_scope(parent=dropdown_gc)
+                try:
+                    verify_result = await verify_list_cascaded(
+                        {"options": clean}, "options", open_snap_text,
+                        label=f"reveal_opts_{j+1}_cove",
+                        guardrails=verify_gc, log=False,
+                    )
+                    clean = verify_result.claim.get("options", clean)
+                    if verify_result.dropped:
+                        print(
+                            f"  [form]         🔍 CoVe dropped "
+                            f"{len(verify_result.dropped)} option(s)"
+                        )
+                except GuardrailExit as e:
+                    print(f"  [form]         ⚠ CoVe guardrail ({e.reason}) "
+                          "— keeping raw options")
+
+            print(f"  [form]         → {len(clean)} options")
+            for o in clean[:3]:
+                print(f"  [form]           - {o!r}")
+
+            _dd_put(dropdown_data, label, trig_section, {
+                "options": clean,
+                "disabled": False,
+                "locator_css": locator_css,
+                "locator_xpath": locator_xpath,
+                "locator_strategy": locator_strategy,
+                "dom_top": dom_top,
+                "revealed_by": cand_label,
+            })
+            pre_trigger_keys.add((label.strip().lower(),
+                                   trig_section.strip().lower()))
+
+            try:
+                await server.call_tool("press_key", {"key": "Escape"})
+            except Exception:
+                pass
+            await adapter.evaluate_script(_JS_CLOSE_POPUP)
+            await asyncio.sleep(0.4)
+
+            await checkpoint_fn()
 
 
 # ── Main extraction flow ────────────────────────────────────────────
@@ -1421,15 +1980,14 @@ async def extract_form(
                     print(f"  [form]        still disabled after cascade — recording empty")
 
             if is_disabled:
-                dropdown_data[label] = {
+                _dd_put(dropdown_data, label, trig.get("section", "") or "", {
                     "options": [],
                     "disabled": True,
-                    "section": trig.get("section", ""),
                     "locator_css": locator_css,
                     "locator_xpath": locator_xpath,
                     "locator_strategy": locator_strategy,
                     "dom_top": dom_top,
-                }
+                })
                 await _checkpoint()
                 continue
             # Fall through to the normal open_and_read path below —
@@ -1462,16 +2020,15 @@ async def extract_form(
         except GuardrailExit as e:
             print(f"  [form]        ✗ dropdown guardrail hit ({e.reason}) — "
                   f"skipping {label!r}")
-            dropdown_data[label] = {
+            _dd_put(dropdown_data, label, trig.get("section", "") or "", {
                 "options": [],
                 "disabled": False,
-                "section": trig.get("section", ""),
                 "guardrail_exit": e.reason,
                 "locator_css": locator_css,
                 "locator_xpath": locator_xpath,
                 "locator_strategy": locator_strategy,
                 "dom_top": dom_top,
-            }
+            })
             await _checkpoint()
             # Still try to close any popup we may have opened before exit.
             try:
@@ -1558,15 +2115,14 @@ async def extract_form(
             if len(clean) > 5:
                 print(f"  [form]          ... +{len(clean) - 5} more")
 
-        dropdown_data[label] = {
+        _dd_put(dropdown_data, label, trig.get("section", "") or "", {
             "options": clean,
             "disabled": False,
-            "section": trig.get("section", ""),
             "locator_css": locator_css,
             "locator_xpath": locator_xpath,
             "locator_strategy": locator_strategy,
             "dom_top": dom_top,
-        }
+        })
 
         # Checkpoint AFTER dropdown_data is updated but BEFORE close —
         # on_progress sees the most up-to-date state; close is cleanup
@@ -1634,20 +2190,25 @@ async def extract_form(
     # parent wasn't processed yet in DOM order. Now that dropdown_data
     # has locators / options / committed state for the whole page, retry
     # each still-disabled trigger one more time.
-    retry_labels = [
-        lbl for lbl, info in dropdown_data.items()
+    # Wall 1.2 — iterate over (key, label) pairs, not bare labels. On
+    # repeating sub-forms the same label can live under multiple keys
+    # (e.g. "Country", "Country|beneficiary_2"); retrying by label alone
+    # would collapse them.
+    retry_items = [
+        (key, _dd_label(info))
+        for key, info in dropdown_data.items()
         if isinstance(info, dict) and info.get("disabled")
     ]
-    if retry_labels and defaults is not None:
-        print(f"\n  [form] 4/4  retry: {len(retry_labels)} still-disabled "
+    if retry_items and defaults is not None:
+        print(f"\n  [form] 4/4  retry: {len(retry_items)} still-disabled "
               f"dropdown(s)")
-        for lbl in retry_labels:
+        for key, lbl in retry_items:
             retry_trig = next((t for t in triggers if t.get("label") == lbl), None)
             if retry_trig is None:
                 continue
             uid = retry_trig["uid"]
             trigger_text = retry_trig["trigger_text"]
-            info = dropdown_data[lbl]
+            info = dropdown_data[key]
             print(f"  [form]      retry {lbl!r} (uid={uid})")
 
             # Clean popup state before attempting cascade again.
@@ -1736,7 +2297,9 @@ async def extract_form(
             for o in retry_clean[:3]:
                 print(f"  [form]          - {o!r}")
 
-            dropdown_data[lbl] = {
+            # Update in place under the same key so reveal/section tagging
+            # is preserved; label + section inside info remain untouched.
+            dropdown_data[key] = {
                 **info,
                 "options": retry_clean,
                 "disabled": False,
@@ -1773,6 +2336,27 @@ async def extract_form(
             await adapter.evaluate_script(_JS_CLOSE_POPUP)
             await asyncio.sleep(0.3)
             await _checkpoint()
+
+    # ── Wall 1.6: conditional UI two-pass ─────────────────────────
+    # After the normal extract has captured everything visible, flip any
+    # reveal-trigger radios ("Would you like to add Beneficiary? Yes/No")
+    # to Yes, diff the page, and capture the newly-visible fields. Radios
+    # are left on Yes — Execute needs the revealed fields addressable;
+    # per-test field restore is handled downstream by Wall 1.3.
+    try:
+        await _reveal_and_reextract(
+            adapter,
+            budget=budget,
+            page_gc=page_gc,
+            js_elements=js_elements,
+            triggers=triggers,
+            dropdown_data=dropdown_data,
+            checkpoint_fn=_checkpoint,
+        )
+    except GuardrailExit as e:
+        print(f"  [form] 1.6  reveal pass aborted ({e.reason})")
+    except Exception as e:
+        print(f"  [form] 1.6  reveal pass errored: {e} — continuing")
 
     elapsed = time.time() - t0
     print(f"\n  [form] ✓ Done in {elapsed:.1f}s — "

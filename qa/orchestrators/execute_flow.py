@@ -389,13 +389,6 @@ class ExecuteOrchestrator:
         # visible. Idempotent — no-op if nothing is open.
         await _close_popup(ctx.adapter)
 
-        # UPLOAD_FILE still deferred to Wall 1.4.
-        if tc.approach == TestApproach.UPLOAD_FILE:
-            return _blocked_or_skipped(
-                tc, TestStatus.BLOCKED,
-                notes="UPLOAD_FILE handled by Wall 1.4 (OCR-gated replay)",
-            )
-
         # Supported approaches:
         if tc.approach == TestApproach.FILL_CHECK:
             return await self._fill_check(tc, ctx, test_gc)
@@ -405,6 +398,8 @@ class ExecuteOrchestrator:
             return await self._tap_verify(tc, ctx, test_gc)
         if tc.approach == TestApproach.SELECT_AND_VERIFY:
             return await self._select_and_verify(tc, ctx, test_gc)
+        if tc.approach == TestApproach.UPLOAD_FILE:
+            return await self._upload_file(tc, ctx, test_gc)
 
         return _blocked_or_skipped(
             tc, TestStatus.BLOCKED,
@@ -693,6 +688,93 @@ class ExecuteOrchestrator:
                 "options_seen": options,
                 "dependencies_applied": deps,
                 "selection_visible_in_snapshot": selection_visible,
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
+
+    # ── UPLOAD_FILE (Wall 1.4) ─────────────────────────────────────
+    #
+    # Full OCR-gated upload flow: attach the file, click the confirm
+    # button if present, poll for OCR completion, classify PASS/FAIL.
+    # Reuses the existing `_upload_file_for_field_impl` (web_tools) which
+    # already handles trigger click → modal cascade → hidden-input exposure
+    # → MCP upload → wait-for-verification.
+    #
+    # Status mapping from the impl's JSON response:
+    #   PASS      → TestStatus.PASS   (file uploaded + OCR success signal)
+    #   FAIL      → TestStatus.FAIL   (uploaded but no success signal)
+    #   ERROR     → TestStatus.BLOCKED (could not start upload — missing
+    #               file, L0 mismatch, trigger not found)
+    #   anything else → TestStatus.BLOCKED (defensive)
+    #
+    # test_value optionally carries an explicit file name; if empty, the
+    # impl's token-overlap resolver picks the best match from the app's
+    # test_files folder.
+
+    async def _upload_file(
+        self,
+        tc: TestCase,
+        ctx: ExecuteRunContext,
+        test_gc: GuardrailContext,
+    ) -> TestResult:
+        from qa.tools.web_tools import _upload_file_for_field_impl
+
+        t0 = time.time()
+        try:
+            raw = await _upload_file_for_field_impl(
+                field_name=tc.field_name,
+                file_name=tc.test_value or "",
+                wait_for_ocr=True,
+            )
+        except Exception as e:
+            return _blocked_or_skipped(
+                tc, TestStatus.BLOCKED,
+                notes=f"upload impl raised: {type(e).__name__}: {e}",
+            )
+
+        parsed: dict = {}
+        try:
+            parsed = json.loads(raw) if isinstance(raw, str) else {}
+        except (json.JSONDecodeError, TypeError):
+            parsed = {}
+
+        impl_status = str(parsed.get("status", "")).upper()
+
+        if impl_status == "PASS":
+            test_status = TestStatus.PASS
+            actual = (
+                f"uploaded {parsed.get('file_uploaded', '')!r}; "
+                f"signal={parsed.get('success_signal', '')!r}"
+            )
+        elif impl_status == "FAIL":
+            test_status = TestStatus.FAIL
+            actual = (
+                f"uploaded but no success signal "
+                f"({parsed.get('success_signal', 'none')})"
+            )
+        elif impl_status == "ERROR":
+            test_status = TestStatus.BLOCKED
+            actual = f"upload error: {parsed.get('reason', 'unknown')}"
+        else:
+            test_status = TestStatus.BLOCKED
+            actual = f"unexpected impl status={impl_status!r}"
+
+        notes = f"upload_file impl_status={impl_status or 'none'}"
+
+        return TestResult(
+            tc_id=tc.tc_id,
+            element_id=tc.element_id,
+            field_name=tc.field_name,
+            test_value=tc.test_value,
+            expected=tc.expected_result,
+            actual=actual,
+            status=test_status,
+            notes=notes,
+            evidence={
+                "impl_status": impl_status,
+                "file_uploaded": parsed.get("file_uploaded", ""),
+                "success_signal": parsed.get("success_signal", ""),
+                "reason": parsed.get("reason", ""),
             },
             duration_ms=int((time.time() - t0) * 1000),
         )
