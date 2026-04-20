@@ -6246,6 +6246,26 @@
           "depends_on": []
         },
         {
+          "element_id": "new_member_application_additional_details:additional_details:preferred_method_of_communication:dropdown",
+          "name": "Preferred Method of communication",
+          "type": "dropdown",
+          "required": true,
+          "behavior": "Section: Additional Details",
+          "options": [
+            "Email",
+            "Mail",
+            "Phone Call",
+            "Text Message"
+          ],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Additional Details",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
           "element_id": "new_member_application_additional_details:salary:text_input",
           "name": "Salary",
           "type": "text_input",
@@ -6538,26 +6558,6 @@
           "accept": "",
           "semantic_hint": "",
           "depends_on": []
-        },
-        {
-          "element_id": "new_member_application_additional_details:additional_details:preferred_method_of_communication:dropdown",
-          "name": "Preferred Method of communication",
-          "type": "dropdown",
-          "required": true,
-          "behavior": "Section: Additional Details",
-          "options": [
-            "Email",
-            "Mail",
-            "Phone Call",
-            "Text Message"
-          ],
-          "interaction_order": 0,
-          "default_value": "",
-          "validation_rules": "",
-          "screen_name": "New Member Application - Additional Details",
-          "accept": "",
-          "semantic_hint": "",
-          "depends_on": []
         }
       ],
       "l1": [
@@ -6770,13 +6770,8 @@
           "element_id": "new_member_application_additional_details:additional_details:marital_status:dropdown",
           "locators": [
             {
-              "strategy": "css",
-              "value": "[data-testid=\"dropdown-button\"]",
-              "confidence": 0.85
-            },
-            {
               "strategy": "xpath",
-              "value": "//*[@data-testid='dropdown-button']",
+              "value": "//p[starts-with(normalize-space(.), 'Marital Status')]/following::button[@data-testid='dropdown-button'][1]",
               "confidence": 0.8
             }
           ],
@@ -6930,13 +6925,8 @@
           "element_id": "new_member_application_additional_details:additional_details:highest_level_of_education:dropdown",
           "locators": [
             {
-              "strategy": "css",
-              "value": "[data-testid=\"dropdown-button\"]",
-              "confidence": 0.85
-            },
-            {
               "strategy": "xpath",
-              "value": "//*[@data-testid='dropdown-button']",
+              "value": "//p[starts-with(normalize-space(.), 'Highest Level of Education')]/following::button[@data-testid='dropdown-button'][1]",
               "confidence": 0.8
             }
           ],
@@ -6997,6 +6987,21 @@
             {
               "strategy": "css",
               "value": "input[name='workEmail']",
+              "confidence": 0.8
+            }
+          ],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Additional Details"
+        },
+        {
+          "element_id": "new_member_application_additional_details:additional_details:preferred_method_of_communication:dropdown",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//p[starts-with(normalize-space(.), 'Preferred Method of communication')]/following::button[@data-testid='dropdown-button'][1]",
               "confidence": 0.8
             }
           ],
@@ -7080,21 +7085,12 @@
           "widget_type": "",
           "identifier": "",
           "screen_name": "New Member Application - Additional Details"
-        },
-        {
-          "element_id": "new_member_application_additional_details:additional_details:preferred_method_of_communication:dropdown",
-          "locators": [],
-          "retry_strategy": "standard",
-          "last_known_coordinates": null,
-          "widget_type": "",
-          "identifier": "",
-          "screen_name": "New Member Application - Additional Details"
         }
       ],
       "l2": []
     }
   ],
   "created_at": "2026-04-15T10:31:23.510742",
-  "updated_at": "2026-04-18T18:03:51.174733",
+  "updated_at": "2026-04-20T09:55:22.768954",
   "version": 8
 }

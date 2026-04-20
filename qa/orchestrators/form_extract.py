@@ -360,6 +360,11 @@ _JS_ENUMERATE = r"""() => {
 #   2. MUI — <label> wrapped by .MuiFormControl-root, combobox inside.
 #      Works for Material UI apps. Selector uses id / aria-labelledby /
 #      role-based nth-of-type.
+#   4. <p>-tag / heading label (Tailwind cards) — no <label> element,
+#      label text lives in a <p>/<h*>/<span>. XPath-only result with
+#      `//p[text()='X']/following::button[@data-testid='Y'][1]` style
+#      (version_2 predicates). CSS empty — text match unsupported in CSS.
+#      Execute falls back to document.evaluate() when CSS is empty.
 #   3. Generic — text-content match on any button/select/combobox.
 #      Last resort for apps that have no associated <label>.
 _JS_LOCATE_TRIGGER_BODY = r"""
@@ -380,18 +385,74 @@ _JS_LOCATE_TRIGGER_BODY = r"""
       .toLowerCase();
   }
 
-  function matchLabel(lbl) {
+  // Case-preserved version for embedding in XPath literals. XPath's
+  // normalize-space() is case-sensitive and does NOT strip a trailing
+  // '*', so we preserve case and use `starts-with` in the predicate
+  // (the '*' stays in the actual DOM text).
+  function labelTextCased(lbl) {
+    return lbl.textContent
+      .replace(/\s*\*\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // P1 — match priority. Exact string match is always preferred over
+  // startsWith / endsWith / includes. Callers iterate twice: first pass
+  // exact only, second pass (fallback) partial. Without this, "Country"
+  // silently binds to the "Country of Birth" label that appears earlier
+  // in DOM order because "country of birth".startsWith("country").
+  function isExactMatch(lbl) {
+    return labelText(lbl) === needle;
+  }
+  function isPartialMatch(lbl) {
     const t = labelText(lbl);
     if (!t) return false;
-    return t === needle
-      || t.startsWith(needle)
-      || needle.startsWith(t);
+    return t.startsWith(needle) || needle.startsWith(t);
+  }
+  function matchLabel(lbl) {
+    return isExactMatch(lbl) || isPartialMatch(lbl);
+  }
+
+  // P2 — uniqueness gate. A generated CSS selector is only usable if
+  // document.querySelector(css) would land on exactly the element we
+  // targeted. Selectors like `[data-testid="dropdown-button"]` match
+  // many elements and would silently hit the first one at Execute time.
+  // Reject non-unique selectors so the resolver either falls through to
+  // the next strategy or returns null cleanly.
+  function isUniqueFor(css, target) {
+    if (!css || !target) return false;
+    try {
+      const hits = document.querySelectorAll(css);
+      return hits.length === 1 && hits[0] === target;
+    } catch (e) {
+      return false;
+    }
   }
 
   function packResult(css, xpath, anchorEl, strategy) {
-    if (!css || !anchorEl) return null;
+    // Allow xpath-only results. Some label patterns (e.g. <p>-tag labels
+    // on Tailwind apps) have no stable CSS anchor since CSS can't match
+    // text content — we ship XPath as the primary locator and leave CSS
+    // empty; Execute falls back to document.evaluate for those.
+    if ((!css && !xpath) || !anchorEl) return null;
     const r = anchorEl.getBoundingClientRect();
-    return { css, xpath, strategy, dom_top: r.top };
+    return { css: css || '', xpath: xpath || '', strategy, dom_top: r.top };
+  }
+
+  // Verify an XPath resolves to exactly the target element. Same role as
+  // isUniqueFor() for CSS but uses document.evaluate for XPath.
+  function isXPathUniqueFor(xpath, target) {
+    if (!xpath || !target) return false;
+    try {
+      const res = document.evaluate(
+        xpath, document, null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+      );
+      if (res.snapshotLength !== 1) return false;
+      return res.snapshotItem(0) === target;
+    } catch (e) {
+      return false;
+    }
   }
 
   // Escape a value for safe embedding in a double-quoted CSS attribute
@@ -426,10 +487,10 @@ _JS_LOCATE_TRIGGER_BODY = r"""
   // The label's `for` attribute is the only author-supplied identifier
   // that's guaranteed unique per field. We use it as the CSS/XPath anchor
   // and walk forward to the button/select that lives alongside it.
-  {
+  function tryLabelForStrategy(predicate) {
     const labels = [...document.querySelectorAll('label')].filter(isVisible);
     for (const lbl of labels) {
-      if (!matchLabel(lbl)) continue;
+      if (!predicate(lbl)) continue;
       const forAttr = lbl.getAttribute('for');
       if (!forAttr) continue;
 
@@ -475,7 +536,6 @@ _JS_LOCATE_TRIGGER_BODY = r"""
       let xpath = '';
 
       if (tr === directTarget) {
-        // Label points directly at the control.
         css = `#${CSS.escape(forAttr)}`;
         xpath = `//*[@id=${forXp}]`;
       } else if (dtid) {
@@ -489,9 +549,23 @@ _JS_LOCATE_TRIGGER_BODY = r"""
         xpath = `//label[@for=${forXp}]/following-sibling::*//${tagLower}`;
       }
 
+      // P2 — if the generated CSS isn't unique, treat this label as a
+      // non-match and keep scanning. (Should be rare for Strategy 1
+      // since the `for` attribute is author-unique, but defensive.)
+      if (!isUniqueFor(css, tr)) continue;
+
       const result = packResult(css, xpath, tr, 'tecu_label_for');
       if (result) return JSON.stringify(result);
     }
+    return null;
+  }
+
+  // P1 — exact match pass first, partial only if no exact match wins.
+  {
+    const exact = tryLabelForStrategy(isExactMatch);
+    if (exact) return exact;
+    const partial = tryLabelForStrategy(isPartialMatch);
+    if (partial) return partial;
   }
 
   // ── Strategy 2: MUI — .MuiFormControl-root container ───────────
@@ -504,11 +578,11 @@ _JS_LOCATE_TRIGGER_BODY = r"""
   //   </div>
   //
   // Selector: prefer id → aria-labelledby → role-based nth-of-type.
-  {
+  function tryMuiStrategy(predicate) {
     const LABEL_SEL = 'label, legend, .MuiFormLabel-root, .MuiInputLabel-root';
     const labels = [...document.querySelectorAll(LABEL_SEL)].filter(isVisible);
     for (const lbl of labels) {
-      if (!matchLabel(lbl)) continue;
+      if (!predicate(lbl)) continue;
       const fc = lbl.closest(
         '.MuiFormControl-root, .form-group, .field-wrapper, fieldset'
       );
@@ -540,15 +614,111 @@ _JS_LOCATE_TRIGGER_BODY = r"""
         }
       }
 
+      if (!isUniqueFor(css, tr)) continue;
+
       const result = packResult(css, xpath, tr, 'mui_formcontrol');
       if (result) return JSON.stringify(result);
     }
+    return null;
+  }
+
+  // P1 — exact first, partial fallback.
+  {
+    const exact = tryMuiStrategy(isExactMatch);
+    if (exact) return exact;
+    const partial = tryMuiStrategy(isPartialMatch);
+    if (partial) return partial;
+  }
+
+  // ── Strategy 4: <p>/heading-tag label pattern (Tailwind cards) ─
+  //
+  // Apps like TECU render some fields inside a "card" with the label as
+  // a <p>/<h*>/<span> tag instead of <label for="...">. Strategy 1 skips
+  // these (no <label>). Strategy 2 skips these (no .MuiFormControl-root).
+  // Strategy 3 can't match by label text because the trigger's inner
+  // span sometimes has different text ("Communication Method" while the
+  // field label is "Preferred Method of communication").
+  //
+  // We anchor on the label tag's visible text and produce a version_2-
+  // style XPath:
+  //   //p[normalize-space(.)='<label>']/following::button[
+  //     @data-testid='dropdown-button'
+  //   ][1]
+  // Uses 2 predicates per version_2's 1-3 attr rule: the label's exact
+  // text + the trigger's testid. CSS is left empty for these — CSS can't
+  // express "text content matches" so there's no stable CSS anchor.
+  // Execute falls back to document.evaluate() when CSS is empty.
+  function tryPTagLabelStrategy(predicate) {
+    const LABEL_TAG_SEL = 'p, span, legend, h1, h2, h3, h4, h5, h6';
+    const candidates = [...document.querySelectorAll(LABEL_TAG_SEL)]
+      .filter(isVisible)
+      .filter(el => {
+        // Skip label-wrappers with nested form controls; we want
+        // standalone text labels, not wrappers like <span><input/></span>.
+        if (el.querySelector('input, button, select, textarea')) return false;
+        const t = labelText(el);
+        return t.length > 0 && t.length < 200;
+      });
+
+    for (const lbl of candidates) {
+      if (!predicate(lbl)) continue;
+
+      // Walk forward/upward to find the trigger that belongs to this
+      // label — prefer one that shares a common ancestor within 4 hops.
+      let tr = null;
+      let container = lbl.parentElement;
+      for (let hop = 0; container && hop < 6 && !tr; hop++) {
+        tr = container.querySelector(
+          'button[data-testid="dropdown-button"], '
+          + 'button, [role=combobox], [role=button], select'
+        );
+        if (tr && !isVisible(tr)) tr = null;
+        if (!tr) container = container.parentElement;
+      }
+      if (!isVisible(tr)) continue;
+
+      const lblTag = (lbl.tagName || 'p').toLowerCase();
+      const tagLower = (tr.tagName || 'button').toLowerCase();
+      const dtid = tr.getAttribute('data-testid');
+      // Case-preserved label text for XPath. Use starts-with because the
+      // DOM text commonly has a trailing '*' (required-field marker)
+      // that XPath's normalize-space doesn't strip.
+      const labelXp = escXpath(labelTextCased(lbl));
+
+      let xpath;
+      if (dtid) {
+        const dtidXp = escXpath(dtid);
+        xpath = `//${lblTag}[starts-with(normalize-space(.), ${labelXp})]`
+              + `/following::${tagLower}[@data-testid=${dtidXp}][1]`;
+      } else {
+        xpath = `//${lblTag}[starts-with(normalize-space(.), ${labelXp})]`
+              + `/following::${tagLower}[1]`;
+      }
+
+      if (!isXPathUniqueFor(xpath, tr)) continue;
+
+      // XPath-only result — CSS can't match text, no stable CSS here.
+      const result = packResult('', xpath, tr, 'p_label_xpath');
+      if (result) return JSON.stringify(result);
+    }
+    return null;
+  }
+
+  // P1 — exact first, partial fallback (same two-pass as Strategy 1/2).
+  {
+    const exact = tryPTagLabelStrategy(isExactMatch);
+    if (exact) return exact;
+    const partial = tryPTagLabelStrategy(isPartialMatch);
+    if (partial) return partial;
   }
 
   // ── Strategy 3: Generic text-content match ─────────────────────
   //
   // For apps with no <label> / .MuiFormLabel-root: match on the
-  // visible text of any combobox / button / select.
+  // visible text of any combobox / button / select. Only returns if
+  // the generated CSS is genuinely unique to this trigger — refuses
+  // shared attributes like `[data-testid="dropdown-button"]` that
+  // match every dropdown on the page.
   {
     const TRIGGER_SEL = '[role=combobox], [role=button], button, select';
     const triggers = [...document.querySelectorAll(TRIGGER_SEL)].filter(isVisible);
@@ -574,8 +744,12 @@ _JS_LOCATE_TRIGGER_BODY = r"""
           xpath = `//*[@data-testid=${escXpath(dtid)}]`;
         }
       }
-      const result = packResult(css, xpath, tr, 'generic_text_match');
-      if (result) return JSON.stringify(result);
+      // P2 — refuse a non-unique selector. Silent wrong-element clicks
+      // at Execute time are worse than a clean "no match" here.
+      if (isUniqueFor(css, tr)) {
+        const result = packResult(css, xpath, tr, 'generic_text_match');
+        if (result) return JSON.stringify(result);
+      }
     }
   }
 
@@ -585,10 +759,10 @@ _JS_LOCATE_TRIGGER_BODY = r"""
 
 def _js_locate_trigger_for(label: str) -> str:
     """Build a zero-arg arrow function that resolves a dropdown trigger's
-    CSS + XPath + dom_top by its label. Three strategies (TECU /
-    HTML5 → MUI → generic text match), first match wins. The label is
-    JSON-encoded so quotes and special chars in the label don't break
-    the JS."""
+    CSS + XPath + dom_top by its label. Four strategies (TECU label[for]
+    → MUI → <p>/heading-tag label → generic text match), first match
+    wins. The label is JSON-encoded so quotes and special chars in the
+    label don't break the JS."""
     body = _JS_LOCATE_TRIGGER_BODY.replace("TARGET_LABEL", json.dumps(label))
     return "() => {\n" + body + "\n}"
 
@@ -1052,14 +1226,20 @@ async def extract_form(
             locator_strategy = loc_info.get("strategy", "") or ""
             if isinstance(loc_info.get("dom_top"), (int, float)):
                 dom_top = float(loc_info["dom_top"])
-        if not locator_css:
-            print(f"  [form]        ⚠ no CSS selector resolved for {label!r} "
+        strat = f" [{locator_strategy}]" if locator_strategy else ""
+        if not locator_css and not locator_xpath:
+            # No strategy matched — Execute will BLOCK on this dropdown.
+            print(f"  [form]        ⚠ no locator resolved for {label!r} "
                   "— SELECT_AND_VERIFY will block until fixed")
-        else:
-            strat = f" [{locator_strategy}]" if locator_strategy else ""
+        elif locator_css:
             print(f"  [form]        css={locator_css!r}{strat} dom_top={dom_top}")
             if locator_xpath:
                 print(f"  [form]        xpath={locator_xpath!r}")
+        else:
+            # XPath-only (Strategy 4 for <p>-tag labels). Execute uses
+            # document.evaluate for these — no CSS by design.
+            print(f"  [form]        xpath={locator_xpath!r}{strat} dom_top={dom_top}")
+            print(f"  [form]        css=<xpath-only, no stable CSS anchor>")
 
         # Disabled check BEFORE clicking: MUI marks cascading dependent
         # dropdowns as disabled until their parent field is filled. We

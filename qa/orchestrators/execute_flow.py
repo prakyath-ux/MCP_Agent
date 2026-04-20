@@ -63,6 +63,7 @@ from qa.models import (
     TestApproach, TestSummary,
 )
 from qa.orchestrators.llm_subtask import llm_classify
+from qa.tools.web_tools import _safe_parse as _parse_mcp_result
 from qa.orchestrators.sub_prompts import (
     CLASSIFY_TEST_RESULT_PROMPT,
     CLASSIFY_TEST_RESULT_SCHEMA,
@@ -150,17 +151,31 @@ def _save_results_checkpoint(
     _atomic_write_text(results_path, json.dumps(payload, indent=2))
 
 
-def _find_l1_css_selector(kb: KnowledgeBase, element_id: str) -> str:
-    """Get the best-confidence CSS locator for an element. Returns ""
-    if the element isn't in the KB or has no CSS locator."""
+def _find_l1_locator(kb: KnowledgeBase, element_id: str) -> tuple[str, str]:
+    """Resolve the best locator for an element. Returns (strategy, value).
+    Preference: css (highest confidence) → xpath (highest confidence) →
+    ('', ''). Execute falls back to document.evaluate() for xpath when the
+    css slot is empty — some DOM patterns (e.g. <p>-labelled Tailwind
+    cards) have no stable CSS anchor because CSS can't match text."""
     l1 = kb.get_l1_for_element(element_id)
     if l1 is None:
-        return ""
+        return ("", "")
     css_locators = [loc for loc in l1.locators if loc.strategy == "css"]
-    if not css_locators:
-        return ""
-    best = max(css_locators, key=lambda loc: loc.confidence)
-    return best.value
+    if css_locators:
+        best = max(css_locators, key=lambda loc: loc.confidence)
+        return ("css", best.value)
+    xpath_locators = [loc for loc in l1.locators if loc.strategy == "xpath"]
+    if xpath_locators:
+        best = max(xpath_locators, key=lambda loc: loc.confidence)
+        return ("xpath", best.value)
+    return ("", "")
+
+
+def _find_l1_css_selector(kb: KnowledgeBase, element_id: str) -> str:
+    """Legacy CSS-only accessor — retained for callers that still treat
+    locators as strings. Prefer `_find_l1_locator` for new code."""
+    strategy, value = _find_l1_locator(kb, element_id)
+    return value if strategy == "css" else ""
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -255,6 +270,10 @@ class ExecuteOrchestrator:
         # SKIP short-circuits: record immediately, no browser touch.
         if tc.approach == TestApproach.SKIP:
             return _blocked_or_skipped(tc, TestStatus.SKIP, notes="marked SKIP by plan")
+
+        # Defensive: ensure no residual popup from a prior test is still
+        # visible. Idempotent — no-op if nothing is open.
+        await _close_popup(ctx.adapter)
 
         # UPLOAD_FILE still deferred to Wall 1.4.
         if tc.approach == TestApproach.UPLOAD_FILE:
@@ -499,17 +518,19 @@ class ExecuteOrchestrator:
                 )
             await asyncio.sleep(0.4)
 
-        # 2) Child dropdown — locator + select.
-        css = _find_l1_css_selector(ctx.knowledge, tc.element_id)
-        if not css:
+        # 2) Child dropdown — resolve locator (css preferred, xpath fallback).
+        strategy, locator_value = _find_l1_locator(ctx.knowledge, tc.element_id)
+        if not locator_value:
             return _blocked_or_skipped(
                 tc, TestStatus.BLOCKED,
-                notes=f"no CSS locator for element_id={tc.element_id}",
+                notes=f"no locator (css|xpath) in KB for element_id={tc.element_id}",
             )
 
-        status, options = await _select_option(ctx.adapter, css, tc.test_value)
+        status, options = await _select_option(
+            ctx.adapter, strategy, locator_value, tc.test_value,
+        )
         print(f"    [select] {tc.tc_id} {tc.test_value!r} → {status} "
-              f"(saw {len(options)} options)")
+              f"(via {strategy}, saw {len(options)} options)")
 
         # 3) CoVe-style deterministic verify — selection should be visible
         # in the post-snapshot (MUI renders the chosen label in the trigger).
@@ -539,7 +560,7 @@ class ExecuteOrchestrator:
             notes_parts.append(f"options_sample={options[:5]}")
         elif status == "ELEMENT_NOT_FOUND":
             test_status = TestStatus.BLOCKED
-            actual = f"dropdown trigger not found via CSS={css!r}"
+            actual = f"dropdown trigger not found via {strategy}={locator_value!r}"
         else:
             test_status = TestStatus.BLOCKED
             actual = f"select failed: {status}"
@@ -577,25 +598,60 @@ async def _raw_snapshot(adapter: PlatformAdapter) -> str:
     return ""
 
 
+def _js_resolve_expr(strategy: str, value: str) -> str:
+    """Return a JS expression (as a string) that resolves to the target
+    element for the given locator strategy — `document.querySelector` for
+    CSS, `document.evaluate` for XPath. Accepts either strategy so the
+    rest of _select_option's JS blocks are strategy-agnostic."""
+    if strategy == "xpath":
+        xp = json.dumps(value)
+        return (
+            f"document.evaluate({xp}, document, null, "
+            f"XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue"
+        )
+    # Default: CSS (works for css strategy AND for legacy callers that
+    # only have a CSS string handy).
+    return f"document.querySelector({json.dumps(value)})"
+
+
 async def _select_option(
     adapter: PlatformAdapter,
-    css: str,
-    option_text: str,
+    strategy_or_css: str,
+    value_or_option: str,
+    option_text: str | None = None,
 ) -> tuple[str, list[str]]:
     """Wall 1.1 — deterministic dropdown select.
+
+    Two call shapes supported for backward compat:
+      • 3-arg (new): _select_option(adapter, strategy, value, option_text)
+        where strategy is "css" or "xpath".
+      • 2-arg (legacy): _select_option(adapter, css, option_text) — CSS-only.
 
     Handles both native <select> and MUI-style custom comboboxes. Returns
     (status, options_seen) where status is one of:
         • "SELECTED"          — option clicked, selection committed
         • "OPTION_NOT_FOUND"  — dropdown opened but target option not present
-        • "ELEMENT_NOT_FOUND" — trigger CSS matched nothing
+        • "ELEMENT_NOT_FOUND" — trigger locator matched nothing
         • "OPEN_FAILED"       — click on trigger yielded no popup / no options
-    `options_seen` is the list of visible option texts (for reporting).
     """
+    # Resolve the two calling conventions into (strategy, value, option_text)
+    if option_text is None:
+        # Legacy 2-arg: (adapter, css, option_text)
+        strategy = "css"
+        value = strategy_or_css
+        option_text = value_or_option
+    else:
+        strategy = strategy_or_css
+        value = value_or_option
+    if strategy not in ("css", "xpath"):
+        strategy = "css"
+
+    resolve_expr = _js_resolve_expr(strategy, value)
+
     # Detect native <select> vs custom combobox.
     detect_fn = (
         "() => {"
-        f"  const el = document.querySelector({json.dumps(css)});"
+        f"  const el = {resolve_expr};"
         "  if (!el) return JSON.stringify({kind: 'none'});"
         "  if (el.tagName === 'SELECT') {"
         "    const opts = [...el.options].map(o => o.textContent.trim()).filter(t => t);"
@@ -605,9 +661,13 @@ async def _select_option(
         "}"
     )
     raw = await adapter.evaluate_script(detect_fn)
-    try:
-        detect = json.loads(_strip_json_wrapper(raw))
-    except (ValueError, TypeError):
+    # Use the same Chrome-envelope-aware parser as the rest of the
+    # extract/tools side. _strip_json_wrapper only understood plain
+    # `result:`/`Function call returned:` prefixes — Chrome DevTools MCP
+    # actually returns `Script ran on page and returned:\n```json\n...`
+    # which caused every dropdown to fail ELEMENT_NOT_FOUND.
+    detect = _parse_mcp_result(raw)
+    if not isinstance(detect, dict):
         return ("ELEMENT_NOT_FOUND", [])
     if detect.get("kind") == "none":
         return ("ELEMENT_NOT_FOUND", [])
@@ -616,7 +676,7 @@ async def _select_option(
         options = detect.get("options") or []
         select_fn = (
             "() => {"
-            f"  const el = document.querySelector({json.dumps(css)});"
+            f"  const el = {resolve_expr};"
             f"  const needle = {json.dumps(option_text.lower())};"
             "  const target = [...el.options].find(o => "
             "    o.textContent.trim().toLowerCase().includes(needle));"
@@ -636,7 +696,7 @@ async def _select_option(
     # Custom combobox path — click trigger, wait, read options, click target.
     open_fn = (
         "() => {"
-        f"  const el = document.querySelector({json.dumps(css)});"
+        f"  const el = {resolve_expr};"
         "  if (!el) return 'ELEMENT_NOT_FOUND';"
         "  el.click();"
         "  return 'OPENED';"
@@ -648,33 +708,44 @@ async def _select_option(
 
     await asyncio.sleep(0.5)
 
+    # Option-element selector list covering frameworks we've seen. This
+    # is a stop-gap per-framework match list; the proper fix is to have
+    # Extract capture the option selector per app and persist it to L1
+    # (tracked as follow-up wall). Selectors ordered from most-specific
+    # to most-generic; first match wins.
+    options_sel = (
+        # TECU / Tailwind custom dropdowns
+        '[data-testid="dropdown-menu"] li[data-testid^="option-"], '
+        'li[data-testid^="option-"], '
+        # ARIA standard
+        '[role=option], [role=menuitem], li[role=listitem], '
+        # MUI
+        '.MuiMenuItem-root, '
+        # Bootstrap
+        '.dropdown-item, '
+        # Generic fallback: visible <li> inside any popup container
+        '[role=listbox] li, [data-testid*="menu"] li, [data-testid*="dropdown"] li'
+    )
+    options_sel_js = json.dumps(options_sel)
+
     read_fn = (
         "() => {"
-        "  const opts = [...document.querySelectorAll("
-        "    '[role=option], [role=menuitem], li[role=listitem], "
-        ".MuiMenuItem-root, .dropdown-item')]"
+        f"  const opts = [...document.querySelectorAll({options_sel_js})]"
         "    .filter(e => e.offsetParent !== null);"
         "  return JSON.stringify(opts.map(o => o.textContent.trim()).filter(t => t));"
         "}"
     )
     raw_opts = await adapter.evaluate_script(read_fn)
-    try:
-        options = json.loads(_strip_json_wrapper(raw_opts)) or []
-    except (ValueError, TypeError):
-        options = []
+    parsed = _parse_mcp_result(raw_opts)
+    options = parsed if isinstance(parsed, list) else []
     if not options:
-        # Close the dropdown so the next test doesn't see a phantom popup.
-        await adapter.evaluate_script(
-            "() => document.body && document.body.click()"
-        )
+        await _close_popup(adapter)
         return ("OPEN_FAILED", [])
 
     click_fn = (
         "() => {"
         f"  const needle = {json.dumps(option_text.lower())};"
-        "  const match = [...document.querySelectorAll("
-        "    '[role=option], [role=menuitem], li[role=listitem], "
-        ".MuiMenuItem-root, .dropdown-item')]"
+        f"  const match = [...document.querySelectorAll({options_sel_js})]"
         "    .filter(e => e.offsetParent !== null)"
         "    .find(e => e.textContent.trim().toLowerCase().includes(needle));"
         "  if (!match) return 'OPTION_NOT_FOUND';"
@@ -684,13 +755,43 @@ async def _select_option(
     )
     result = (await adapter.evaluate_script(click_fn) or "").strip()
     if "OPTION_NOT_FOUND" in result:
-        # Close the popup before continuing.
-        await adapter.evaluate_script(
-            "() => document.body && document.body.click()"
-        )
+        await _close_popup(adapter)
         return ("OPTION_NOT_FOUND", options)
     await asyncio.sleep(0.3)
     return ("SELECTED", options)
+
+
+async def _close_popup(adapter: PlatformAdapter) -> None:
+    """Close any open dropdown popup — Escape keydown first (works for
+    MUI, Radix, most ARIA listboxes), then backdrop-click fallback for
+    custom popups that don't handle Escape. Safe to call even when no
+    popup is open."""
+    close_js = (
+        "() => {"
+        "  document.dispatchEvent(new KeyboardEvent('keydown', "
+        "    {key: 'Escape', code: 'Escape', keyCode: 27, which: 27, "
+        "     bubbles: true, cancelable: true}));"
+        "  document.dispatchEvent(new KeyboardEvent('keyup', "
+        "    {key: 'Escape', code: 'Escape', keyCode: 27, which: 27, "
+        "     bubbles: true, cancelable: true}));"
+        # Click a neutral point outside any visible popup container so
+        # backdrop-triggered close paths also fire. Guard against clicking
+        # on an element inside the popup itself.
+        "  const menus = [...document.querySelectorAll("
+        "    '[data-testid=\"dropdown-menu\"], [role=listbox], "
+        ".MuiPopover-root, [data-testid*=\"menu\"]')];"
+        "  const outside = document.elementFromPoint(5, 5);"
+        "  if (outside && !menus.some(m => m.contains(outside) || m === outside)) {"
+        "    outside.click();"
+        "  }"
+        "  return 'CLOSED';"
+        "}"
+    )
+    try:
+        await adapter.evaluate_script(close_js)
+    except Exception:
+        pass
+    await asyncio.sleep(0.2)
 
 
 def _strip_json_wrapper(raw: str | None) -> str:
@@ -730,19 +831,28 @@ async def _set_parent_value(
             f"(add to artifacts/defaults/<app>.json)",
         )
 
-    css = _find_l1_css_selector(kb, parent_element_id)
-    if not css:
-        return (False, f"no CSS locator for parent {parent_element_id}")
+    strategy, locator_value = _find_l1_locator(kb, parent_element_id)
+    if not locator_value:
+        return (False, f"no locator (css|xpath) for parent {parent_element_id}")
 
     parent_type = parent_l0.type.value if hasattr(parent_l0.type, "value") else str(parent_l0.type)
     if parent_type == "dropdown":
-        status, _ = await _select_option(adapter, css, value)
+        status, _ = await _select_option(adapter, strategy, locator_value, value)
         if status == "SELECTED":
             return (True, f"parent {parent_l0.name!r}={value!r} selected")
         return (False, f"parent select {status} on {parent_l0.name!r}")
 
-    # Text-input style parents (and any other fill-compatible type).
-    ok = await _python_fill(adapter, css, value)
+    # Text-input style parents (and any other fill-compatible type). In
+    # practice text_inputs always come from JS enumerate with a CSS id/
+    # name, so the CSS path is sufficient. Bail loudly if we hit xpath-
+    # only on a text parent — that signals a new DOM pattern to handle.
+    if strategy != "css":
+        return (
+            False,
+            f"parent {parent_l0.name!r} has no CSS locator; xpath-only "
+            f"fill path not yet supported",
+        )
+    ok = await _python_fill(adapter, locator_value, value)
     if ok:
         return (True, f"parent {parent_l0.name!r}={value!r} filled")
     return (False, f"parent fill failed on {parent_l0.name!r}")
