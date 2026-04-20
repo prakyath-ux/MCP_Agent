@@ -19,10 +19,10 @@
     "Select File": "passport.png",
 
     "Employment Status": "PART TIME",
-    "Employer": "OTHER",
+    "Employer": "OTHER EMPLOYERS",
     "Employer Description": "Independent Consulting",
     "Occupation": "Software Engineer",
-    "Sector": "INFORMATION & COMMUNICATION",
+    "Sector": "PRIVATE SECTOR",
     "Sector Employed": "INFORMATION & COMMUNICATION",
     "Employment Type": "PRIVATE",
     "Employer Address Line 1": "1 Main Street",
@@ -60,7 +60,8 @@
     ],
     "new_member_application_additional_details:employment_type:dropdown": [
       "new_member_application_additional_details:employment_status:dropdown",
-      "new_member_application_additional_details:employer:dropdown"
+      "new_member_application_additional_details:employer:dropdown",
+      "new_member_application_additional_details:sector:dropdown"
     ]
   }
 }

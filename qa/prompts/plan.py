@@ -52,10 +52,38 @@ it exists and is readable. Never emit FILL_CHECK on them.
 # RULES FOR EACH ELEMENT TYPE
 
 ## Text inputs (FILL_CHECK):
-- Empty value (required field validation) — HIGH
-- Valid value — HIGH
-- Special characters (use ONLY: @, !, -, _, .) — MED
+Generate up to 3 DISTINCT test cases per field. The cases below are
+templates — pick the 3 most revealing for the specific field's type and
+constraints. Do not emit the same class of test twice on one field.
+
+- Empty value (required field validation) — HIGH (always include if the
+  field is marked required)
+- Valid value — HIGH (always include exactly one PASS baseline)
+- Invalid format for the field's type — HIGH
+    · email field → "not-an-email"
+    · phone field → "abc"
+    · numeric/salary/amount → "abc" (letters in a number field)
+    · date (if shown as text) → "99/99/9999"
+- Too-long input — MED
+    · If the KB behavior mentions maxlength N, send N+5 characters
+    · Otherwise send ~300 chars of "a" to smoke out unbounded fields
+- Numeric-only where letters expected, letters-only where numbers expected — MED
+- Safe special characters (use ONLY: @, !, -, _, .) — MED
   NEVER use these in test values: # * $ & ; | > < ( ) { } — they crash ADB shell
+
+F3 — CROSS-FIELD CONSTRAINT AWARENESS (important for numeric/amount fields):
+When a text input's valid value depends on another field (e.g. Income
+Range selected elsewhere on the same screen), generate test values that
+respect or deliberately violate that relationship:
+  · "Salary" alongside an "Income Range" dropdown with options like
+    "$12,001-$17,000" → Valid test_value falls WITHIN the default range
+    (e.g. "15000"). FAIL test_value falls clearly OUTSIDE (e.g. "50000").
+  · "Date of Birth" alongside "Minimum Age: 18" → Valid = 25 years ago.
+    FAIL = 5 years ago.
+Use the defaults sidecar (`dependencies` + parent default values) plus
+the visible L0 metadata to reason about these links. When in doubt,
+still include one clearly-valid baseline so the FAIL signal is clean.
+
 - Maximum 3 test cases per field
 
 ## Dropdowns (SELECT_AND_VERIFY):
@@ -109,19 +137,26 @@ Do NOT write the literal word "EMPTY" or "BLANK" in the test_value column —
 the executor will fill the field with those literal strings, which is NOT
 an empty-field test.
 
-# ORDERING — CRITICAL
+# ORDERING — CRITICAL (Python enforces this too, but match it)
 
-Process fields in the ORDER THEY APPEAR IN THE INPUT ARRAY. That order
-already reflects the screen's top-to-bottom DOM source order, which is
-almost always the dependency order too (e.g. Employment Status comes
-before Employer because Status unlocks Employer).
+Group test cases by element type in this order, then DOM order within
+each group:
 
-If `interaction_order` is set (non-zero) on the input elements, use it
-as an ascending sort key; otherwise fall back to input-array order.
+  1. ALL dropdown tests (SELECT_AND_VERIFY) — first
+  2. ALL text-field tests (FILL_CHECK) — second
+  3. Date pickers (TAP_VERIFY) — third
+  4. File uploads (UPLOAD_FILE) — fourth
+  5. Button/existence checks (VERIFY_ONLY) — last
 
-Do NOT batch by element type (all text inputs first, then all
-dropdowns). That pattern breaks implicit parent → child unlocks and
-forces the executor to re-setup prior fields for every later test.
+Rationale: dropdowns set form state (especially cascade parents and
+cross-field constraints like Income Range controlling valid Salary).
+Running them first commits those states, so text-field validation tests
+run against a form where the dropdowns are already filled — giving
+cleaner, more realistic validation signal.
+
+Python sorts the final output by approach-type-priority then DOM
+position, so this is enforced even if your output order differs. But
+matching the intended order here keeps the emitted plan readable.
 
 Within a single field, GROUP all its test cases together and order them
 HIGH → MED → LOW priority. Do NOT interleave different fields — the

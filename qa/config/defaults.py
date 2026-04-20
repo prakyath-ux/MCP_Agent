@@ -59,12 +59,46 @@ class Defaults:
 
     def get_dependencies(self, element_id: str) -> list[str]:
         """Return the ordered list of parent element_ids this field
-        depends on. Empty list = no known dependencies."""
+        depends on. Empty list = no known dependencies.
+
+        Tolerant to 3-part ↔ 4-part element_id shapes. Extract may or may
+        not detect a section heading per field (the same field can be
+        3-part on one page and 4-part on another), while the sidecar
+        typically uses the canonical 3-part form. Try:
+          1. Exact match on the provided id
+          2. If the provided id is 4-part, strip the section and retry
+          3. If the provided id is 3-part, search for any 4-part key
+             with the same (screen, label, type) and return its deps
+        """
         if not element_id:
             return []
-        deps = self.dependencies.get(element_id)
-        if isinstance(deps, list):
-            return [d for d in deps if isinstance(d, str) and d]
+
+        def _clean(v: object) -> list[str]:
+            if isinstance(v, list):
+                return [d for d in v if isinstance(d, str) and d]
+            return []
+
+        # 1. exact match
+        if element_id in self.dependencies:
+            return _clean(self.dependencies[element_id])
+
+        parts = element_id.split(":")
+        # 2. 4-part → try canonical 3-part (strip section at index 1)
+        if len(parts) == 4:
+            alt = f"{parts[0]}:{parts[2]}:{parts[3]}"
+            if alt in self.dependencies:
+                return _clean(self.dependencies[alt])
+        # 3. 3-part → scan sidecar for any 4-part key with same
+        #    (screen, label, type)
+        if len(parts) == 3:
+            screen, label, etype = parts
+            for k, v in self.dependencies.items():
+                kp = k.split(":")
+                if (
+                    len(kp) == 4
+                    and kp[0] == screen and kp[2] == label and kp[3] == etype
+                ):
+                    return _clean(v)
         return []
 
     def get(self, label: str, section: str = "") -> str | None:

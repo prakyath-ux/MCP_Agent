@@ -243,6 +243,17 @@ class ExecuteOrchestrator:
                 print(f"  [execute_flow] stopping early, {len(results)}/{len(ctx.test_cases)} tests completed")
                 break
 
+        # G4 — Final audit pass. Any SELECT_AND_VERIFY that ended up
+        # BLOCKED because its cascade parents couldn't be resolved
+        # against the KB (now rare after G1) OR because a specific
+        # parent default didn't unlock the child on first try gets one
+        # more attempt: walk alternative parent option values and retry.
+        # Bounded: up to 2 alternates per failed test, bails on first
+        # success.
+        retried = await self._final_audit_retry(ctx, results, results_path, run_start, summary)
+        if retried:
+            print(f"  [execute_flow] final audit recovered {retried} test(s)")
+
         duration = time.time() - run_start
         print(f"\n  [execute_flow] ══ Complete: "
               f"{summary.passed} PASS / {summary.failed} FAIL / "
@@ -256,6 +267,109 @@ class ExecuteOrchestrator:
             cost_usd=ctx.budget.current_cost,
             duration_sec=duration,
         )
+
+    # ── G4: Final audit + parent-alternation retry ───────────────────
+    async def _final_audit_retry(
+        self,
+        ctx: ExecuteRunContext,
+        results: list[TestResult],
+        results_path: Path,
+        run_start: float,
+        summary: TestSummary,
+    ) -> int:
+        """For each BLOCKED SELECT_AND_VERIFY test, try alternative
+        parent option values and retry the test. Returns the number of
+        tests recovered (BLOCKED → PASS/FAIL)."""
+        recovered = 0
+        kb = ctx.knowledge
+        defaults = ctx.defaults
+
+        for idx, result in enumerate(results):
+            if result.status != TestStatus.BLOCKED:
+                continue
+            # Only retry cascade-dep-failed select_verify — restores and
+            # classification-BLOCKEDs aren't fixable by parent alt.
+            notes = result.notes or ""
+            if "dep_failed" not in notes and "not in KB" not in notes:
+                continue
+
+            # Find the original test case in ctx.test_cases.
+            tc = next((t for t in ctx.test_cases if t.tc_id == result.tc_id), None)
+            if tc is None or tc.approach != TestApproach.SELECT_AND_VERIFY:
+                continue
+
+            # Find the first parent of this test's dependency chain.
+            l0 = kb.get_l0_for_element(tc.element_id)
+            deps = list(l0.depends_on) if (l0 and l0.depends_on) else []
+            if not deps:
+                deps = defaults.get_dependencies(tc.element_id)
+            if not deps:
+                continue
+
+            first_parent_id = deps[0]
+            parent_l0 = kb.get_l0_for_element(first_parent_id)
+            if parent_l0 is None or not parent_l0.options:
+                continue
+
+            # Current default for this parent (what we tried first).
+            current_default = defaults.get(parent_l0.name) or ""
+            # Build alternate option list: drop the current_default, take up to 2.
+            alt_options = [
+                o for o in parent_l0.options
+                if current_default.strip().lower() not in o.lower()
+            ][:2]
+            if not alt_options:
+                continue
+
+            print(f"\n  [execute_flow] audit: retrying {tc.tc_id} {tc.field_name!r} "
+                  f"with alternate parent {parent_l0.name!r} values: {alt_options}")
+
+            for alt_val in alt_options:
+                # Temporarily mutate the defaults lookup to return alt_val
+                # for this parent, then re-run the test cycle.
+                orig_get = defaults.get
+                def patched_get(label, section="", _alt=alt_val, _name=parent_l0.name):
+                    if label == _name:
+                        return _alt
+                    return orig_get(label, section)
+                defaults.get = patched_get  # type: ignore[method-assign]
+
+                try:
+                    test_gc = per_test_scope(parent=ctx.guardrails)
+                    new_result = await self._run_test_cycle(tc, ctx, test_gc)
+                except GuardrailExit:
+                    break
+                finally:
+                    defaults.get = orig_get  # type: ignore[method-assign]
+
+                if new_result.status != TestStatus.BLOCKED:
+                    # Recovered! Replace the old BLOCKED result.
+                    old_status = result.status
+                    results[idx] = new_result
+                    results[idx].notes = (new_result.notes or "") + f" | audit_parent={parent_l0.name!r}={alt_val!r}"
+                    # Update summary: remove old BLOCKED, add new status.
+                    summary.blocked -= 1
+                    if new_result.status == TestStatus.PASS:
+                        summary.passed += 1
+                    elif new_result.status == TestStatus.FAIL:
+                        summary.failed += 1
+                    else:
+                        summary.skipped += 1
+                    recovered += 1
+                    print(f"    ✓ recovered: {tc.tc_id} BLOCKED → "
+                          f"{new_result.status.value.upper()} via "
+                          f"{parent_l0.name!r}={alt_val!r}")
+                    _save_results_checkpoint(
+                        results_path, results, summary,
+                        app_name=ctx.app_name, model=self.model,
+                        cost_usd=ctx.budget.current_cost,
+                        duration_sec=time.time() - run_start,
+                    )
+                    break
+                else:
+                    print(f"    ⚠ alt {alt_val!r} still BLOCKED — trying next")
+
+        return recovered
 
     # ── Per-test dispatch ──────────────────────────────────────────
 

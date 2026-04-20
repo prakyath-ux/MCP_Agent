@@ -76,6 +76,52 @@ class ScreenKnowledge(BaseModel):
 
 # ── Knowledge Base (entire application, multiple screens) ────────────────────
 
+def _lookup_tolerant(screens, element_id, pick_list):
+    """Exact-then-fuzzy element lookup across screens.
+
+    Extract may emit a 4-part element_id (`screen:section:label:type`)
+    when a section heading is detected, or a 3-part one
+    (`screen:label:type`) when no section is found. The defaults sidecar
+    typically uses the canonical 3-part form. This helper lets callers
+    look up an element using either shape.
+
+    Strategy:
+      1. Exact match on `element_id` across all screens
+      2. If given 4-part, try the 3-part canonical (drop section at [1])
+      3. If given 3-part, match any 4-part entry with the same
+         (screen, label, type)
+    """
+    if not element_id:
+        return None
+
+    # 1. exact
+    for s in screens:
+        for el in pick_list(s):
+            if el.element_id == element_id:
+                return el
+
+    parts = element_id.split(":")
+    # 2. 4-part → 3-part
+    if len(parts) == 4:
+        alt = f"{parts[0]}:{parts[2]}:{parts[3]}"
+        for s in screens:
+            for el in pick_list(s):
+                if el.element_id == alt:
+                    return el
+    # 3. 3-part → any matching 4-part
+    if len(parts) == 3:
+        screen, label, etype = parts
+        for s in screens:
+            for el in pick_list(s):
+                ep = el.element_id.split(":")
+                if (
+                    len(ep) == 4
+                    and ep[0] == screen and ep[2] == label and ep[3] == etype
+                ):
+                    return el
+    return None
+
+
 class KnowledgeBase(BaseModel):
     app: TargetApp
     screens: list[ScreenKnowledge] = Field(default_factory=list)
@@ -98,25 +144,13 @@ class KnowledgeBase(BaseModel):
         return [el for s in self.screens for el in s.l0]
 
     def get_l0_for_element(self, element_id: str) -> L0Element | None:
-        for s in self.screens:
-            for el in s.l0:
-                if el.element_id == element_id:
-                    return el
-        return None
+        return _lookup_tolerant(self.screens, element_id, lambda s: s.l0)
 
     def get_l1_for_element(self, element_id: str) -> L1Element | None:
-        for s in self.screens:
-            for el in s.l1:
-                if el.element_id == element_id:
-                    return el
-        return None
+        return _lookup_tolerant(self.screens, element_id, lambda s: s.l1)
 
     def get_l2_for_element(self, element_id: str) -> L2Element | None:
-        for s in self.screens:
-            for el in s.l2:
-                if el.element_id == element_id:
-                    return el
-        return None
+        return _lookup_tolerant(self.screens, element_id, lambda s: s.l2)
 
     def screen_names(self) -> list[str]:
         return [s.screen_name for s in self.screens]

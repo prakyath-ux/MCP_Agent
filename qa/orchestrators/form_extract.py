@@ -33,6 +33,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from qa.adapters import make_adapter
+from qa.config import Defaults
 from qa.engine.budget import BudgetTracker
 from qa.engine.guardrails import (
     GuardrailContext, GuardrailExit,
@@ -812,6 +813,127 @@ def _clean_label(label: str) -> str:
     return label.strip()
 
 
+async def _try_cascade_unlock_for_extract(
+    adapter,
+    child_eid: str,
+    dropdown_data: dict,
+    js_elements: list[dict],
+    screen_name: str,
+    defaults: Defaults,
+) -> tuple[bool, list[str]]:
+    """F2 — fill each declared parent of a disabled dropdown with its
+    default value so the child becomes enabled and its options readable.
+
+    Returns (unlocked_attempted, notes). `unlocked_attempted=True` means
+    every declared parent was successfully set; caller should re-check
+    the child's `disabled` state after this returns. Returns False if
+    dependencies aren't declared, any parent lookup fails, or any parent
+    select/fill fails — caller should fall back to "record empty + move on".
+
+    Parents are resolved in declared order: dropdowns via the already-
+    captured `dropdown_data`, text inputs via `js_elements` (Step 1 JS
+    enumerate). If a parent isn't found in either, bail — we don't
+    guess.
+    """
+    from qa.orchestrators.execute_flow import _select_option, _python_fill, _close_popup
+    from qa.knowledge.element_id import parse_element_id_full
+
+    parent_ids = defaults.get_dependencies(child_eid)
+    if not parent_ids:
+        return (False, ["no declared dependencies"])
+
+    # Guarantee a clean popup state before any parent select. If the
+    # previous loop iteration left a popup half-open, the first
+    # _select_option click below would toggle-close it instead of opening,
+    # producing a spurious OPEN_FAILED (observed on TECU: after the first
+    # enabled dropdown was captured, the second trigger's cascade hit
+    # this exact race).
+    await _close_popup(adapter)
+
+    # dropdown_data is keyed by trigger label; build a parallel map keyed
+    # by element_id so we can look up a parent by its canonical id.
+    # Register the entry under BOTH its full (section-qualified) and
+    # canonical (3-part) element_id — extract may detect a section for
+    # one field but not its sibling, and the sidecar typically uses the
+    # canonical form. Matching both lets either side get away with it.
+    dd_by_id: dict[str, tuple[str, dict]] = {}
+    for lbl, info in dropdown_data.items():
+        section = (info.get("section") or "") if isinstance(info, dict) else ""
+        eid_full = make_element_id(screen_name, lbl, "dropdown", section=section)
+        eid_3part = make_element_id(screen_name, lbl, "dropdown", section="")
+        dd_by_id[eid_full] = (lbl, info)
+        dd_by_id.setdefault(eid_3part, (lbl, info))
+
+    notes: list[str] = []
+    for parent_id in parent_ids:
+        # Ensure popup state is clean between parent fills too. Multi-
+        # parent chains (Sector needs Employment Status + Employer) would
+        # otherwise leave the first parent's popup half-open, toggle-
+        # closing it on the next click.
+        await _close_popup(adapter)
+
+        # Case 1: parent is a dropdown we've already captured.
+        if parent_id in dd_by_id:
+            plabel, pinfo = dd_by_id[parent_id]
+            pdefault = defaults.get(plabel)
+            if not pdefault:
+                return (False, notes + [f"no default for {plabel!r}"])
+            css = pinfo.get("locator_css") or ""
+            xp  = pinfo.get("locator_xpath") or ""
+            if css:
+                strategy, value = "css", css
+            elif xp:
+                strategy, value = "xpath", xp
+            else:
+                return (False, notes + [f"no locator for {plabel!r}"])
+            status, _ = await _select_option(adapter, strategy, value, pdefault)
+            if status != "SELECTED":
+                return (False, notes + [f"{plabel!r} select → {status}"])
+            notes.append(f"{plabel!r}={pdefault!r} selected")
+            await asyncio.sleep(0.5)
+            continue
+
+        # Case 2: parent may be a text input from Step 1 enumerate.
+        try:
+            _, _, p_slug, p_type = parse_element_id_full(parent_id)
+        except ValueError:
+            return (False, notes + [f"bad element_id {parent_id!r}"])
+        matched = None
+        for el in js_elements:
+            raw_label = (el.get("label") or "")
+            slug = re.sub(r"[^a-z0-9]+", "_", raw_label.lower()).strip("_")
+            if slug == p_slug:
+                matched = el
+                break
+        if matched is None:
+            return (False, notes + [f"parent {parent_id!r} not in KB"])
+        plabel = matched.get("label", "")
+        pdefault = defaults.get(plabel)
+        if not pdefault:
+            return (False, notes + [f"no default for {plabel!r}"])
+        css = ""
+        if matched.get("id"):
+            css = f"#{matched['id']}"
+        elif matched.get("name"):
+            tag = "select" if matched.get("native") else "input"
+            css = f"{tag}[name='{matched['name']}']"
+        if not css:
+            return (False, notes + [f"no CSS for {plabel!r}"])
+        if p_type == "dropdown" or matched.get("native"):
+            status, _ = await _select_option(adapter, "css", css, pdefault)
+            if status != "SELECTED":
+                return (False, notes + [f"{plabel!r} select → {status}"])
+            notes.append(f"{plabel!r}={pdefault!r} selected (native)")
+        else:
+            ok = await _python_fill(adapter, css, pdefault)
+            if not ok:
+                return (False, notes + [f"{plabel!r} fill failed"])
+            notes.append(f"{plabel!r}={pdefault!r} filled")
+        await asyncio.sleep(0.4)
+
+    return (True, notes)
+
+
 def _find_custom_dropdown_triggers(snapshot: str) -> list[dict]:
     """Find button/combobox elements that are dropdown triggers.
 
@@ -1104,10 +1226,17 @@ async def extract_form(
     page_url: str = "",
     on_progress=None,
     guardrails: GuardrailContext | None = None,
+    defaults: Defaults | None = None,
 ) -> ScreenKnowledge:
     """Extract all form elements from the currently-loaded page.
 
     Args:
+        defaults: optional user-provided Defaults + dependencies sidecar.
+            When present, cascaded (disabled-at-capture) dropdowns will
+            be unlocked by filling their parent fields with the declared
+            defaults, allowing their real options to be captured. Without
+            defaults, those dropdowns remain marked disabled + empty
+            (existing behaviour).
         on_progress: optional async callback `(ScreenKnowledge) -> None`
             invoked after each custom-dropdown extraction with the
             current partial ScreenKnowledge. Callers typically use this
@@ -1241,28 +1370,70 @@ async def extract_form(
             print(f"  [form]        xpath={locator_xpath!r}{strat} dom_top={dom_top}")
             print(f"  [form]        css=<xpath-only, no stable CSS anchor>")
 
-        # Disabled check BEFORE clicking: MUI marks cascading dependent
-        # dropdowns as disabled until their parent field is filled. We
-        # can't open those, so record them as dependent and move on.
+        # Track whether this trigger was unlocked via cascade. After
+        # options are captured we'll commit a default value on the child
+        # so any grandchildren (that depend on this one being filled)
+        # can also unlock in a later iteration or the second pass.
+        cascaded_unlocked = False
+
+        # Disabled check BEFORE clicking: TECU / MUI mark cascading
+        # dependent dropdowns as disabled until their parent fields are
+        # filled. F2 attempts cascade unlock using the defaults sidecar
+        # before falling back to "record empty + move on".
         disabled_raw = await adapter.evaluate_script(
             _js_is_disabled_for(trigger_text)
         )
         disabled_info = _safe_parse(disabled_raw) or {}
         is_disabled = bool(disabled_info.get("disabled", False))
         if is_disabled:
-            print(f"  [form]        ⊘ DISABLED at capture — likely depends on "
-                  "a prior field being filled")
-            dropdown_data[label] = {
-                "options": [],
-                "disabled": True,
-                "section": trig.get("section", ""),
-                "locator_css": locator_css,
-                "locator_xpath": locator_xpath,
-                "locator_strategy": locator_strategy,
-                "dom_top": dom_top,
-            }
-            await _checkpoint()
-            continue
+            print(f"  [form]        ⊘ disabled at capture — trying cascade unlock")
+            attempted, unlock_notes = (False, [])
+            if defaults is not None:
+                eid = make_element_id(
+                    screen_name, label, "dropdown",
+                    section=trig.get("section", ""),
+                )
+                attempted, unlock_notes = await _try_cascade_unlock_for_extract(
+                    adapter=adapter,
+                    child_eid=eid,
+                    dropdown_data=dropdown_data,
+                    js_elements=js_elements,
+                    screen_name=screen_name,
+                    defaults=defaults,
+                )
+                for n in unlock_notes:
+                    print(f"  [form]          unlock: {n}")
+            else:
+                print(f"  [form]          unlock: skipped (no --defaults passed)")
+
+            if attempted:
+                # Re-probe disabled state.
+                disabled_raw2 = await adapter.evaluate_script(
+                    _js_is_disabled_for(trigger_text)
+                )
+                is_disabled = bool(
+                    (_safe_parse(disabled_raw2) or {}).get("disabled", False)
+                )
+                if not is_disabled:
+                    print(f"  [form]        ✓ unlocked via cascade — capturing options")
+                    cascaded_unlocked = True
+                else:
+                    print(f"  [form]        still disabled after cascade — recording empty")
+
+            if is_disabled:
+                dropdown_data[label] = {
+                    "options": [],
+                    "disabled": True,
+                    "section": trig.get("section", ""),
+                    "locator_css": locator_css,
+                    "locator_xpath": locator_xpath,
+                    "locator_strategy": locator_strategy,
+                    "dom_top": dom_top,
+                }
+                await _checkpoint()
+                continue
+            # Fall through to the normal open_and_read path below —
+            # the dropdown is now unlocked and behaves like any other.
 
         async def _open_and_read(attempt_label: str) -> tuple[list[str], str]:
             """Click trigger, wait, snapshot, LLM extracts options.
@@ -1402,6 +1573,52 @@ async def extract_form(
         # and doesn't affect what we persist.
         await _checkpoint()
 
+        # Fix B — if this dropdown was cascade-unlocked, commit a default
+        # value on it so any grandchild that depends on this being filled
+        # can unlock later. Without this, chains deeper than 2 levels
+        # break: Sector unlocks but stays uncommitted, so Employment Type
+        # (which needs Sector filled) never unlocks.
+        if cascaded_unlocked and defaults is not None and clean:
+            from qa.orchestrators.execute_flow import (
+                _select_option as _exec_select_option,
+                _close_popup as _exec_close_popup,
+            )
+            child_default = defaults.get(label)
+            if child_default:
+                # Validate the default is actually one of the captured
+                # options (substring-insensitive). If the user's default
+                # doesn't match, warn clearly instead of silently failing
+                # on the click.
+                match_opt = next(
+                    (o for o in clean if child_default.strip().lower() in o.lower()),
+                    None,
+                )
+                if match_opt is None:
+                    print(f"  [form]        ⚠ commit skipped: default "
+                          f"{child_default!r} not in captured options "
+                          f"{clean[:4]!r}{'...' if len(clean) > 4 else ''}")
+                else:
+                    if locator_css:
+                        commit_strategy, commit_value = "css", locator_css
+                    elif locator_xpath:
+                        commit_strategy, commit_value = "xpath", locator_xpath
+                    else:
+                        commit_strategy, commit_value = "", ""
+                    if commit_strategy:
+                        await _exec_close_popup(adapter)
+                        commit_status, _ = await _exec_select_option(
+                            adapter, commit_strategy, commit_value, child_default,
+                        )
+                        if commit_status == "SELECTED":
+                            print(f"  [form]        ✓ committed {label!r}"
+                                  f"={child_default!r} (cascade continuation)")
+                        else:
+                            print(f"  [form]        ⚠ commit {label!r}"
+                                  f"={child_default!r} → {commit_status}")
+            else:
+                print(f"  [form]        ⚠ commit skipped: no default for {label!r} "
+                      "(add to artifacts/defaults/<app>.json to enable chains)")
+
         # Close before moving to next trigger
         try:
             await server.call_tool("press_key", {"key": "Escape"})
@@ -1409,6 +1626,153 @@ async def extract_form(
             pass
         await adapter.evaluate_script(_JS_CLOSE_POPUP)
         await asyncio.sleep(0.5)
+
+    # ── Fix C: Second pass for still-disabled dropdowns ───────────
+    # After the first sequential pass, a dropdown may still be disabled
+    # because its cascade failed on a transient popup-state race (the
+    # Employer-after-Employment-Status case we saw) or because its real
+    # parent wasn't processed yet in DOM order. Now that dropdown_data
+    # has locators / options / committed state for the whole page, retry
+    # each still-disabled trigger one more time.
+    retry_labels = [
+        lbl for lbl, info in dropdown_data.items()
+        if isinstance(info, dict) and info.get("disabled")
+    ]
+    if retry_labels and defaults is not None:
+        print(f"\n  [form] 4/4  retry: {len(retry_labels)} still-disabled "
+              f"dropdown(s)")
+        for lbl in retry_labels:
+            retry_trig = next((t for t in triggers if t.get("label") == lbl), None)
+            if retry_trig is None:
+                continue
+            uid = retry_trig["uid"]
+            trigger_text = retry_trig["trigger_text"]
+            info = dropdown_data[lbl]
+            print(f"  [form]      retry {lbl!r} (uid={uid})")
+
+            # Clean popup state before attempting cascade again.
+            await adapter.evaluate_script(_JS_CLOSE_POPUP)
+            await asyncio.sleep(0.3)
+
+            try:
+                page_gc.check()
+            except GuardrailExit as e:
+                print(f"  [form]        ✗ page guardrail hit ({e.reason}) "
+                      "— skipping remaining retries")
+                break
+
+            eid = make_element_id(
+                screen_name, lbl, "dropdown",
+                section=info.get("section", "") or "",
+            )
+            try:
+                attempted, unlock_notes = await _try_cascade_unlock_for_extract(
+                    adapter=adapter,
+                    child_eid=eid,
+                    dropdown_data=dropdown_data,
+                    js_elements=js_elements,
+                    screen_name=screen_name,
+                    defaults=defaults,
+                )
+            except Exception as e:
+                print(f"  [form]        ⚠ retry cascade raised: {e}")
+                continue
+            for n in unlock_notes:
+                print(f"  [form]          unlock: {n}")
+            if not attempted:
+                continue
+
+            disabled_raw2 = await adapter.evaluate_script(
+                _js_is_disabled_for(trigger_text)
+            )
+            still_disabled = bool(
+                (_safe_parse(disabled_raw2) or {}).get("disabled", False)
+            )
+            if still_disabled:
+                print(f"  [form]        still disabled after retry — "
+                      "leaving as empty")
+                continue
+
+            # Unlocked — capture options via the same LLM flow as the
+            # main loop, guarded by its own per-dropdown scope.
+            retry_gc = per_dropdown_scope(parent=page_gc)
+            try:
+                await server.call_tool("click", {"uid": uid})
+                await asyncio.sleep(1.5)
+                open_snap = await server.call_tool("take_snapshot", {})
+                snap_text = ""
+                if open_snap.content:
+                    snap_text = open_snap.content[0].text or ""
+                result = await llm_classify(
+                    EXTRACT_DROPDOWN_OPTIONS_PROMPT,
+                    snap_text,
+                    EXTRACT_DROPDOWN_OPTIONS_SCHEMA,
+                    budget=budget,
+                    label=f"retry_{lbl[:22]}",
+                    guardrails=retry_gc,
+                )
+                retry_options = result.get("options", []) or []
+            except GuardrailExit as e:
+                print(f"  [form]        ⚠ retry guardrail ({e.reason})")
+                continue
+            except Exception as e:
+                print(f"  [form]        ⚠ retry read failed: {e}")
+                continue
+
+            retry_seen: set[str] = set()
+            retry_clean: list[str] = []
+            for o in retry_options:
+                o = str(o).strip()
+                if (o and o not in retry_seen and not re.match(
+                        r"^(Select|Choose|--|Please)", o, re.IGNORECASE)):
+                    retry_seen.add(o)
+                    retry_clean.append(o)
+
+            if not retry_clean:
+                print(f"  [form]        retry read 0 options — leaving as empty")
+                continue
+
+            print(f"  [form]        ✓ retry → {len(retry_clean)} options captured")
+            for o in retry_clean[:3]:
+                print(f"  [form]          - {o!r}")
+
+            dropdown_data[lbl] = {
+                **info,
+                "options": retry_clean,
+                "disabled": False,
+            }
+
+            # Commit default on this child (same logic as first-pass commit)
+            child_default = defaults.get(lbl)
+            if child_default and any(
+                child_default.strip().lower() in o.lower() for o in retry_clean
+            ):
+                from qa.orchestrators.execute_flow import (
+                    _select_option as _exec_select_option,
+                    _close_popup as _exec_close_popup,
+                )
+                await _exec_close_popup(adapter)
+                css = info.get("locator_css") or ""
+                xp = info.get("locator_xpath") or ""
+                if css:
+                    cs, cv = "css", css
+                elif xp:
+                    cs, cv = "xpath", xp
+                else:
+                    cs, cv = "", ""
+                if cs:
+                    cstat, _ = await _exec_select_option(adapter, cs, cv, child_default)
+                    if cstat == "SELECTED":
+                        print(f"  [form]        ✓ committed {lbl!r}"
+                              f"={child_default!r}")
+
+            try:
+                await server.call_tool("press_key", {"key": "Escape"})
+            except Exception:
+                pass
+            await adapter.evaluate_script(_JS_CLOSE_POPUP)
+            await asyncio.sleep(0.3)
+            await _checkpoint()
 
     elapsed = time.time() - t0
     print(f"\n  [form] ✓ Done in {elapsed:.1f}s — "
@@ -1514,6 +1878,7 @@ async def main() -> int:
             budget=budget,
             page_url=args.url,
             on_progress=_checkpoint_kb,
+            defaults=defaults,
         )
     finally:
         await adapter.close()

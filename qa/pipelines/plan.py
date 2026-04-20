@@ -78,10 +78,30 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         print("  ERROR: No testable elements after filtering")
         return PlanOutput(model=inp.model)
 
-    l0_json = json.dumps(
-        [el.model_dump(exclude_defaults=True) for el in l0_filtered],
-        indent=2,
-    )
+    # Truncate long dropdown option lists before sending to Plan. The LLM
+    # only needs ~5 options to pick a verbatim test_value — the full lists
+    # (e.g. TECU's 474-company Employer, 233-country Nationality) balloon
+    # the prompt and add no planning signal. Execute still matches against
+    # the live DOM at runtime, not this truncated list. KB stays complete.
+    _MAX_OPTS_PER_DROPDOWN = 5
+
+    def _trim_options_for_plan(el_dump: dict) -> dict:
+        opts = el_dump.get("options")
+        if isinstance(opts, list) and len(opts) > _MAX_OPTS_PER_DROPDOWN:
+            total = len(opts)
+            el_dump["options"] = opts[:_MAX_OPTS_PER_DROPDOWN]
+            # Inline signal to the LLM that more exist — no schema change.
+            el_dump["options_note"] = (
+                f"showing {_MAX_OPTS_PER_DROPDOWN} of {total} — "
+                "pick any for verbatim test_value"
+            )
+        return el_dump
+
+    l0_for_prompt = [
+        _trim_options_for_plan(el.model_dump(exclude_defaults=True))
+        for el in l0_filtered
+    ]
+    l0_json = json.dumps(l0_for_prompt, indent=2)
     l0_index = l0_filtered  # Use filtered count for display
 
     print(f"\n{'='*60}")
@@ -268,15 +288,45 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
               f"read-only fields to VERIFY_ONLY (protects OCR pre-fills)")
     test_cases = deduped
 
-    # Group cases by field so all tests for one field run consecutively.
-    # Preserves first-appearance order of fields and HIGH→MED→LOW within field.
+    # G2 — Type-priority ordering: all dropdowns first, then text fields,
+    # then date pickers, uploads, buttons. Within each type, DOM source
+    # order. Rationale per user policy:
+    #   1. Dropdowns set form state (especially cascade parents and
+    #      cross-field constraints like Income Range). Running them
+    #      first means text-field tests run against a form with all
+    #      dropdowns committed — cleaner validation signal.
+    #   2. Python owns the final sort so the LLM's emission order is
+    #      irrelevant.
+    approach_priority = {
+        "select_verify": 0,   # dropdowns
+        "fill_check": 1,      # text inputs
+        "tap_verify": 2,      # date pickers
+        "upload_file": 3,
+        "verify_only": 4,     # buttons / readonly existence checks
+        "skip": 99,
+    }
     priority_rank = {"HIGH": 0, "MED": 1, "LOW": 2}
-    field_first_seen: dict[str, int] = {}
-    for i, tc in enumerate(test_cases):
-        if tc.field_name not in field_first_seen:
-            field_first_seen[tc.field_name] = i
+    field_dom_pos: dict[str, int] = {}
+    eid_dom_pos: dict[str, int] = {}
+    for i, el in enumerate(l0_filtered):
+        if el.name and el.name not in field_dom_pos:
+            field_dom_pos[el.name] = i
+        if el.element_id:
+            eid_dom_pos[el.element_id] = i
+
+    def _dom_position(tc: TestCase) -> int:
+        # Prefer exact element_id match (handles repeated field names
+        # across sections). Fall back to field_name. Unknown fields
+        # sink to the end.
+        if tc.element_id in eid_dom_pos:
+            return eid_dom_pos[tc.element_id]
+        if tc.field_name in field_dom_pos:
+            return field_dom_pos[tc.field_name]
+        return 10000
+
     test_cases.sort(key=lambda tc: (
-        field_first_seen.get(tc.field_name, 999),
+        approach_priority.get(tc.approach.value, 99),
+        _dom_position(tc),
         priority_rank.get(tc.priority.value.upper(), 99),
     ))
 
