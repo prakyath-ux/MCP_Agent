@@ -1,0 +1,38 @@
+{
+  "app_name": "TECU",
+  "probed_at": "2026-04-21T10:43:49.934827",
+  "framework_signature": "tecu-html5",
+  "dropdown": {
+    "trigger_selector": "button[data-testid=\"dropdown-button\"]",
+    "menu_selector": "",
+    "option_selector": "",
+    "label_binding": "closest(div.relative) preceding-sibling(label)",
+    "notes": "Dropdowns appear as <button> elements with data-testid=\"dropdown-button\" and Tailwind-style classes; labels are separate <label for=...> elements preceding the button within the same form field container."
+  },
+  "text_input": {
+    "label_binding": "label[for] + * input, label[for] ~ input",
+    "use_placeholder_as_label": false,
+    "require_id_or_name_or_placeholder": true
+  },
+  "date_picker": {
+    "input_selector": "input.MuiPickersInputBase-input",
+    "detection_pattern": ".MuiFormControl-root .MuiPickersInputBase-root input.MuiPickersInputBase-input",
+    "notes": "Material UI date picker: input inside .MuiFormControl-root/.MuiPickersInputBase-root, with an adjacent icon button .MuiIconButton-root[aria-label=\"Choose date\"]."
+  },
+  "radio": {
+    "wrapper_selector": "",
+    "option_label_selector": "",
+    "notes": ""
+  },
+  "file_upload": {
+    "trigger_selector": "",
+    "requires_click_to_expose": false,
+    "notes": ""
+  },
+  "confidence": 0.8,
+  "evidence_seen": [
+    "button[data-testid=\"dropdown-button\"] for select widgets",
+    "label_for binding on many text inputs",
+    "Material UI datepicker (.MuiFormControl-root, .MuiPickersInputBase-input, .MuiIconButton-root[aria-label=\"Choose date\"])"
+  ]
+}
