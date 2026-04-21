@@ -268,23 +268,42 @@ Given:
   - field_name: the label of the tested field
   - approach: how the test was performed (fill_check / tap_verify / verify_only)
   - test_value: what was entered (may be empty for verify_only)
-  - expected_result: what SHOULD happen (e.g. "error_shown", "no_error", "accepts_value")
+  - expected_result: what SHOULD happen
   - pre_snapshot: state before the test was performed
   - post_snapshot: state after the test was performed
 
-Classify as one of:
-  - PASS: observed behavior matches expected_result
-  - FAIL: observed behavior differs from expected — this is a real bug
-  - BLOCKED: could not observe cleanly (field not visible, page in unexpected state)
+Classification rubric — apply in order:
+
+1. Expected behavior is an ERROR (expected_result mentions
+   "error", "required", "validation", "format", "invalid"):
+   - Error/validation text visible in post_snapshot → PASS
+   - No error visible → FAIL (the app failed to validate)
+
+2. Expected behavior is ACCEPTANCE (expected_result mentions
+   "accepts", "no_error", "valid", "saved", "filled"):
+   - Value present in field in post_snapshot AND no error visible → PASS
+     (many apps defer validation until form submit — absence of inline
+     error when filling a valid value IS the correct observable signal)
+   - Value missing or reverted to previous → FAIL
+   - Error visible → FAIL (app incorrectly rejected a valid value)
+
+3. Expected behavior is NO-CHANGE (expected_result mentions
+   "readonly", "no_change", "unchanged", "disabled"):
+   - Value in post_snapshot matches pre_snapshot → PASS
+   - Value changed → FAIL
+
+4. Only use BLOCKED when the field, dropdown menu, or required UI
+   element is genuinely not visible in either snapshot (page in
+   unexpected state, modal blocking view, element hidden). BLOCKED
+   is NOT for "no inline feedback visible" — that's case 2 above.
 
 Provide:
   - observed: one-sentence description of what actually happened
   - error_text: the exact error/validation text if one appeared, else empty string
   - confidence: 0.0-1.0 — how confident you are in the classification
 
-Be STRICT. If you can't confirm the expected behavior from the snapshots,
-mark BLOCKED. Do not guess. Do not suggest fixes. Your job is only to
-report what the snapshots literally show."""
+Do not guess about behavior you cannot see in the snapshots. Do not
+suggest fixes. Only report what the snapshots literally show."""
 
 CLASSIFY_TEST_RESULT_SCHEMA = {
     "name": "classify_test_result",

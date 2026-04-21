@@ -61,6 +61,40 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
 
     l0_filtered = [el for el in l0_index if _is_testable(el)]
 
+    # Drop text_input shadows of dropdowns/combobox/date_picker. Some apps
+    # expose a hidden <input> that backs a custom dropdown — enumerate
+    # captures both, and Plan then generates duplicate test cases for the
+    # same logical field. Group by element_id stem (screen[:section]:label)
+    # and keep the richer type when a text_input shares the stem.
+    PREFERRED_OVER_TEXT = {"dropdown", "combobox", "date_picker"}
+
+    def _stem(el) -> str:
+        parts = el.element_id.rsplit(":", 1)
+        return parts[0] if len(parts) == 2 else el.element_id
+
+    groups: dict[str, list] = {}
+    for el in l0_filtered:
+        groups.setdefault(_stem(el), []).append(el)
+
+    deduped: list = []
+    dropped = 0
+    for group in groups.values():
+        if len(group) == 1:
+            deduped.extend(group)
+            continue
+        types_seen = {e.type.value for e in group}
+        if "text_input" in types_seen and (types_seen & PREFERRED_OVER_TEXT):
+            for el in group:
+                if el.type.value == "text_input":
+                    dropped += 1
+                else:
+                    deduped.append(el)
+        else:
+            deduped.extend(group)
+    if dropped:
+        print(f"  Plan dedup: dropped {dropped} text_input shadow(s) of dropdown/combobox/date_picker fields")
+    l0_filtered = deduped
+
     # Apply element_filter (scoped execution — "dropdown", "Transaction Type", etc.)
     if inp.element_filter:
         filter_lower = inp.element_filter.lower().strip()

@@ -338,10 +338,16 @@ _JS_ENUMERATE = r"""() => {
     'input:not([type=file]):not([type=radio]):not([type=checkbox]):not([type=hidden]):not([type=submit]):not([type=button]), textarea'
   ).forEach(el => {
     if (el.offsetParent === null && !el.closest('[role="dialog"]')) return;
-    const key = el.id || el.name || el.placeholder || '';
+    const label = findLabel(el);
+    const section = findSection(el);
+    // Loosened dedup: prefer id/name/placeholder, fall back to section+label
+    // for apps (Angular SPAs, some Vue) whose inputs lack all three but have
+    // a resolvable visible label. Section prefix preserves Wall 1.2 — same
+    // label across sections stays separate.
+    let key = el.id || el.name || el.placeholder || '';
+    if (!key && label) key = 'label:' + section + ':' + label;
     if (!key || seen.has(key)) return;
     seen.add(key);
-    const label = findLabel(el);
     const typeMap = {date: 'date', email: 'email', tel: 'phone', number: 'text_input'};
     results.push({
       label: label.replace(/\s*\*\s*$/, '').trim(),
@@ -351,7 +357,7 @@ _JS_ENUMERATE = r"""() => {
       name: el.name || '',
       placeholder: el.placeholder || '',
       value: el.value || '',
-      section: findSection(el),
+      section: section,
       dom_top: el.getBoundingClientRect().top,
     });
   });
@@ -359,10 +365,12 @@ _JS_ENUMERATE = r"""() => {
   // Native <select>
   document.querySelectorAll('select').forEach(el => {
     if (el.offsetParent === null) return;
-    const key = el.id || el.name || '';
+    const label = findLabel(el);
+    const section = findSection(el);
+    let key = el.id || el.name || '';
+    if (!key && label) key = 'select:' + section + ':' + label;
     if (!key || seen.has(key)) return;
     seen.add(key);
-    const label = findLabel(el);
     const opts = [...el.options]
       .map(o => o.textContent.trim())
       .filter(o => o && !/^(Select|Choose|--|Please)/i.test(o));
@@ -375,7 +383,7 @@ _JS_ENUMERATE = r"""() => {
       options: opts,
       native: true,
       dom_top: el.getBoundingClientRect().top,
-      section: findSection(el),
+      section: section,
     });
   });
 
@@ -928,6 +936,9 @@ def _clean_label(label: str) -> str:
     label = label.replace("\ufeff", "").strip()
     # Strip trailing asterisk
     label = re.sub(r"\s*\*\s*$", "", label).strip()
+    # Strip trailing '?' — many apps (Odoo especially) frame boolean fields as
+    # questions ("Is Company?"). The '?' is visual framing; the field name is not.
+    label = re.sub(r"\s*\?\s*$", "", label).strip()
     # Placeholder-y prefix cleanup ("Enter salary" → "Salary")
     low = label.lower()
     stripped = False
