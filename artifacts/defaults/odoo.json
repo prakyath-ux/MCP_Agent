@@ -1,0 +1,44 @@
+{
+  "app_name": "Odoo",
+
+  "_comment": "User-provided valid default values for Odoo (Owl.js SPA). Starter scaffold — extend after running extract on the pages you plan to test. Field names come from Odoo's standard Contacts / Sales / Inventory modules; adjust to match your install's exact labels. Odoo's SPA occasionally re-renders with fresh element IDs between extract and execute — prefer label-based lookup here, and keep defaults for the stable human-readable labels rather than technical IDs.",
+
+  "defaults": {
+    "Name": "ACME Testing Ltd",
+    "Company Name": "ACME Testing Ltd",
+
+    "First Name": "John",
+    "Last Name": "Doe",
+    "Title": "Mister",
+
+    "Email": "john.doe@example.com",
+    "Phone": "5551234567",
+    "Mobile": "5559876543",
+    "Website": "https://example.com",
+    "Job Position": "Test Analyst",
+
+    "Street": "1 Main Street",
+    "Street 2": "Suite 100",
+    "City": "New York",
+    "ZIP": "10001",
+    "State": "New York",
+    "Country": "United States",
+
+    "VAT": "US123456789",
+    "Tax ID": "US123456789",
+    "Reference": "TEST-0001",
+
+    "Internal Reference": "TEST-PROD-001",
+    "Sales Price": "100.00",
+    "Cost": "60.00",
+    "Quantity": "1",
+    "Description": "Automated test entry",
+
+    "Tags": "Test",
+    "Notes": "Created by automated QA agent"
+  },
+
+  "_dependencies_comment": "Wall 1.1 — common cascade on Odoo contact forms is State depends on Country. Populate once observed via extract. Key format: '{screen}:{label_slug}:{type}' or '{screen}:{section_slug}:{label_slug}:{type}' — match the element_id emitted by Extract.",
+
+  "dependencies": {}
+}

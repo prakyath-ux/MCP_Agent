@@ -1,0 +1,46 @@
+{
+  "app_name": "Dolibarr",
+
+  "_comment": "User-provided valid default values for Dolibarr (PHP ERP, native HTML forms). Starter scaffold — extend after running extract on the pages you plan to test. Keys can be plain labels or section-qualified ('Section > Label'). Section-qualified wins when both are present. Many of these field names come from Dolibarr's standard third-party/company/contact/product forms; adjust to match your install's exact labels (localization may rename them).",
+
+  "defaults": {
+    "Name": "ACME Testing Ltd",
+    "Third-party name": "ACME Testing Ltd",
+    "Company": "ACME Testing Ltd",
+    "Ref.": "TEST-001",
+    "Reference": "TEST-001",
+
+    "First name": "John",
+    "Last name": "Doe",
+    "Firstname": "John",
+    "Lastname": "Doe",
+
+    "Email": "john.doe@example.com",
+    "EMail": "john.doe@example.com",
+    "Phone": "5551234567",
+    "Professional phone": "5551234567",
+    "Mobile": "5559876543",
+    "Fax": "5551234568",
+
+    "Address": "1 Main Street",
+    "Zip/Postal code": "10001",
+    "Town/City": "New York",
+    "Town": "New York",
+    "City": "New York",
+    "State/Province": "New York",
+    "State": "New York",
+    "Country": "United States",
+
+    "VAT number": "US123456789",
+    "Professional ID 1": "REG-0001",
+
+    "Label": "Test Product",
+    "Description": "Automated test entry",
+    "Selling price": "100",
+    "Cost price": "60"
+  },
+
+  "_dependencies_comment": "Wall 1.1 — fill when you detect cascaded dropdowns on Dolibarr (State depends on Country is the common one). Leave empty until observed.",
+
+  "dependencies": {}
+}
