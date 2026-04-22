@@ -1105,6 +1105,13 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
             ctx["target"],
             "--app-name", f'"{ctx["app_name"]}"',
         ]
+        # Pass the user's requested screen name through to form_extract so it
+        # updates the existing KB entry for that screen instead of falling
+        # back to deriving one from document.title (which can be empty or
+        # generic, producing a duplicate "Extracted Form" screen in the KB).
+        # form_extract's --screen-name arg takes the first match.
+        if intent.screens:
+            cmd_parts.extend(["--screen-name", f'"{intent.screens[0]}"'])
     else:
         # Mobile (and anything else): existing qa.cli path
         cmd_parts = ["python", "-m", "qa.cli"]
