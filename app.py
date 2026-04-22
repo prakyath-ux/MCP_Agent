@@ -923,6 +923,98 @@ def page_chat():
         st.session_state.chat_messages.append({"role": "assistant", "content": response})
 
 
+def _build_explore_report(ctx: dict, output_lines: list[str]) -> str:
+    """Post-extract summary shown in chat after an EXPLORE run completes.
+    Parses subprocess stdout for which screen(s) were scanned and the
+    completeness verdict, then reads the updated KB for authoritative
+    element counts and a per-type breakdown."""
+    import re
+    from qa.models import TargetApp, Platform
+
+    # Parse subprocess stdout for scan + completeness signals.
+    scanned_screens: list[str] = []
+    completeness_lines: list[str] = []
+    for line in output_lines:
+        m = re.search(r"Scanning '([^']+)'", line)
+        if m:
+            scanned_screens.append(m.group(1))
+        if "Completeness:" in line:
+            cleaned = re.sub(r"^\s*\[form\]\s*", "", line).strip()
+            completeness_lines.append(cleaned)
+
+    # Load the updated KB off disk. Using TargetApp lets KnowledgeStore
+    # handle the platform-specific path resolution.
+    try:
+        platform = Platform(ctx["platform"])
+        app = TargetApp(
+            platform=platform,
+            url=ctx["target"] if platform == Platform.WEB else None,
+            package_name=ctx["target"] if platform == Platform.MOBILE else None,
+            app_name=ctx["app_name"],
+        )
+        kb = KnowledgeStore().load(app)
+    except Exception as e:
+        return f"\n\n## ⚠ Extract completed but report failed\n`{e}`"
+
+    if not kb or not kb.screens:
+        return (
+            "\n\n## ⚠ Extract completed but no knowledge was saved\n"
+            "Nothing captured — check the log above for errors "
+            "(common causes: blank page, Chrome launch failure, empty snapshot)."
+        )
+
+    # Per-type breakdown across the whole KB (not just what we scanned
+    # this run — KB persists across runs and merges new screens).
+    type_counts: dict[str, int] = {}
+    for screen in kb.screens:
+        for el in screen.l0:
+            type_counts[el.type.value] = type_counts.get(el.type.value, 0) + 1
+    total_elements = sum(len(s.l0) for s in kb.screens)
+
+    plural = {
+        "text_input": ("text input", "text inputs"),
+        "dropdown": ("dropdown", "dropdowns"),
+        "date_picker": ("date picker", "date pickers"),
+        "file_upload": ("file upload", "file uploads"),
+        "radio": ("radio group", "radio groups"),
+        "checkbox": ("checkbox", "checkboxes"),
+        "button": ("button", "buttons"),
+        "link": ("link", "links"),
+        "nav_tab": ("nav tab", "nav tabs"),
+        "combobox": ("combobox", "comboboxes"),
+        "other": ("other", "other"),
+    }
+    type_breakdown_parts = []
+    for t, c in sorted(type_counts.items(), key=lambda x: -x[1]):
+        singular, plural_form = plural.get(t, (t, t + "s"))
+        type_breakdown_parts.append(f"{c} {singular if c == 1 else plural_form}")
+    type_summary = ", ".join(type_breakdown_parts) or "none"
+
+    lines: list[str] = ["\n\n## ✓ Extraction complete"]
+
+    if scanned_screens:
+        unique_scanned = list(dict.fromkeys(scanned_screens))
+        label = "Just extracted" if len(unique_scanned) == 1 else "Screens scanned"
+        lines.append(f"**{label}:** {', '.join(unique_scanned)}")
+
+    for cline in completeness_lines[-5:]:
+        lines.append(f"- {cline}")
+
+    lines.append("")
+    lines.append(f"### Knowledge base: {kb.app.app_name} ({kb.app.platform.value})")
+    lines.append(
+        f"- **Screens in KB:** {len(kb.screens)} "
+        f"({', '.join(s.screen_name for s in kb.screens)})"
+    )
+    lines.append(f"- **Total elements:** {total_elements} — {type_summary}")
+    lines.append(
+        f"- **Saved to:** `artifacts/knowledge/{kb.app.platform.value}/`"
+    )
+    lines.append("")
+    lines.append("_Full extraction log above._")
+    return "\n".join(lines)
+
+
 def _summarize_run(report_text: str, user_request: str) -> str:
     """Use an LLM to write a brief, useful summary of a test run for the chat."""
     try:
@@ -1170,6 +1262,19 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
                     f"for the specific error (common causes: missing KB, "
                     f"unreachable URL, Chrome launch failure)."
                 )
+    elif intent.action == ChatAction.EXPLORE:
+        # Post-extract summary — reads the updated KB and the subprocess
+        # stdout to produce a concise report of what was captured.
+        if process.returncode in (0, None):
+            result_msg = _build_explore_report(ctx, output_lines)
+        else:
+            result_msg = (
+                f"\n\n## ⚠ Extraction did not complete\n"
+                f"The agent subprocess exited (code {process.returncode}) "
+                f"before a knowledge base could be saved. Check the output "
+                f"above for the specific error (common causes: Chrome "
+                f"launch failure, unreachable URL, MCP server disconnect)."
+            )
 
     return (
         f"{intent.response_text}\n\n"
