@@ -2571,7 +2571,13 @@ async def main() -> int:
     screen_name = args.screen_name
     if not screen_name:
         title_raw = await adapter.evaluate_script("() => document.title")
-        screen_name = (title_raw or "").strip().strip('"').strip()
+        # _safe_parse unwraps Chrome DevTools MCP's response wrapper
+        # ("Script ran on page and returned: ```json ... ```") and json-
+        # decodes the payload. The old naive .strip().strip('"') left the
+        # wrapper text intact when document.title was empty, which then
+        # became a bogus screen name in the KB.
+        parsed = _safe_parse(title_raw)
+        screen_name = (str(parsed) if parsed else "").strip()
         if not screen_name:
             screen_name = "Extracted Form"
         print(f"  Screen name (from <title>): {screen_name!r}")
