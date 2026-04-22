@@ -1065,6 +1065,11 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
                 "then the agent begins testing. A new browser window will open."
             )
 
+    # Capture the subprocess start time so we can filter result files to
+    # only those produced by THIS run — a failed/early-exit subprocess
+    # leaves no new file, and we must NOT display the pre-existing latest
+    # one (often an unrelated mobile run).
+    run_start_time = time.time()
     process = _run_agent_subprocess(cmd, str(ROOT))
     output_lines: list[str] = []
     skip_keywords = ["USAGE SUMMARY", "Real cost", "No-cache cost", "Savings:", "Cost:", "cost:", "Budget:"]
@@ -1135,9 +1140,15 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
     if intent.action == ChatAction.EXECUTE:
         results_dir = ROOT / "artifacts" / "results"
         if results_dir.exists():
-            latest = max(results_dir.glob("result_*.txt"), key=lambda p: p.stat().st_mtime, default=None)
+            # Only consider result files produced by THIS subprocess. If the
+            # run failed (no KB, bad URL, Chrome launch failure), no new file
+            # exists and we must NOT fall back to the pre-existing latest one.
+            fresh_results = [
+                p for p in results_dir.glob("result_*.txt")
+                if p.stat().st_mtime >= run_start_time
+            ]
+            latest = max(fresh_results, key=lambda p: p.stat().st_mtime, default=None)
             if latest:
-                # Parse summary
                 from_text = latest.read_text()
                 test_df = parse_test_results(from_text)
                 if test_df is not None:
@@ -1149,6 +1160,16 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
                         f"{summary}\n\n"
                         f"_Full report saved — check **Past Runs** for details._"
                     )
+            elif process.returncode not in (0, None):
+                # Subprocess exited with error and produced no result file
+                # — show the error context instead of a misleading summary.
+                result_msg = (
+                    f"\n\n## ⚠ Run did not complete\n"
+                    f"The agent subprocess exited (code {process.returncode}) "
+                    f"before producing a result file. Check the output above "
+                    f"for the specific error (common causes: missing KB, "
+                    f"unreachable URL, Chrome launch failure)."
+                )
 
     return (
         f"{intent.response_text}\n\n"
