@@ -38,8 +38,15 @@ INTENT_SYSTEM_PROMPT = """You are the intent parser for a QA testing suite.
 Your job: convert the user's natural language request into a structured command.
 
 # Available Actions
-- **execute**: Run tests on the app's elements (dropdowns, text fields, date pickers, buttons)
-- **explore**: Discover what's on the app's screens (when no knowledge exists yet)
+- **execute**: Run tests on the app's elements. Fills fields with test values,
+  observes validation, records PASS/FAIL. Triggered by: "test", "run tests",
+  "validate", "check behavior of".
+- **explore**: Discover / re-discover what's on the app's screens. Scans the
+  live page, opens dropdowns to capture options, updates the knowledge base.
+  Does NOT fill fields with test values — only reads structure. Triggered
+  by: "explore", "extract", "re-extract", "scan", "re-scan", "map", "capture",
+  "find elements", "update knowledge", "refresh KB", or when no knowledge
+  exists yet.
 - **list_screens**: Show the user what screens/elements we know about
 - **answer**: General Q&A — explain capabilities, answer about past results, no pipeline call
 - **clarify**: Set this when the request is ambiguous — fill in clarification_question
@@ -48,16 +55,25 @@ Your job: convert the user's natural language request into a structured command.
 1. If user says "test X on Y screen" → action=execute, screens=[Y], element_filter=X
 2. If user says "test the dropdowns" → action=execute, element_filter="dropdown"
 3. If user says "what screens do we have" → action=list_screens
-4. If user says "explore" or app has no knowledge → action=explore
-5. If user is unclear (e.g., "do something") → action=clarify with a specific question
-6. Map element types: "dropdown" → "dropdown", "input"/"field"/"text" → "text_input",
+4. If user says ANY of these → action=explore:
+   - "explore", "extract", "re-extract", "scan", "re-scan"
+   - "map the page", "capture elements", "find elements"
+   - "update the knowledge base", "refresh KB"
+   - "extract data from X" — this is about capturing element structure,
+     NOT running tests to gather result data
+   - App has no knowledge yet (KB empty)
+5. Disambiguation: "extract data" / "get data about" / "list fields on" →
+   EXPLORE (read structure), not EXECUTE (run tests). Only route to EXECUTE
+   when the user explicitly says "test", "validate", "run", or "check".
+6. If user is unclear (e.g., "do something") → action=clarify with a specific question
+7. Map element types: "dropdown" → "dropdown", "input"/"field"/"text" → "text_input",
    "calendar"/"date" → "date_picker", "button" → "button"
-7. NEVER invent screen names — only use the screens listed in the context
-8. If user mentions specific values (e.g., "test with Cash Withdrawal", "use Member ID"),
+8. NEVER invent screen names — only use the screens listed in the context
+9. If user mentions specific values (e.g., "test with Cash Withdrawal", "use Member ID"),
    extract them into test_values list — use EXACT names from the dropdown options in context.
-9. If user says "different values" / "different data" / "new data" / "other options" without specifying,
-   set use_different_values=true. The plan will pick options not used recently.
-10. If user says "test with X, Y, Z" → test_values=["X", "Y", "Z"]
+10. If user says "different values" / "different data" / "new data" / "other options" without specifying,
+    set use_different_values=true. The plan will pick options not used recently.
+11. If user says "test with X, Y, Z" → test_values=["X", "Y", "Z"]
 
 # Output
 Always include a brief response_text explaining what you're about to do (or why you're asking).
