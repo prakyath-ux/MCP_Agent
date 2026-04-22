@@ -986,29 +986,56 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
     if intent.action == ChatAction.ANSWER:
         return intent.response_text or "I'm here to help test your app. What would you like me to test?"
 
-    # EXPLORE or EXECUTE — build the CLI command
-    cmd_parts = ["python", "-m", "qa.cli"]
-    if intent.action == ChatAction.EXPLORE:
-        cmd_parts.append("explore")
-    else:
-        cmd_parts.extend(["execute", "--auto-explore"])
+    # EXPLORE or EXECUTE — build the CLI command.
+    # Web routes to Path B orchestrators (run_execute_flow / form_extract)
+    # which give cleaner results than the single-LLM Path A in qa.cli. Mobile
+    # continues on qa.cli since the mobile agent is end-to-end reliable there.
+    # Note: chat flow omits --wait because the subprocess has no stdin wired
+    # from Streamlit. Use URLs that land directly on the target page, or use
+    # the terminal CLI for multi-page wizards that need manual navigation.
+    is_web = ctx.get("platform") == "web"
 
-    cmd_parts.extend([
-        ctx["target"],
-        "-p", ctx["platform"],
-        "-a", f'"{ctx["app_name"]}"',
-        "-m", ctx["model"],
-    ])
-    if ctx["device"]:
-        cmd_parts.extend(["-d", ctx["device"]])
-    if intent.screens:
-        cmd_parts.extend(["-s", ",".join(intent.screens)])
-    if intent.element_filter:
-        cmd_parts.extend(["-f", f'"{intent.element_filter}"'])
-    if getattr(intent, "test_values", []):
-        cmd_parts.extend(["--values", f'"{",".join(intent.test_values)}"'])
-    if getattr(intent, "use_different_values", False):
-        cmd_parts.append("--avoid-recent")
+    if is_web and intent.action == ChatAction.EXECUTE:
+        cmd_parts = [
+            "python", "-m", "qa.orchestrators.run_execute_flow",
+            ctx["target"],
+            "--app-name", f'"{ctx["app_name"]}"',
+            "--model", ctx["model"],
+            "--budget", "1.5",
+        ]
+        if intent.screens:
+            cmd_parts.extend(["--screens", f'"{",".join(intent.screens)}"'])
+        if intent.element_filter:
+            cmd_parts.extend(["--filter", f'"{intent.element_filter}"'])
+    elif is_web and intent.action == ChatAction.EXPLORE:
+        cmd_parts = [
+            "python", "-m", "qa.orchestrators.form_extract",
+            ctx["target"],
+            "--app-name", f'"{ctx["app_name"]}"',
+        ]
+    else:
+        # Mobile (and anything else): existing qa.cli path
+        cmd_parts = ["python", "-m", "qa.cli"]
+        if intent.action == ChatAction.EXPLORE:
+            cmd_parts.append("explore")
+        else:
+            cmd_parts.extend(["execute", "--auto-explore"])
+        cmd_parts.extend([
+            ctx["target"],
+            "-p", ctx["platform"],
+            "-a", f'"{ctx["app_name"]}"',
+            "-m", ctx["model"],
+        ])
+        if ctx["device"]:
+            cmd_parts.extend(["-d", ctx["device"]])
+        if intent.screens:
+            cmd_parts.extend(["-s", ",".join(intent.screens)])
+        if intent.element_filter:
+            cmd_parts.extend(["-f", f'"{intent.element_filter}"'])
+        if getattr(intent, "test_values", []):
+            cmd_parts.extend(["--values", f'"{",".join(intent.test_values)}"'])
+        if getattr(intent, "use_different_values", False):
+            cmd_parts.append("--avoid-recent")
 
     cmd = " ".join(cmd_parts)
 
@@ -1029,6 +1056,14 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
     else:
         output_box = st.empty()
         screenshot_box = None
+        # Web cold-start is 3-5s (npx + Chrome DevTools MCP + Chrome launch).
+        # Show a clear placeholder so the pane isn't blank during that gap —
+        # the first real output line will replace it.
+        if is_web:
+            output_box.info(
+                "🔄 Launching Chrome — cold start takes a few seconds, "
+                "then the agent begins testing. A new browser window will open."
+            )
 
     process = _run_agent_subprocess(cmd, str(ROOT))
     output_lines: list[str] = []

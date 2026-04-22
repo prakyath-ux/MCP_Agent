@@ -52,6 +52,32 @@ from qa.orchestrators.verify import verify_list_cascaded
 from qa.tools.web_tools import _safe_parse
 
 
+def _narrate(msg: str) -> None:
+    """User-facing narration, emitted alongside diagnostic [form] logs.
+    Prefix makes these visually distinct in Streamlit chat output so a
+    viewer reads a natural account of what the agent is doing, while
+    the [form] lines remain for debugging."""
+    print(f"🤖 {msg}", flush=True)
+
+
+def _describe_type_counts(counts: dict[str, int]) -> str:
+    """Format a type-count dict as a human sentence, e.g.
+    '7 text inputs, 4 dropdowns, 1 file upload'."""
+    labels = {
+        "text_input": "text input", "dropdown": "dropdown",
+        "radio": "radio group", "checkbox": "checkbox",
+        "file_upload": "file upload", "date": "date picker",
+        "email": "email field", "phone": "phone field",
+        "combobox": "combobox", "button": "button",
+    }
+    parts: list[str] = []
+    for t, c in sorted(counts.items(), key=lambda x: -x[1]):
+        singular = labels.get(t, t)
+        name = singular if c == 1 else (singular + "es" if singular.endswith("x") else singular + "s")
+        parts.append(f"{c} {name}")
+    return ", ".join(parts) if parts else "none"
+
+
 def _js_section_for_text(button_text: str) -> str:
     """Build a JS snippet that returns the nearest preceding section
     heading for a button with the given visible text. Used to enrich
@@ -348,6 +374,32 @@ _JS_ENUMERATE = r"""() => {
     if (!key && label) key = 'label:' + section + ':' + label;
     if (!key || seen.has(key)) return;
     seen.add(key);
+    // Combobox ancestor detection: an <input> inside a combobox / autocomplete
+    // wrapper is not a plain text field — it backs a custom dropdown widget.
+    // Re-type as 'dropdown' with empty options so form_extract's open-and-read
+    // path populates the option list via snapshot + LLM. Covers Odoo Owl.js
+    // (.o_field_many2one), MUI Autocomplete, Ant Design Select, Select2.
+    const comboboxAncestor = el.closest(
+      '[role="combobox"], [aria-autocomplete], ' +
+      '.o_field_many2one, .o_field_selection, ' +
+      '.MuiAutocomplete-root, ' +
+      '.ant-select, ' +
+      '.select2-container'
+    );
+    if (comboboxAncestor) {
+      results.push({
+        label: label.replace(/\s*\*\s*$/, '').trim(),
+        type: 'dropdown',
+        required: isRequired(el, label),
+        id: el.id || '',
+        name: el.name || '',
+        options: [],
+        native: false,
+        section: section,
+        dom_top: el.getBoundingClientRect().top,
+      });
+      return;
+    }
     const typeMap = {date: 'date', email: 'email', tel: 'phone', number: 'text_input'};
     results.push({
       label: label.replace(/\s*\*\s*$/, '').trim(),
@@ -1826,6 +1878,7 @@ async def extract_form(
     page_gc = guardrails if guardrails is not None else per_page_scope()
 
     # ── Step 1: JS enumerates standard form elements ──────────────
+    _narrate(f"Scanning '{screen_name}' for interactive elements...")
     print("  [form] 1/3  JS: enumerate standard form elements")
     raw = await adapter.evaluate_script(_JS_ENUMERATE)
     js_elements = _safe_parse(raw) or []
@@ -1839,6 +1892,12 @@ async def extract_form(
         type_counts[t] = type_counts.get(t, 0) + 1
     for t, c in sorted(type_counts.items()):
         print(f"  [form]        {t}: {c}")
+
+    if js_elements:
+        _narrate(
+            f"Found {len(js_elements)} standard element(s): "
+            f"{_describe_type_counts(type_counts)}."
+        )
 
     # dropdown_data is populated in step 3 as we iterate triggers, but we
     # need to declare it up here so the _checkpoint helper (used after
@@ -1875,6 +1934,13 @@ async def extract_form(
     triggers = _find_custom_dropdown_triggers(snap_text)
     print(f"  [form]      found {len(triggers)} custom dropdown trigger(s)")
 
+    if triggers:
+        _narrate(
+            f"Also noticed {len(triggers)} custom dropdown(s) that need to be "
+            f"opened to read their options. I'll open each one, capture the "
+            f"list, and close it."
+        )
+
     # ── Step 3: open each dropdown → LLM extracts options → close ─
     print("  [form] 3/3  open each dropdown → LLM extracts options → close")
 
@@ -1883,6 +1949,7 @@ async def extract_form(
         label = trig["label"]
         trigger_text = trig["trigger_text"]
         print(f"  [form]      [{i+1}/{len(triggers)}] {label!r} (uid={uid})")
+        _narrate(f"Opening dropdown '{label}' ({i+1}/{len(triggers)})...")
 
         # Check the page-level guardrail BEFORE spending on this dropdown.
         # If we've already exhausted the page budget, stop the loop cleanly
@@ -2126,6 +2193,14 @@ async def extract_form(
             if len(clean) > 5:
                 print(f"  [form]          ... +{len(clean) - 5} more")
 
+        if clean:
+            if len(clean) > 10:
+                _narrate(f"Got {len(clean)} options for '{label}' — it's a long list.")
+            else:
+                _narrate(f"Got {len(clean)} option(s) for '{label}'.")
+        else:
+            _narrate(f"'{label}' returned no options — recording as empty.")
+
         _dd_put(dropdown_data, label, trig.get("section", "") or "", {
             "options": clean,
             "disabled": False,
@@ -2354,6 +2429,7 @@ async def extract_form(
     # to Yes, diff the page, and capture the newly-visible fields. Radios
     # are left on Yes — Execute needs the revealed fields addressable;
     # per-test field restore is handled downstream by Wall 1.3.
+    _narrate("Checking for conditional sections that only reveal after a toggle...")
     try:
         await _reveal_and_reextract(
             adapter,
@@ -2373,13 +2449,64 @@ async def extract_form(
     print(f"\n  [form] ✓ Done in {elapsed:.1f}s — "
           f"{len(js_elements)} standard + {len(triggers)} custom dropdowns")
     print(f"  [form] Cost: ${budget.current_cost:.4f}")
+    _narrate(
+        f"Extraction complete in {elapsed:.0f}s. "
+        f"Let me verify I captured everything..."
+    )
 
-    return _build_screen(
+    screen = _build_screen(
         screen_name=screen_name,
         page_url=page_url,
         js_elements=js_elements,
         dropdown_data=dropdown_data,
     )
+
+    # Completeness reconciliation — scan count vs extract count, with a
+    # list of missed labels so the operator can see which items fell
+    # through. Legitimate drops (empty label, date-picker sub-pieces)
+    # are filtered out so the miss list is actionable.
+    scanned = len(js_elements) + len(triggers)
+    extracted = len(screen.l0)
+    if scanned == 0:
+        print(f"  [form] ⚠ Completeness: nothing scanned on this page")
+        _narrate("I didn't find any interactive elements on this page. Nothing to capture.")
+    elif extracted >= scanned:
+        print(f"  [form] ✓ Completeness: {extracted}/{scanned} elements captured (100%)")
+        _narrate(
+            f"All {extracted}/{scanned} elements captured. "
+            f"'{screen_name}' is ready for test planning."
+        )
+    else:
+        l0_labels = {el.name.lower() for el in screen.l0}
+        missed: list[str] = []
+        for je in js_elements:
+            raw_label = (je.get("label") or "").strip()
+            if not raw_label:
+                continue
+            cleaned = _clean_label(raw_label)
+            if not cleaned or cleaned.lower() in _DATE_PICKER_LABELS:
+                continue
+            if cleaned.lower() not in l0_labels:
+                missed.append(f'"{cleaned}" ({je.get("type", "?")})')
+        pct = extracted * 100 // scanned
+        print(f"  [form] ⚠ Completeness: {extracted}/{scanned} elements captured ({pct}%)")
+        if missed:
+            shown = missed[:8]
+            print(f"  [form]   Missed: {', '.join(shown)}"
+                  + (f"  ... +{len(missed) - 8} more" if len(missed) > 8 else ""))
+            _narrate(
+                f"Captured {extracted} of {scanned} elements ({pct}%). "
+                f"Missing: {', '.join(shown)}"
+                + (f" and {len(missed) - 8} more" if len(missed) > 8 else "")
+                + ". These weren't interactive enough to map — moving on."
+            )
+        else:
+            _narrate(
+                f"Captured {extracted} of {scanned} elements ({pct}%). "
+                "A few were filtered as non-testable labels."
+            )
+
+    return screen
 
 
 # ── CLI entry point ─────────────────────────────────────────────────
