@@ -638,17 +638,34 @@ class ExecuteOrchestrator:
                 )
             await asyncio.sleep(0.4)
 
-        # 2) Child dropdown — resolve locator (css preferred, xpath fallback).
-        strategy, locator_value = _find_l1_locator(ctx.knowledge, tc.element_id)
-        if not locator_value:
+        # 2) Child dropdown — try all locators in confidence order until one
+        # finds the trigger. Same fall-through pattern as _fill_check so
+        # SPAs with regenerated id attributes (Salesforce Lightning, Odoo)
+        # reach the label-based XPath fallback instead of BLOCKING.
+        locators = _find_l1_locators_sorted(ctx.knowledge, tc.element_id)
+        if not locators:
             return _blocked_or_skipped(
                 tc, TestStatus.BLOCKED,
-                notes=f"no locator (css|xpath) in KB for element_id={tc.element_id}",
+                notes=f"no locator in KB for element_id={tc.element_id}",
             )
 
-        status, options = await _select_option(
-            ctx.adapter, strategy, locator_value, tc.test_value,
-        )
+        strategy, locator_value = "", ""
+        status, options = "ELEMENT_NOT_FOUND", []
+        for s, v in locators:
+            status, options = await _select_option(
+                ctx.adapter, s, v, tc.test_value,
+            )
+            # ELEMENT_NOT_FOUND is the only status that means "wrong
+            # locator" — keep trying. Any other status means we reached
+            # the element (and success/failure is about the option pick).
+            if status != "ELEMENT_NOT_FOUND":
+                strategy, locator_value = s, v
+                break
+        if not strategy:
+            # All locators returned ELEMENT_NOT_FOUND. Treat last attempt's
+            # locator as the one we report.
+            strategy, locator_value = locators[-1]
+
         print(f"    [select] {tc.tc_id} {tc.test_value!r} → {status} "
               f"(via {strategy}, saw {len(options)} options)")
 
@@ -1038,31 +1055,34 @@ async def _set_parent_value(
             f"(add to artifacts/defaults/<app>.json)",
         )
 
-    strategy, locator_value = _find_l1_locator(kb, parent_element_id)
-    if not locator_value:
-        return (False, f"no locator (css|xpath) for parent {parent_element_id}")
+    locators = _find_l1_locators_sorted(kb, parent_element_id)
+    if not locators:
+        return (False, f"no locator in KB for parent {parent_element_id}")
 
     parent_type = parent_l0.type.value if hasattr(parent_l0.type, "value") else str(parent_l0.type)
     if parent_type == "dropdown":
-        status, _ = await _select_option(adapter, strategy, locator_value, value)
-        if status == "SELECTED":
-            return (True, f"parent {parent_l0.name!r}={value!r} selected")
-        return (False, f"parent select {status} on {parent_l0.name!r}")
+        # Try each locator in order. Fall through only on ELEMENT_NOT_FOUND —
+        # any other status means we reached the element, success/failure is
+        # about the option pick.
+        last_status = "ELEMENT_NOT_FOUND"
+        for s, v in locators:
+            status, _ = await _select_option(adapter, s, v, value)
+            last_status = status
+            if status == "SELECTED":
+                return (True, f"parent {parent_l0.name!r}={value!r} selected")
+            if status != "ELEMENT_NOT_FOUND":
+                break
+        return (False, f"parent select {last_status} on {parent_l0.name!r}")
 
-    # Text-input style parents (and any other fill-compatible type). In
-    # practice text_inputs always come from JS enumerate with a CSS id/
-    # name, so the CSS path is sufficient. Bail loudly if we hit xpath-
-    # only on a text parent — that signals a new DOM pattern to handle.
-    if strategy != "css":
-        return (
-            False,
-            f"parent {parent_l0.name!r} has no CSS locator; xpath-only "
-            f"fill path not yet supported",
-        )
-    ok = await _python_fill(adapter, locator_value, value)
+    # Text-input style parents (and any other fill-compatible type). Uses
+    # the same fall-through helper as _fill_check — CSS primary, XPath
+    # fallback, so SPA id-regeneration doesn't block cascade setup.
+    ok, used_strategy, used_locator = await _fill_trying_all_locators(
+        adapter, locators, value
+    )
     if ok:
         return (True, f"parent {parent_l0.name!r}={value!r} filled")
-    return (False, f"parent fill failed on {parent_l0.name!r}")
+    return (False, f"parent fill failed on all {len(locators)} locator(s)")
 
 
 async def _restore_field_to_default(
