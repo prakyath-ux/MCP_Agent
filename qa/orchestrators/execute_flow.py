@@ -422,11 +422,16 @@ class ExecuteOrchestrator:
         test_gc: GuardrailContext,
     ) -> TestResult:
         t0 = time.time()
-        css = _find_l1_css_selector(ctx.knowledge, tc.element_id)
-        if not css:
+        # Try all locators in confidence order, falling through to the next
+        # if the current one fails. SPAs like Salesforce Lightning regenerate
+        # id attributes between extract and execute, so a stale id-based CSS
+        # is common — the label-based XPath fallbacks generated during
+        # extract save us from BLOCKED.
+        locators = _find_l1_locators_sorted(ctx.knowledge, tc.element_id)
+        if not locators:
             return _blocked_or_skipped(
                 tc, TestStatus.BLOCKED,
-                notes=f"no CSS locator in KB for element_id={tc.element_id}",
+                notes=f"no locator in KB for element_id={tc.element_id}",
             )
 
         adapter = ctx.adapter
@@ -434,14 +439,20 @@ class ExecuteOrchestrator:
         # Pre-snapshot for CoVe verification below.
         pre_snap = await _raw_snapshot(adapter)
 
-        # Python fills via React-safe native setter. If fill fails for
-        # reasons we can see (selector bad, element not found), mark BLOCKED.
-        fill_ok = await _python_fill(adapter, css, tc.test_value)
+        # Python fills via React-safe native setter. If all locators fail,
+        # mark BLOCKED with a note of what was tried.
+        fill_ok, strat_used, sel_used = await _fill_trying_all_locators(
+            adapter, locators, tc.test_value
+        )
         if not fill_ok:
+            tried = ", ".join(f"{s}={v!r}" for s, v in locators[:3])
             return _blocked_or_skipped(
                 tc, TestStatus.BLOCKED,
-                notes=f"fill failed on CSS={css!r}",
+                notes=f"fill failed on all {len(locators)} locator(s); tried: {tried}",
             )
+        # Keep a note of which locator actually worked — useful for
+        # debugging SPAs where the id-based CSS went stale.
+        css = sel_used  # variable retained below for downstream references
 
         # Small settle for validation to render.
         await asyncio.sleep(0.6)
@@ -1083,7 +1094,7 @@ async def _restore_field_to_default(
 
 
 async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
-    """React-safe native-setter fill. Returns True on 'OK'."""
+    """React-safe native-setter fill via CSS selector. Returns True on 'OK'."""
     fn = (
         "() => {"
         f"  const el = document.querySelector({json.dumps(css)});"
@@ -1105,6 +1116,73 @@ async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
     except Exception:
         return False
     return "OK" in (result or "")
+
+
+async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -> bool:
+    """Same React-safe native-setter fill, but resolves the element via XPath.
+    Used for label-based locators that can't be expressed in CSS."""
+    fn = (
+        "() => {"
+        f"  const result = document.evaluate({json.dumps(xpath)}, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);"
+        "  const el = result.singleNodeValue;"
+        "  if (!el) return 'ELEMENT_NOT_FOUND';"
+        "  const proto = el.tagName === 'TEXTAREA' "
+        "    ? HTMLTextAreaElement.prototype "
+        "    : HTMLInputElement.prototype;"
+        "  const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;"
+        "  el.focus();"
+        f"  setter.call(el, {json.dumps(value)});"
+        "  el.dispatchEvent(new Event('input', {bubbles: true}));"
+        "  el.dispatchEvent(new Event('change', {bubbles: true}));"
+        "  el.blur();"
+        "  return 'OK';"
+        "}"
+    )
+    try:
+        result = await adapter.evaluate_script(fn)
+    except Exception:
+        return False
+    return "OK" in (result or "")
+
+
+async def _fill_trying_all_locators(
+    adapter: PlatformAdapter,
+    locators: list[tuple[str, str]],
+    value: str,
+) -> tuple[bool, str, str]:
+    """Try each (strategy, value) locator in order until one succeeds.
+    Returns (ok, strategy_used, selector_used). Used to gracefully fall
+    through from stale id-based CSS to label-based XPath when SPAs
+    regenerate IDs between extract and execute."""
+    for strategy, sel in locators:
+        if not sel:
+            continue
+        if strategy == "css":
+            ok = await _python_fill(adapter, sel, value)
+        elif strategy == "xpath":
+            ok = await _python_fill_xpath(adapter, sel, value)
+        else:
+            continue
+        if ok:
+            return (True, strategy, sel)
+    return (False, "", "")
+
+
+def _find_l1_locators_sorted(
+    kb: KnowledgeBase, element_id: str
+) -> list[tuple[str, str]]:
+    """Return ALL L1 locators for an element, sorted by confidence descending.
+    Callers can iterate and try each when the primary locator fails (SPA
+    id regeneration, stale selectors). Tries CSS before XPath at equal
+    confidence — CSS is cheaper to evaluate."""
+    l1 = kb.get_l1_for_element(element_id)
+    if l1 is None:
+        return []
+    ordered = sorted(
+        l1.locators,
+        key=lambda loc: (-loc.confidence, 0 if loc.strategy == "css" else 1),
+    )
+    return [(loc.strategy, loc.value) for loc in ordered if loc.strategy in ("css", "xpath")]
 
 
 async def _classify_test_result(

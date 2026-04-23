@@ -60,6 +60,26 @@ def _narrate(msg: str) -> None:
     print(f"🤖 {msg}", flush=True)
 
 
+def _xpath_string_literal(s: str) -> str:
+    """Safely embed an arbitrary string as an XPath literal.
+
+    XPath has no string-escape syntax. If the string contains only one
+    kind of quote, wrap with the other. If both, build with concat().
+
+    Examples:
+        hello world      → 'hello world'
+        it's great       → "it's great"
+        mix ' and " here → concat('mix ', "'", ' and " here')
+    """
+    if "'" not in s:
+        return f"'{s}'"
+    if '"' not in s:
+        return f'"{s}"'
+    parts = s.split("'")
+    pieces = [f"'{p}'" for p in parts]
+    return "concat(" + ", \"'\", ".join(pieces) + ")"
+
+
 def _describe_type_counts(counts: dict[str, int]) -> str:
     """Format a type-count dict as a human sentence, e.g.
     '7 text inputs, 4 dropdowns, 1 file upload'."""
@@ -1301,6 +1321,38 @@ def _build_screen(
                 strategy="css",
                 value=f"{tag}[name='{el['name']}']",
                 confidence=0.8,
+            ))
+        # Label-based XPath fallbacks — robust across SPA re-renders because
+        # visible label text is far more stable than generated IDs or
+        # component-scoped name attributes. Fixes Salesforce Lightning,
+        # Odoo, Forgenite, and most modern React/Vue apps where the
+        # primary id-based CSS goes stale between extract and execute.
+        if label:
+            if el.get("native"):
+                tag_xpath = "select"
+            elif etype == ElementType.TEXT_INPUT:
+                # textarea + input both valid for text fields
+                tag_xpath = "*[self::input or self::textarea]"
+            else:
+                tag_xpath = "input"
+            label_lit = _xpath_string_literal(label)
+            # Primary label-xpath: <label>X</label> then the next matching tag
+            locators.append(Locator(
+                strategy="xpath",
+                value=f"//label[normalize-space()={label_lit}]/following::{tag_xpath}[1]",
+                confidence=0.75,
+            ))
+            # aria-label match (modern components)
+            locators.append(Locator(
+                strategy="xpath",
+                value=f"//{tag_xpath}[@aria-label={label_lit}]",
+                confidence=0.70,
+            ))
+            # placeholder match (placeholder-as-label pattern)
+            locators.append(Locator(
+                strategy="xpath",
+                value=f"//{tag_xpath}[@placeholder={label_lit}]",
+                confidence=0.65,
             ))
         l1.append(L1Element(
             element_id=eid,
