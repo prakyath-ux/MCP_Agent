@@ -1239,16 +1239,60 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
     if intent.action == ChatAction.EXECUTE:
         results_dir = ROOT / "artifacts" / "results"
         if results_dir.exists():
-            # Only consider result files produced by THIS subprocess. If the
-            # run failed (no KB, bad URL, Chrome launch failure), no new file
-            # exists and we must NOT fall back to the pre-existing latest one.
-            fresh_results = [
+            # Two result shapes are produced depending on the orchestrator:
+            #  • Mobile / legacy Path A → result_*.txt (pipe-table format)
+            #  • Web Path B (run_execute_flow) → *_flow_*.json + matching .txt
+            # Filter by mtime so we never surface pre-existing files from
+            # an unrelated prior run. Prefer JSON when available — its
+            # summary counts are authoritative (structured, not parsed).
+            fresh_json = [
+                p for p in results_dir.glob("*_flow_*.json")
+                if p.stat().st_mtime >= run_start_time
+            ]
+            fresh_txt = [
                 p for p in results_dir.glob("result_*.txt")
                 if p.stat().st_mtime >= run_start_time
             ]
-            latest = max(fresh_results, key=lambda p: p.stat().st_mtime, default=None)
-            if latest:
-                from_text = latest.read_text()
+            latest_json = max(fresh_json, key=lambda p: p.stat().st_mtime, default=None)
+            latest_txt = max(fresh_txt, key=lambda p: p.stat().st_mtime, default=None)
+
+            if latest_json:
+                # Web Path B — structured results.
+                try:
+                    data = json.loads(latest_json.read_text())
+                    smry = data.get("summary", {}) or {}
+                    counts = {
+                        "PASS": smry.get("passed", 0),
+                        "FAIL": smry.get("failed", 0),
+                        "SKIP": smry.get("skipped", 0),
+                        "BLOCKED": smry.get("blocked", 0),
+                    }
+                    # Feed the human-readable TXT sibling (if written) to the
+                    # LLM summarizer — better narrative than raw JSON.
+                    txt_sibling = latest_json.with_suffix(".txt")
+                    narrative_source = (
+                        txt_sibling.read_text()
+                        if txt_sibling.exists()
+                        else json.dumps(data, indent=2)
+                    )
+                    narrative = _summarize_run(narrative_source, user_input)
+                    result_msg = (
+                        f"\n\n## ✓ Done\n"
+                        f"- **Passed:** {counts['PASS']}  •  "
+                        f"**Failed:** {counts['FAIL']}  •  "
+                        f"**Blocked:** {counts['BLOCKED']}  •  "
+                        f"**Skipped:** {counts['SKIP']}\n\n"
+                        f"{narrative}\n\n"
+                        f"_Full report saved — check **Past Runs** for details._"
+                    )
+                except Exception as e:
+                    result_msg = (
+                        f"\n\n## ⚠ Run complete but summary parse failed\n"
+                        f"`{e}` — see {latest_json.name} for raw results."
+                    )
+            elif latest_txt:
+                # Legacy Path A (mobile) — pipe-table TXT.
+                from_text = latest_txt.read_text()
                 test_df = parse_test_results(from_text)
                 if test_df is not None:
                     counts = count_statuses(test_df)
