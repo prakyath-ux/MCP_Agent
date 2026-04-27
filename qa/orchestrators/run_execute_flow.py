@@ -6,6 +6,12 @@
 # Loads the existing KB + optional defaults.json, generates a plan via
 # Pipeline 2, then runs ExecuteOrchestrator with full precision primitives
 # wired (guardrails, CoVe, atomic checkpoints, defaults-driven restore).
+#
+# --loop: stay in one Chrome session and test multiple screens. After each
+# run, the user manually navigates to the next page/section in Chrome and
+# presses Enter for another round. Mirrors form_extract --loop. Useful for
+# multi-step wizards where wizard state (login, mandatory fields filled,
+# OCR-validated uploads) must persist across test runs.
 
 import argparse
 import asyncio
@@ -27,6 +33,7 @@ from qa.models import (
 from qa.orchestrators.execute_flow import (
     ExecuteOrchestrator, ExecuteRunContext, _default_results_path,
 )
+from qa.pipelines.plan import run_plan
 
 
 async def main() -> int:
@@ -43,10 +50,20 @@ async def main() -> int:
         "--wait", action="store_true",
         help="Pause after browser launch for manual navigation",
     )
+    ap.add_argument(
+        "--loop", action="store_true",
+        help=(
+            "Multi-section mode. After each test run completes, prompts "
+            "the user to navigate Chrome to the next screen and press "
+            "Enter for another round. Quit with 'q'. Chrome stays open "
+            "across iterations so wizard state persists. Mirrors form_"
+            "extract --loop. Combine with --wait for the initial setup."
+        ),
+    )
     ap.add_argument("--model", default="gpt-5.1", help="Model for classification")
     ap.add_argument(
         "--budget", type=float, default=1.50,
-        help="Hard cost cap for the whole run (matches plan.md Tier 0)",
+        help="Hard cost cap PER ITERATION in --loop mode (else whole run).",
     )
     ap.add_argument(
         "--defaults", default="",
@@ -78,83 +95,162 @@ async def main() -> int:
     print(f"  KB: {len(kb.screens)} screen(s), "
           f"{sum(len(s.l0) for s in kb.screens)} L0 element(s)")
 
-    # Generate plan via existing Pipeline 2 — unchanged, reuses what works
-    from qa.pipelines.plan import run_plan
-    screens = [s.strip() for s in args.screens.split(",") if s.strip()]
-    plan_out = await run_plan(PlanInput(
-        knowledge=kb,
-        screen_names=screens,
-        element_filter=args.filter,
-        max_total_cases=args.max_cases,
-        model=args.model,
-    ))
-    test_cases: list[TestCase] = plan_out.test_cases
-    if not test_cases:
-        print("  ERROR: plan pipeline returned zero test cases")
-        return 1
-    print(f"  Plan generated {len(test_cases)} test case(s)")
-
-    # Launch browser. ExecuteOrchestrator (Path B) uses stateless
-    # llm_classify calls — no tools exposed to the LLM — so Wall 1.8
-    # is already structurally enforced. Block the nav tools anyway in
-    # case anything downstream spawns a tool-enabled agent against the
-    # same server.
+    # Launch browser ONCE for the whole session. ExecuteOrchestrator (Path B)
+    # uses stateless llm_classify calls — no tools exposed to the LLM — so
+    # Wall 1.8 is already structurally enforced. Block the nav tools anyway
+    # in case anything downstream spawns a tool-enabled agent.
     adapter = make_adapter(Platform.WEB)
     await adapter.launch(
         app,
         extra_blocked_tools=["navigate_page", "go_back", "go_forward"],
     )
 
-    if args.wait:
-        print()
-        print("=" * 60)
-        print("  PAUSE: navigate to the target screen for testing.")
-        print("  Press Enter when the page is ready.")
-        print("=" * 60)
-        try:
-            input("  >>> Press Enter to start... ")
-        except EOFError:
-            pass
-
-    # Build context with guardrails wired in
-    budget = BudgetTracker(model=args.model, max_budget=args.budget)
-    run_gc = per_run_scope()
-    run_gc.hard_max_cost = args.budget   # honor CLI budget flag at the guardrail level
-
-    results_path = _default_results_path(args.app_name)
-    print(f"  Results will be written incrementally to {results_path}")
-
-    ctx = ExecuteRunContext(
-        adapter=adapter,
-        knowledge=kb,
-        test_cases=test_cases,
-        defaults=defaults,
-        budget=budget,
-        guardrails=run_gc,
-        app_name=args.app_name,
-        results_path=results_path,
-    )
-
-    orchestrator = ExecuteOrchestrator(model=args.model)
+    iteration = 1
+    completed: list[tuple[str, "TestSummary"]] = []  # (label, summary)
 
     try:
-        output: ExecuteOutput = await orchestrator.run(ctx)
+        while True:
+            # ── Screen selection for this iteration ──────────────────
+            if iteration == 1:
+                # First pass: use --screens from CLI
+                screens = [s.strip() for s in args.screens.split(",") if s.strip()]
+            else:
+                # Loop iteration: show existing KB screens, ask user to pick.
+                existing = kb.screen_names()
+                if existing:
+                    print(f"\n  Available screens in KB ({len(existing)}):")
+                    for i, n in enumerate(existing, 1):
+                        print(f"    {i}. {n}")
+                try:
+                    user_input = input(
+                        "  Screen to test (paste exact name, or empty for all, "
+                        "or 'q' to quit): "
+                    ).strip()
+                except EOFError:
+                    break
+                if user_input.lower() == "q":
+                    break
+                screens = [user_input] if user_input else []
+
+            label = ", ".join(screens) if screens else "all screens"
+
+            # ── Plan: generate test cases for this iteration ─────────
+            plan_out = await run_plan(PlanInput(
+                knowledge=kb,
+                screen_names=screens,
+                element_filter=args.filter,
+                max_total_cases=args.max_cases,
+                model=args.model,
+            ))
+            test_cases: list[TestCase] = plan_out.test_cases
+            if not test_cases:
+                print(f"  ⚠ no test cases generated for {label!r}")
+                if not args.loop:
+                    return 1
+                # In loop mode, prompt to try a different screen
+                print("  Try another screen (or 'q' to quit).\n")
+                iteration += 1
+                continue
+            print(f"  Plan generated {len(test_cases)} test case(s) for {label}")
+
+            # ── Pause for navigation: required on first iter if --wait,
+            # always required on subsequent iters in --loop mode (user
+            # has to navigate to the new screen between runs). ────────
+            should_pause = args.wait if iteration == 1 else args.loop
+            if should_pause:
+                print()
+                print("=" * 60)
+                if iteration == 1:
+                    print(f"  PAUSE: navigate Chrome to the screen for {label!r}.")
+                else:
+                    print(f"  PAUSE: navigate Chrome to the screen for THIS iteration:")
+                    print(f"         {label}")
+                    print()
+                    print("    Multi-step wizards: fill required fields and click")
+                    print("    'Save & Continue' yourself to advance. Then return here.")
+                print("  Press Enter when the page is fully visible.")
+                print("=" * 60)
+                try:
+                    input("  >>> Press Enter to start tests... ")
+                except EOFError:
+                    break
+
+            # ── Execute ──────────────────────────────────────────────
+            budget = BudgetTracker(model=args.model, max_budget=args.budget)
+            run_gc = per_run_scope()
+            run_gc.hard_max_cost = args.budget
+
+            results_path = _default_results_path(args.app_name)
+            print(f"  Results will be written incrementally to {results_path}")
+
+            ctx = ExecuteRunContext(
+                adapter=adapter,
+                knowledge=kb,
+                test_cases=test_cases,
+                defaults=defaults,
+                budget=budget,
+                guardrails=run_gc,
+                app_name=args.app_name,
+                results_path=results_path,
+            )
+
+            orchestrator = ExecuteOrchestrator(model=args.model)
+            output: ExecuteOutput = await orchestrator.run(ctx)
+
+            # ── Per-iteration summary ────────────────────────────────
+            print(f"\n  ── Final Results ──")
+            for r in output.results:
+                tag = {"pass": "✓", "fail": "✗", "skip": "○", "blocked": "⊘"}.get(
+                    r.status.value, "?"
+                )
+                print(f"  {tag} {r.tc_id:5} {r.field_name:35} {r.status.value:7} "
+                      f"{r.notes[:70] if r.notes else ''}")
+            print(f"\n  Total: {output.summary.total}  "
+                  f"PASS {output.summary.passed}  FAIL {output.summary.failed}  "
+                  f"SKIP {output.summary.skipped}  BLOCKED {output.summary.blocked}")
+            print(f"  Cost: ${output.cost_usd:.4f}  Duration: {output.duration_sec:.1f}s")
+            print(f"  Results file: {results_path}")
+
+            completed.append((label, output.summary))
+
+            # ── Continue? ────────────────────────────────────────────
+            if not args.loop:
+                break
+
+            print()
+            print("=" * 60)
+            print("  Section tested. To advance:")
+            print("    1. Manually navigate Chrome to the next page/section")
+            print("    2. For multi-step wizards: fill any required fields,")
+            print("       upload any required documents, click Save & Continue")
+            print("    3. When the next screen is fully visible in Chrome,")
+            print("       return here and press Enter")
+            print("=" * 60)
+            try:
+                choice = input(
+                    "  >>> Press Enter to test next screen, or 'q' + Enter to quit: "
+                ).strip().lower()
+            except EOFError:
+                break
+            if choice == "q":
+                break
+            iteration += 1
     finally:
         await adapter.close()
 
-    # Human-readable summary
-    print(f"\n  ── Final Results ──")
-    for r in output.results:
-        tag = {"pass": "✓", "fail": "✗", "skip": "○", "blocked": "⊘"}.get(
-            r.status.value, "?"
-        )
-        print(f"  {tag} {r.tc_id:5} {r.field_name:35} {r.status.value:7} "
-              f"{r.notes[:70] if r.notes else ''}")
-    print(f"\n  Total: {output.summary.total}  "
-          f"PASS {output.summary.passed}  FAIL {output.summary.failed}  "
-          f"SKIP {output.summary.skipped}  BLOCKED {output.summary.blocked}")
-    print(f"  Cost: ${output.cost_usd:.4f}  Duration: {output.duration_sec:.1f}s")
-    print(f"  Results file: {results_path}")
+    # ── Session summary ──────────────────────────────────────────────
+    if len(completed) > 1:
+        print(f"\n  ══ Session summary: {len(completed)} test run(s) ══")
+        total_pass = total_fail = total_blocked = 0
+        for label, smry in completed:
+            print(f"    {label}: PASS {smry.passed}  FAIL {smry.failed}  "
+                  f"BLOCKED {smry.blocked}  ({smry.total} cases)")
+            total_pass += smry.passed
+            total_fail += smry.failed
+            total_blocked += smry.blocked
+        print(f"    ───")
+        print(f"    Combined: PASS {total_pass}  FAIL {total_fail}  "
+              f"BLOCKED {total_blocked}")
 
     return 0
 
