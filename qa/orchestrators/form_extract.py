@@ -2695,7 +2695,21 @@ async def main() -> int:
                         screen_name = "Extracted Form"
                     print(f"  Screen name (from <title>): {screen_name!r}")
             else:
-                # Loop iteration — prompt user for a section name.
+                # Loop iteration — prompt user for a section name. Show
+                # existing KB screen names so they can re-extract a known
+                # screen (overwrite-in-place) rather than accidentally
+                # forking a new "Section N" entry that diverges from any
+                # cascade-dependency keys already declared in defaults.
+                existing_names = [s.screen_name for s in kb.screens]
+                if existing_names:
+                    print()
+                    print(f"  Existing screens in this KB ({len(existing_names)}):")
+                    for i, n in enumerate(existing_names, 1):
+                        print(f"    {i}. {n}")
+                    print(
+                        "  Tip: type one of those names exactly to UPDATE "
+                        "(overwrite) it. A new name CREATES a new screen."
+                    )
                 default_name = f"Section {section_num}"
                 try:
                     user_name = input(

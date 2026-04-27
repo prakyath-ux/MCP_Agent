@@ -62,6 +62,19 @@
       "new_member_application_additional_details:employment_status:dropdown",
       "new_member_application_additional_details:employer:dropdown",
       "new_member_application_additional_details:sector:dropdown"
+    ],
+
+    "section_5:employer:dropdown": [
+      "section_5:employment_status:dropdown"
+    ],
+    "section_5:sector:dropdown": [
+      "section_5:employment_status:dropdown",
+      "section_5:employer:dropdown"
+    ],
+    "section_5:employment_type:dropdown": [
+      "section_5:employment_status:dropdown",
+      "section_5:employer:dropdown",
+      "section_5:sector:dropdown"
     ]
   }
 }
