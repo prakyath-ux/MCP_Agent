@@ -108,29 +108,43 @@ async def main() -> int:
     iteration = 1
     completed: list[tuple[str, "TestSummary"]] = []  # (label, summary)
 
+    def _prompt_screen() -> list[str] | None:
+        """Show existing KB screens and ask user which one to test.
+        Returns the screens list (single element or empty for 'all'),
+        or None if user typed 'q' to quit the loop."""
+        existing = kb.screen_names()
+        if existing:
+            print(f"\n  Available screens in KB ({len(existing)}):")
+            for i, n in enumerate(existing, 1):
+                print(f"    {i}. {n}")
+        try:
+            user_input = input(
+                "  Screen to test (paste exact name, or empty for all, "
+                "or 'q' to quit): "
+            ).strip()
+        except EOFError:
+            return None
+        if user_input.lower() == "q":
+            return None
+        return [user_input] if user_input else []
+
     try:
         while True:
             # ── Screen selection for this iteration ──────────────────
-            if iteration == 1:
-                # First pass: use --screens from CLI
+            # Priority: explicit --screens CLI arg (first iter only) > prompt
+            # in --loop mode > default to 'all screens' for non-loop runs.
+            if iteration == 1 and args.screens:
                 screens = [s.strip() for s in args.screens.split(",") if s.strip()]
+            elif args.loop:
+                # Loop mode: prompt every iteration so user can pick a
+                # different screen each time (or quit cleanly).
+                picked = _prompt_screen()
+                if picked is None:
+                    break
+                screens = picked
             else:
-                # Loop iteration: show existing KB screens, ask user to pick.
-                existing = kb.screen_names()
-                if existing:
-                    print(f"\n  Available screens in KB ({len(existing)}):")
-                    for i, n in enumerate(existing, 1):
-                        print(f"    {i}. {n}")
-                try:
-                    user_input = input(
-                        "  Screen to test (paste exact name, or empty for all, "
-                        "or 'q' to quit): "
-                    ).strip()
-                except EOFError:
-                    break
-                if user_input.lower() == "q":
-                    break
-                screens = [user_input] if user_input else []
+                # Single-shot mode without --screens: test everything.
+                screens = []
 
             label = ", ".join(screens) if screens else "all screens"
 
