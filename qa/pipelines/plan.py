@@ -43,11 +43,28 @@ async def run_plan(inp: PlanInput) -> PlanOutput:
         # an option from the parent dropdown covers their purpose.
         "search", "filter",
     }
+    # Navigation buttons — captured in the KB for completeness, but we
+    # MUST NOT generate test cases that click them. Clicking would advance
+    # the page, lose form state, and break Wall 1.8 isolation. Multi-step
+    # wizards rely on the user clicking these manually between sections.
+    nav_button_keywords = {
+        "save", "continue", "next", "back", "previous", "submit",
+        "cancel", "close", "skip", "exit", "finish", "logout",
+        "log out", "sign out", "signout", "discard", "clear all",
+    }
 
     def _is_testable(el) -> bool:
         if el.type.value in skip_types:
             return False
         name_lower = el.name.lower()
+        # Buttons: only skip those whose label suggests page navigation /
+        # form submission. Action buttons (Find Member, Add Another,
+        # Calculate, Generate, etc.) stay testable and Plan generates
+        # TAP_VERIFY for them.
+        if el.type.value == "button":
+            for nav_kw in nav_button_keywords:
+                if nav_kw in name_lower:
+                    return False
         # Skip elements whose name contains label/title/header keywords
         for kw in skip_name_keywords:
             if kw in name_lower:

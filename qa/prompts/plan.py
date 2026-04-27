@@ -125,9 +125,19 @@ still include one clearly-valid baseline so the FAIL signal is clean.
 - Open and confirm a date — HIGH
 - One test case per date picker
 
-## Buttons (VERIFY_ONLY):
-- Only "Find Member" type action buttons — check existence
-- Do NOT include back buttons or nav tabs
+## Buttons (TAP_VERIFY for action buttons):
+- For action buttons that perform an in-page operation (e.g. "Find Member",
+  "Add Another", "Calculate", "Generate", "Refresh", "Apply"), generate ONE
+  TAP_VERIFY test that clicks the button and observes the response.
+- Expected result: "response_visible" (a modal opens, a result appears, a
+  section updates) — the classifier will judge whether the post-snapshot
+  shows a meaningful change.
+- DO NOT generate test cases for navigation buttons whose label includes
+  any of: save, continue, next, back, previous, submit, cancel, close,
+  skip, exit, finish, log out, sign out, discard, clear all. These advance
+  the page or submit the form — clicking them breaks form state. The
+  upstream filter strips them, but if one leaks through, emit no test.
+- Do NOT include nav tabs (handled separately).
 
 ## File uploads (UPLOAD_FILE):
 - Generate ONE UPLOAD_FILE test case per file_upload element

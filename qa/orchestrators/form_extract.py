@@ -539,6 +539,33 @@ _JS_ENUMERATE = r"""() => {
     });
   });
 
+  // Buttons — captured for KB completeness so reports reflect the full
+  // page. Plan decides per-button whether to generate a click test
+  // (TAP_VERIFY for action buttons like 'Find Member') or skip
+  // (navigation buttons like 'Save & Continue', 'Submit', 'Back').
+  // We only capture visible buttons with non-empty short text.
+  document.querySelectorAll(
+    'button, input[type="submit"], input[type="button"]'
+  ).forEach(el => {
+    if (el.offsetParent === null) return;
+    const text = (el.textContent || el.value || '').trim();
+    if (!text || text.length > 80) return;
+    // Dedupe: same button text in the same section only counted once.
+    const section = findSection(el);
+    const key = 'btn:' + section + ':' + text;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({
+      label: text,
+      type: 'button',
+      required: false,
+      id: el.id || '',
+      name: el.name || '',
+      section: section,
+      dom_top: el.getBoundingClientRect().top,
+    });
+  });
+
   return JSON.stringify(results);
 }"""
 
@@ -1259,6 +1286,7 @@ _TYPE_MAP = {
     "file_upload": ElementType.FILE_UPLOAD,
     "radio": ElementType.RADIO,
     "checkbox": ElementType.CHECKBOX,
+    "button": ElementType.BUTTON,
 }
 
 
@@ -2577,6 +2605,17 @@ async def main() -> int:
         "--wait", action="store_true",
         help="Pause after browser launch for manual navigation",
     )
+    ap.add_argument(
+        "--loop", action="store_true",
+        help=(
+            "Extract multiple sections in one Chrome session. After each "
+            "extract, prompts you to navigate to the next section and press "
+            "Enter (or 'q' to quit). Each section is saved as its own screen "
+            "in the KB. Useful for multi-step wizards where Chrome state "
+            "(login, mandatory fields filled, current section) must persist "
+            "across extractions."
+        ),
+    )
     ap.add_argument("--model", default="gpt-5.1", help="Model for option extraction")
     ap.add_argument("--budget", type=float, default=0.50, help="Max $ budget cap")
     ap.add_argument(
@@ -2620,22 +2659,6 @@ async def main() -> int:
         except EOFError:
             pass
 
-    screen_name = args.screen_name
-    if not screen_name:
-        title_raw = await adapter.evaluate_script("() => document.title")
-        # _safe_parse unwraps Chrome DevTools MCP's response wrapper
-        # ("Script ran on page and returned: ```json ... ```") and json-
-        # decodes the payload. The old naive .strip().strip('"') left the
-        # wrapper text intact when document.title was empty, which then
-        # became a bogus screen name in the KB.
-        parsed = _safe_parse(title_raw)
-        screen_name = (str(parsed) if parsed else "").strip()
-        if not screen_name:
-            screen_name = "Extracted Form"
-        print(f"  Screen name (from <title>): {screen_name!r}")
-
-    budget = BudgetTracker(model=args.model, max_budget=args.budget)
-
     # Checkpoint callback: after every meaningful step inside extract_form
     # (step 1 finished, each dropdown captured), persist a partial KB so a
     # mid-loop crash loses at most the current dropdown in progress.
@@ -2650,32 +2673,103 @@ async def main() -> int:
         kb.screens.append(partial_screen)
         store.save_checkpoint(kb)
 
+    # Multi-section loop: when --loop is set we keep Chrome alive across
+    # extractions so wizard state (login, filled mandatory fields, current
+    # section) persists between captures. Each iteration adds one screen
+    # to the KB. User presses Enter to continue, 'q' to quit.
+    extracted: list[tuple[str, int]] = []
+    section_num = 1
+
     try:
-        screen = await extract_form(
-            adapter=adapter,
-            app_name=args.app_name,
-            screen_name=screen_name,
-            budget=budget,
-            page_url=args.url,
-            on_progress=_checkpoint_kb,
-            defaults=defaults,
-        )
+        while True:
+            # Resolve screen_name for this iteration.
+            if section_num == 1:
+                # First pass — explicit --screen-name takes priority,
+                # otherwise derive from document.title, otherwise fall back.
+                screen_name = args.screen_name
+                if not screen_name:
+                    title_raw = await adapter.evaluate_script("() => document.title")
+                    parsed = _safe_parse(title_raw)
+                    screen_name = (str(parsed) if parsed else "").strip()
+                    if not screen_name:
+                        screen_name = "Extracted Form"
+                    print(f"  Screen name (from <title>): {screen_name!r}")
+            else:
+                # Loop iteration — prompt user for a section name.
+                default_name = f"Section {section_num}"
+                try:
+                    user_name = input(
+                        f"  Section name [default: {default_name}]: "
+                    ).strip()
+                except EOFError:
+                    user_name = ""
+                screen_name = user_name or default_name
+
+            budget = BudgetTracker(model=args.model, max_budget=args.budget)
+
+            screen = await extract_form(
+                adapter=adapter,
+                app_name=args.app_name,
+                screen_name=screen_name,
+                budget=budget,
+                page_url=args.url,
+                on_progress=_checkpoint_kb,
+                defaults=defaults,
+            )
+
+            # Final save for this section. form_extract's _build_screen
+            # already deduped/merged at the L0 level; here we replace the
+            # whole screen entry in the KB by name so a re-extract of the
+            # same screen overwrites cleanly.
+            existing = kb.get_screen(screen.screen_name)
+            if existing:
+                kb.screens = [
+                    s for s in kb.screens if s.screen_name != screen.screen_name
+                ]
+            kb.screens.append(screen)
+            path = store.save(kb)
+
+            print(f"\n  KB saved: {path}")
+            print(f"  Screen: {screen.screen_name}")
+            print(f"  Elements: {len(screen.l0)}")
+            for el in screen.l0:
+                req = " *" if el.required else ""
+                opts = f" [{len(el.options)} opts]" if el.options else ""
+                print(f"    - {el.name!r}{req} [{el.type.value}]{opts}")
+
+            extracted.append((screen.screen_name, len(screen.l0)))
+
+            if not args.loop:
+                break
+
+            # Prompt for next iteration. Keep Chrome open between sections.
+            print()
+            print("=" * 60)
+            print("  Section captured. To advance:")
+            print("    1. Fill any required fields on the current section")
+            print("    2. Upload any required documents (extract does NOT")
+            print("       upload files — do this manually in Chrome)")
+            print("    3. Click 'Save & Continue' / 'Next' yourself to")
+            print("       advance to the next section")
+            print("    4. When the next section is fully visible here in")
+            print("       Chrome, return to this terminal and press Enter")
+            print("=" * 60)
+            try:
+                choice = input(
+                    "  >>> Press Enter to extract next, or 'q' + Enter to quit: "
+                ).strip().lower()
+            except EOFError:
+                break
+            if choice == "q":
+                break
+            section_num += 1
     finally:
         await adapter.close()
 
-    existing = kb.get_screen(screen.screen_name)
-    if existing:
-        kb.screens = [s for s in kb.screens if s.screen_name != screen.screen_name]
-    kb.screens.append(screen)
-
-    path = store.save(kb)
-    print(f"\n  KB saved: {path}")
-    print(f"  Screen: {screen.screen_name}")
-    print(f"  Elements: {len(screen.l0)}")
-    for el in screen.l0:
-        req = " *" if el.required else ""
-        opts = f" [{len(el.options)} opts]" if el.options else ""
-        print(f"    - {el.name!r}{req} [{el.type.value}]{opts}")
+    if len(extracted) > 1:
+        print(f"\n  Extracted {len(extracted)} section(s) in this run:")
+        for name, n in extracted:
+            print(f"    - {name}: {n} elements")
 
     return 0
 
