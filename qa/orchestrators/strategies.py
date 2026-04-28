@@ -468,6 +468,53 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
             filled.extend(d2_filled)
             skipped.extend(d2_skipped)
 
+    # ── 6.45. Decision-button groups (Yes/No, Accept/Decline, etc).
+    # Pages can hold required choice groups that the wizard hasn't
+    # answered (no defaults entry would help — these are page-level
+    # questions). Pick the answer that doesn't expand the form.
+    from qa.orchestrators.wizard_steps import answer_decision_groups
+    dec = await answer_decision_groups(adapter, budget=ctx.budget)
+    if dec:
+        print(f"  [strat:wizard] answered {len(dec)} decision group(s)")
+        # If any decision expanded the form, mid-fill reveal needs
+        # another pass to capture the new fields. Cheap re-extract.
+        if any(d.get("expanded") for d in dec):
+            revealed3 = await extract_form(
+                adapter=adapter,
+                app_name=ctx.app_name,
+                screen_name=screen.screen_name,
+                budget=ctx.budget,
+                page_url=ctx.page_url,
+                defaults=ctx.defaults,
+            )
+            prior_ids3 = {el.element_id for el in screen.l0}
+            new_l03 = [el for el in revealed3.l0 if el.element_id not in prior_ids3]
+            if new_l03:
+                from qa.models.knowledge import ScreenKnowledge
+                delta3 = ScreenKnowledge(
+                    screen_name=screen.screen_name,
+                    screen_url=screen.screen_url,
+                    l0=new_l03,
+                    l1=[
+                        l1 for l1 in revealed3.l1
+                        if l1.element_id not in prior_ids3
+                    ],
+                )
+                screen.l0 = list(screen.l0) + new_l03
+                screen.l1 = list(screen.l1) + delta3.l1
+                from qa.knowledge.store import KnowledgeStore
+                ctx.kb.screens = [
+                    s for s in ctx.kb.screens
+                    if s.screen_name != screen.screen_name
+                ]
+                ctx.kb.screens.append(screen)
+                KnowledgeStore().save(ctx.kb)
+                d3_filled, d3_skipped = await fill_page_from_defaults(
+                    adapter, ctx.kb, ctx.defaults, delta3,
+                )
+                filled.extend(d3_filled)
+                skipped.extend(d3_skipped)
+
     # ── 6.5. Wait for inline validation to settle before nav-clicking.
     # Apps with debounced server-side checks (email-uniqueness,
     # username availability) show a spinner for 1-5s after fill.
@@ -659,6 +706,7 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
     # thumbnails. Click the page-level nav button to advance to the
     # next wizard step in the SAME iteration.
     from qa.orchestrators.wizard_steps import (
+        answer_decision_groups,
         click_save_and_continue,
         page_signature,
         wait_for_page_transition,
@@ -671,6 +719,18 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
     # last upload completes — give it a moment to settle so the nav
     # click doesn't race a banner spinner.
     await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
+
+    # Decision-button groups: TECU's KYC page surfaces a Yes/No question
+    # (e.g. "Are the auto-filled details correct?") after all sections
+    # complete. The Save & Continue click is blocked until this is
+    # answered. Pick the answer that doesn't expand the form.
+    decisions_gated = await answer_decision_groups(
+        ctx.adapter, budget=ctx.budget,
+    )
+    if decisions_gated:
+        print(f"  [strat:gated] answered {len(decisions_gated)} decision group(s) before nav")
+        # Settle again after the clicks
+        await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
 
     before_sig = await page_signature(ctx.adapter)
     before_snap = await ctx.adapter.raw_snapshot_text()

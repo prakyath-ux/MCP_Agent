@@ -718,3 +718,74 @@ SUGGEST_ALTERNATE_VALUE_SCHEMA = {
         "required": ["value", "reasoning"],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: find unanswered decision-button groups on the page.
+# A decision group is 2+ adjacent buttons that present mutually-
+# exclusive options the user must pick one of (Yes/No, Accept/Decline,
+# Single/Married/Divorced, "Yes - I am a US citizen" / "No"). The
+# agent answers each by trying options in order and keeping the one
+# that doesn't expand the form (collapse-preferring strategy).
+# ──────────────────────────────────────────────────────────────────────
+
+FIND_DECISION_GROUPS_PROMPT = """The wizard has filled the page's
+input fields. Identify any UNANSWERED decision-button groups the user
+still needs to resolve before the form can submit.
+
+A decision-button group has ALL of these properties:
+  • 2 or more adjacent buttons clustered together (same line, same
+    fieldset, or directly under the same prompt/question)
+  • The buttons present mutually-exclusive choices — picking one
+    excludes the others (Yes vs No, Accept vs Decline, Single vs
+    Married, Domestic vs International)
+  • Currently NO option appears selected — neither button shows a
+    selected/active style (no checkmark, no highlighted background,
+    no "Yes - already chosen" text)
+  • Clicking one is required to advance the form
+
+NEVER return:
+  • Save & Continue / Save & Exit / Submit / Next / Back / Cancel —
+    these are nav buttons, not decision groups
+  • A group where one option clearly already shows as selected
+  • Single buttons not part of a 2+ option choice
+  • Multi-step tab navigation ("1. First form of ID", "2. Second...")
+  • Action buttons inside a section (Verify OTP, Re-upload)
+  • A list of dropdown options inside an open popup
+  • Already-completed acknowledgement buttons / disclosed checkboxes
+
+Return an ordered list of groups, each with the EXACT button labels
+so Python can find their uids. If you're unsure whether something is
+a decision group or a layout artefact, leave it out — empty array
+is the safe default."""
+
+FIND_DECISION_GROUPS_SCHEMA = {
+    "name": "decision_groups",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "groups": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "Prompt/question text above the buttons, or '' if none",
+                        },
+                        "options": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Exact button labels in display order",
+                        },
+                    },
+                    "required": ["question", "options"],
+                },
+            },
+        },
+        "required": ["groups"],
+    },
+}

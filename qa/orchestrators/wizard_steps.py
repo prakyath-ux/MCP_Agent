@@ -401,6 +401,165 @@ async def tag_fields_new_vs_carryover(
     return tags
 
 
+async def answer_decision_groups(
+    adapter: PlatformAdapter,
+    budget,
+    guardrails=None,
+    model: str = "gpt-5.1",
+    max_groups: int = 6,
+    expansion_threshold: int = 2,
+) -> list[dict]:
+    """Find unanswered decision-button groups (Yes/No, Accept/Decline,
+    Single/Married, etc.) and answer each with a collapse-preferring
+    click-test:
+
+      For each group:
+        1. Snapshot the interactive-element count as baseline
+        2. Click options in order
+        3. After each click, count interactives again
+        4. If count grew by >= expansion_threshold → option expanded the
+           form. Click the NEXT option to switch; keep going.
+        5. Keep the choice with the smallest expansion. If all options
+           expanded equally, the last one stays selected (least disruptive
+           since later forms are filled bottom-up by mid-fill reveal).
+
+    Returns one entry per group: {question, chose, options_tried,
+    expanded}. Caller logs these for the audit trail.
+
+    Reasoning behind the collapse preference: the wizard's mid-fill
+    reveal pass already handles newly-revealed fields, but each new
+    section costs an extra LLM extract. A collapsed form is cheaper
+    and more deterministic. For TECU's 'Are you a politically exposed
+    person?' Yes/No on PEP page, picking 'No' avoids the PEP details
+    sub-form, which we don't have defaults for anyway."""
+    from qa.orchestrators.llm_subtask import llm_classify
+    from qa.orchestrators.sub_prompts import (
+        FIND_DECISION_GROUPS_PROMPT,
+        FIND_DECISION_GROUPS_SCHEMA,
+    )
+
+    snap = await adapter.raw_snapshot_text()
+    user = f"PAGE_SNAPSHOT (after wizard fill):\n{(snap or '')[:7000]}\n"
+    try:
+        result = await llm_classify(
+            FIND_DECISION_GROUPS_PROMPT,
+            user,
+            FIND_DECISION_GROUPS_SCHEMA,
+            model=model,
+            budget=budget,
+            label="find_decision_groups",
+            guardrails=guardrails,
+        )
+    except Exception as e:
+        print(f"  [wizard] decision-group scan raised {type(e).__name__}: {e}")
+        return []
+
+    groups = (result.get("groups") or [])[:max_groups]
+    if not groups:
+        return []
+
+    nav_labels_lower = {l.lower() for l in DEFAULT_NAV_LABELS}
+    server = adapter.get_mcp_server()
+
+    async def _count_interactive() -> int:
+        js = (
+            "() => JSON.stringify({n: document.querySelectorAll("
+            "'input:not([type=hidden]), select, textarea, button, '"
+            "+ '[role=button], [role=combobox], [role=textbox]'"
+            ").length})"
+        )
+        try:
+            raw = await adapter.evaluate_script(js)
+            parsed = _safe_parse(raw) or {}
+            return int(parsed.get("n", 0)) if isinstance(parsed, dict) else 0
+        except Exception:
+            return 0
+
+    decisions: list[dict] = []
+
+    for grp in groups:
+        if not isinstance(grp, dict):
+            continue
+        question = (grp.get("question") or "").strip()
+        opts = [
+            (o or "").strip() for o in (grp.get("options") or [])
+            if isinstance(o, str) and o.strip()
+        ]
+        # Filter out anything that looks like a nav button — defensive
+        opts = [
+            o for o in opts
+            if not any(nl in o.lower() for nl in nav_labels_lower)
+        ]
+        if len(opts) < 2:
+            continue
+
+        baseline = await _count_interactive()
+        per_option_growth: list[tuple[str, int]] = []
+        last_clicked = ""
+
+        for opt in opts:
+            snap_now = await adapter.raw_snapshot_text()
+            uid = _find_uid_by_text(snap_now, opt)
+            if not uid:
+                per_option_growth.append((opt, 9999))  # treat unfindable as "bad"
+                continue
+            try:
+                result = await server.call_tool("click", {"uid": uid})
+                text_str = ""
+                if hasattr(result, "content") and result.content:
+                    text_str = result.content[0].text or ""
+                elif isinstance(result, str):
+                    text_str = result
+                if "error" in text_str.lower():
+                    per_option_growth.append((opt, 9999))
+                    continue
+                last_clicked = opt
+                await asyncio.sleep(0.6)
+                cur = await _count_interactive()
+                growth = max(0, cur - baseline)
+                per_option_growth.append((opt, growth))
+                # If this option didn't expand, we're done — keep it selected
+                if growth < expansion_threshold:
+                    break
+                # Otherwise try next option (which should de-toggle this one
+                # for radio-button-style groups + select itself).
+            except Exception as e:
+                per_option_growth.append((opt, 9999))
+                continue
+
+        # Pick the choice with smallest expansion. Last-clicked is whatever
+        # is currently selected in the DOM — if it's not the smallest, we
+        # need to switch back to it.
+        if not per_option_growth:
+            continue
+        per_option_growth.sort(key=lambda t: t[1])
+        winner_label, winner_growth = per_option_growth[0]
+        if winner_label != last_clicked:
+            # Re-click the winner so the DOM reflects our actual choice
+            snap_now = await adapter.raw_snapshot_text()
+            uid = _find_uid_by_text(snap_now, winner_label)
+            if uid:
+                try:
+                    await server.call_tool("click", {"uid": uid})
+                    await asyncio.sleep(0.4)
+                except Exception:
+                    pass
+
+        decisions.append({
+            "question": question,
+            "chose": winner_label,
+            "options_tried": [o for o, _ in per_option_growth],
+            "expanded": winner_growth >= expansion_threshold,
+            "growth": winner_growth,
+        })
+        print(
+            f"  [wizard] decision: {question or '(no prompt)'!r} → "
+            f"{winner_label!r} (growth={winner_growth})"
+        )
+
+    return decisions
+
+
 async def find_and_click_reveal_buttons(
     adapter: PlatformAdapter,
     budget,
