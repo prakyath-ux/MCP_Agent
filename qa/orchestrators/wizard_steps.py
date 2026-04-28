@@ -378,6 +378,46 @@ async def tag_fields_new_vs_carryover(
     return tags
 
 
+async def wait_for_content_render(
+    adapter: PlatformAdapter,
+    min_interactive_elements: int = 3,
+    timeout: float = 15.0,
+    poll_interval: float = 0.8,
+) -> tuple[bool, int, float]:
+    """After a confirmed NEW_PAGE transition, wait for the destination
+    page to actually finish rendering. SPAs often show a loading
+    spinner/progress bar for 2-10 seconds while data loads, and an
+    extract during that window picks up zero interactive elements.
+
+    Polls the DOM until we see at least `min_interactive_elements`
+    interactable form controls (input/select/textarea/button), or
+    `timeout` is reached. Returns (rendered, count, elapsed).
+
+    `min_interactive_elements=3` because most form pages have at least
+    that many — too low (1) and a single 'Cancel' button passes; too
+    high (10) and minimal pages are misclassified as still loading."""
+    elapsed = 0.0
+    count = 0
+    js = (
+        "() => JSON.stringify({n: document.querySelectorAll("
+        "'input:not([type=hidden]), select, textarea, button, "
+        "[role=button], [role=combobox], [role=textbox]'"
+        ").length})"
+    )
+    while elapsed < timeout:
+        try:
+            raw = await adapter.evaluate_script(js)
+            parsed = _safe_parse(raw) or {}
+            count = int(parsed.get("n", 0)) if isinstance(parsed, dict) else 0
+        except Exception:
+            count = 0
+        if count >= min_interactive_elements:
+            return (True, count, elapsed)
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+    return (False, count, elapsed)
+
+
 async def page_signature(adapter: PlatformAdapter) -> dict | None:
     """Capture a stable-ish signature for the current page. Used by
     wait_for_page_transition to detect SPA navigation that doesn't change

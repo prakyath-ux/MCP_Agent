@@ -3106,9 +3106,29 @@ async def main() -> int:
                     await asyncio.sleep(1.0)
                     continue
 
-                # NEW_PAGE — reset the expansion streak and advance
+                # NEW_PAGE — reset the expansion streak and advance.
+                # SPAs commonly show a loading spinner for several seconds
+                # AFTER the transition fires before the destination page's
+                # actual content renders. Wait for real content (>=3
+                # interactive elements) before proceeding to the extract,
+                # otherwise we capture zero elements and stop prematurely.
                 expansion_streak = 0
-                await asyncio.sleep(1.5)
+                from qa.orchestrators.wizard_steps import wait_for_content_render
+                rendered, n_interactive, wait_elapsed = await wait_for_content_render(
+                    adapter, min_interactive_elements=3, timeout=15.0,
+                )
+                if rendered:
+                    print(
+                        f"  [wizard] page {section_num + 1} rendered "
+                        f"({n_interactive} interactive elements after "
+                        f"{wait_elapsed:.1f}s)"
+                    )
+                else:
+                    print(
+                        f"  [wizard] ⚠ page {section_num + 1} still showed "
+                        f"only {n_interactive} interactive element(s) after "
+                        f"{wait_elapsed:.1f}s — extracting anyway"
+                    )
                 section_num += 1
                 continue
 
