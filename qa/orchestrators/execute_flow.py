@@ -1112,6 +1112,10 @@ async def _select_option(
 
     if not options:
         await _close_popup(adapter)
+        # Strip the marker even on failure so it doesn't leak into the
+        # next snapshot the wizard takes (the LLM mistakes it for a
+        # real button and clicks it).
+        await _strip_dropdown_marker(adapter, DROPDOWN_MARKER)
         return ("OPEN_FAILED", [])
 
     click_fn = (
@@ -1128,9 +1132,35 @@ async def _select_option(
     result = (await adapter.evaluate_script(click_fn) or "").strip()
     if "OPTION_NOT_FOUND" in result:
         await _close_popup(adapter)
+        await _strip_dropdown_marker(adapter, DROPDOWN_MARKER)
         return ("OPTION_NOT_FOUND", options)
     await asyncio.sleep(0.3)
+    # Selection committed — strip the marker so it doesn't leak into
+    # downstream snapshots taken by the wizard / strategist.
+    await _strip_dropdown_marker(adapter, DROPDOWN_MARKER)
     return ("SELECTED", options)
+
+
+async def _strip_dropdown_marker(adapter: PlatformAdapter, marker: str) -> None:
+    """Remove the data-qa-marker / aria-label tags that _select_option
+    sets to find a custom-dropdown trigger by uid. Without this the
+    marker persists in the DOM and leaks into the next snapshot, which
+    confuses downstream LLM judgement calls (the post-fill reveal-button
+    scan once treated 'qa-dropdown-trigger' as a real reveal button)."""
+    js = (
+        "() => {"
+        f"  const m = {json.dumps(marker)};"
+        "  document.querySelectorAll('[data-qa-marker=\"' + m + '\"]').forEach(e => {"
+        "    e.removeAttribute('data-qa-marker');"
+        "    if (e.getAttribute('aria-label') === m) e.removeAttribute('aria-label');"
+        "  });"
+        "  return 'OK';"
+        "}"
+    )
+    try:
+        await adapter.evaluate_script(js)
+    except Exception:
+        pass  # cleanup is best-effort
 
 
 async def _close_popup(adapter: PlatformAdapter) -> None:
@@ -1416,7 +1446,25 @@ async def _mcp_fill_via_marker(
     try:
         result = await adapter.evaluate_script(verify_fn)
     except Exception:
-        return False
+        result = None
+
+    # Cleanup: strip the marker regardless of outcome so it doesn't
+    # leak into downstream snapshots.
+    cleanup_fn = (
+        "() => {"
+        f"  const m = {json.dumps(MARKER)};"
+        "  document.querySelectorAll('[data-qa-fill-target=\"' + m + '\"]').forEach(e => {"
+        "    e.removeAttribute('data-qa-fill-target');"
+        "    if (e.getAttribute('aria-label') === m) e.removeAttribute('aria-label');"
+        "  });"
+        "  return 'OK';"
+        "}"
+    )
+    try:
+        await adapter.evaluate_script(cleanup_fn)
+    except Exception:
+        pass
+
     out = result or ""
     if "OK" in out:
         return True

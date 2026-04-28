@@ -444,6 +444,12 @@ async def find_and_click_reveal_buttons(
         return ([], [])
 
     nav_labels_lower = {l.lower() for l in DEFAULT_NAV_LABELS}
+    # Internal-marker prefixes the wizard / dropdown / upload helpers use
+    # to tag elements during their own work (qa-dropdown-trigger,
+    # qa-upload-target-input, qa-mcp-fill-target). These leak into the
+    # snapshot if not cleaned up and the LLM mistakes them for real
+    # buttons. Never let the agent click them.
+    INTERNAL_MARKER_PREFIXES = ("qa-",)
     clicked: list[str] = []
     skipped: list[str] = []
 
@@ -458,6 +464,10 @@ async def find_and_click_reveal_buttons(
         # Defensive: never click a known nav button even if the LLM lists it
         if any(nl in label.lower() for nl in nav_labels_lower):
             skipped.append(f"{label} (matches a known nav label)")
+            continue
+        # Defensive: never click an internal helper marker
+        if any(label.lower().startswith(p) for p in INTERNAL_MARKER_PREFIXES):
+            skipped.append(f"{label} (internal marker — not a real button)")
             continue
 
         # Re-snapshot — earlier clicks may have shifted uids
