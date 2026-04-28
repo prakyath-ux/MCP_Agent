@@ -401,6 +401,89 @@ async def tag_fields_new_vs_carryover(
     return tags
 
 
+async def dismiss_confirmation_modal(
+    adapter: PlatformAdapter,
+) -> tuple[bool, str]:
+    """Detect a post-click confirmation modal (an Alert / Confirm
+    dialog that pops up AFTER Save & Continue and blocks the form
+    until acknowledged) and click the affirmative option to dismiss.
+
+    Different from answer_decision_groups: that one runs BEFORE the
+    nav click and prefers the option that doesn't expand the form.
+    This runs AFTER the nav click failed to transition. The user has
+    already committed to advancing, so we want to affirm the warning
+    and let the form proceed. If TECU then rejects the submission
+    with a hard error, we'll see that as still-no-transition and
+    surface the audit accordingly.
+
+    Affirmative-button priority order (most specific first so we don't
+    pick a generic 'Yes' when 'Yes, Continue' is also visible):
+      Yes, Continue · Continue · OK · Confirm · Proceed · Accept ·
+      Agree · Yes · Submit Anyway · Continue Anyway · I Understand
+    """
+    AFFIRMATIVE_LABELS = (
+        "Yes, Continue",
+        "Yes Continue",
+        "Continue Anyway",
+        "Submit Anyway",
+        "I Understand",
+        "Continue",
+        "Confirm",
+        "Proceed",
+        "Accept",
+        "Agree",
+        "I Agree",
+        "OK",
+        "Yes",
+    )
+
+    # Take a snapshot first. The modal must be visible — we don't
+    # blindly click Yes anywhere on the page.
+    snap = await adapter.raw_snapshot_text()
+    if not snap:
+        return (False, "")
+
+    # Quick heuristic: is there a modal-like region in the snapshot?
+    # Looking for role=dialog, role=alertdialog, or visible 'Alert' /
+    # 'Confirmation' / 'Are you sure' text. False negatives here just
+    # mean we miss a modal — still safer than always-affirm everything.
+    snap_lower = snap.lower()
+    modal_signals = (
+        "role=dialog",
+        "role=alertdialog",
+        "alertdialog",
+        '"alert"',
+        '"confirmation"',
+        "are you sure",
+        '"warning"',
+    )
+    has_modal = any(sig in snap_lower for sig in modal_signals)
+    if not has_modal:
+        return (False, "")
+
+    server = adapter.get_mcp_server()
+    for label in AFFIRMATIVE_LABELS:
+        uid = _find_uid_by_text(snap, label)
+        if not uid:
+            continue
+        try:
+            result = await server.call_tool("click", {"uid": uid})
+            text_str = ""
+            if hasattr(result, "content") and result.content:
+                text_str = result.content[0].text or ""
+            elif isinstance(result, str):
+                text_str = result
+            if "error" in text_str.lower():
+                continue
+            print(f"  [wizard] dismissed confirmation modal via {label!r}")
+            await asyncio.sleep(0.6)
+            return (True, label)
+        except Exception:
+            continue
+
+    return (False, "")
+
+
 async def answer_decision_groups(
     adapter: PlatformAdapter,
     budget,

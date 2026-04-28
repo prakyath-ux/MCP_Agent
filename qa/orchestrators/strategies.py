@@ -545,6 +545,18 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
         adapter, before_sig, timeout=12.0,
     )
     if not transitioned:
+        # Same modal-dismiss fallback as gated_step. Some apps confirm
+        # 'Are you sure you want to submit?' after Save & Continue.
+        from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
+        dismissed, modal_label = await dismiss_confirmation_modal(adapter)
+        if dismissed:
+            print(f"  [strat:wizard] dismissed modal via {modal_label!r}, re-checking transition")
+            await wait_for_inline_validation_settle(adapter, timeout=4.0)
+            transitioned, signal = await wait_for_page_transition(
+                adapter, before_sig, timeout=10.0,
+            )
+
+    if not transitioned:
         return StrategyOutcome(
             success=True,
             advance=False,
@@ -754,6 +766,20 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
     transitioned, signal = await wait_for_page_transition(
         ctx.adapter, before_sig, timeout=15.0,
     )
+    if not transitioned:
+        # Save & Continue may have triggered a confirmation modal
+        # (TECU shows 'Names don't match — Are you sure?' Yes/No
+        # popup when OCR'd names mismatch). Try to dismiss it via
+        # the affirmative button and re-check transition.
+        from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
+        dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
+        if dismissed:
+            print(f"  [strat:gated] dismissed modal via {modal_label!r}, re-checking transition")
+            await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
+            transitioned, signal = await wait_for_page_transition(
+                ctx.adapter, before_sig, timeout=12.0,
+            )
+
     if not transitioned:
         last_screen = captured[-1] if captured else None
         return StrategyOutcome(
