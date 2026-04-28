@@ -485,6 +485,27 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
             cost=ctx.budget.current_cost - cost_at_start,
         )
 
+    # Wait for any post-click loading state to clear before asking the
+    # LLM to classify. Otherwise the classifier sees a progress bar /
+    # spinner and hallucinates SAME_PAGE_WITH_ERROR (it correctly notes
+    # 'likely error/processing' — both are visually identical mid-flight).
+    # First call: clear inline-validation indicators (aria-busy, spinners).
+    # Second: poll for real interactive content (3+ inputs/buttons).
+    await wait_for_inline_validation_settle(adapter, timeout=8.0)
+    rendered_post, n_post, post_wait = await wait_for_content_render(
+        adapter, min_interactive_elements=3, timeout=10.0,
+    )
+    if rendered_post:
+        print(
+            f"  [strat:wizard] post-transition page rendered "
+            f"({n_post} interactive elements after {post_wait:.1f}s)"
+        )
+    else:
+        print(
+            f"  [strat:wizard] ⚠ post-transition only {n_post} interactive "
+            f"element(s) after {post_wait:.1f}s — classifying anyway"
+        )
+
     verdict, reasoning, error_text = await classify_transition(
         adapter, before_snap, budget=ctx.budget,
     )
