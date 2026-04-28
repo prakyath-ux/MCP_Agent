@@ -577,6 +577,34 @@ async def answer_decision_groups(
             return 0
 
     decisions: list[dict] = []
+    # Track every uid we've clicked across ALL groups. Without this,
+    # the second 'Yes' question's _find_uid_by_text(snap, 'Yes') returns
+    # the FIRST 'Yes' uid in the snapshot — i.e. the one we already
+    # clicked for the first question. Result: only the first question
+    # actually gets answered, the second silently never does, and TECU
+    # rejects Save & Continue with a 'please answer X' validation.
+    clicked_uids_global: set[str] = set()
+
+    import re as _re
+
+    def _find_uid_for_label(snap: str, label: str, exclude: set[str]) -> str:
+        """Find the first uid whose line contains `label`, skipping any
+        uid in `exclude`. Substring match on the WHOLE line so this
+        handles 'uid=12_3 button "Yes"' as well as 'uid=12_3 ... Yes ...'."""
+        if not snap or not label:
+            return ""
+        ll = label.lower()
+        for line in snap.split("\n"):
+            if ll not in line.lower():
+                continue
+            m = _re.search(r"uid=(\S+)", line)
+            if not m:
+                continue
+            cand = m.group(1)
+            if cand in exclude:
+                continue
+            return cand
+        return ""
 
     for grp in groups:
         if not isinstance(grp, dict):
@@ -595,14 +623,15 @@ async def answer_decision_groups(
             continue
 
         baseline = await _count_interactive()
-        per_option_growth: list[tuple[str, int]] = []
+        per_option_growth: list[tuple[str, int, str]] = []  # (label, growth, uid)
         last_clicked = ""
+        last_uid = ""
 
         for opt in opts:
             snap_now = await adapter.raw_snapshot_text()
-            uid = _find_uid_by_text(snap_now, opt)
+            uid = _find_uid_for_label(snap_now, opt, clicked_uids_global)
             if not uid:
-                per_option_growth.append((opt, 9999))  # treat unfindable as "bad"
+                per_option_growth.append((opt, 9999, ""))
                 continue
             try:
                 result = await server.call_tool("click", {"uid": uid})
@@ -612,50 +641,52 @@ async def answer_decision_groups(
                 elif isinstance(result, str):
                     text_str = result
                 if "error" in text_str.lower():
-                    per_option_growth.append((opt, 9999))
+                    per_option_growth.append((opt, 9999, uid))
                     continue
                 last_clicked = opt
+                last_uid = uid
                 await asyncio.sleep(0.6)
                 cur = await _count_interactive()
                 growth = max(0, cur - baseline)
-                per_option_growth.append((opt, growth))
-                # If this option didn't expand, we're done — keep it selected
+                per_option_growth.append((opt, growth, uid))
                 if growth < expansion_threshold:
                     break
-                # Otherwise try next option (which should de-toggle this one
-                # for radio-button-style groups + select itself).
-            except Exception as e:
-                per_option_growth.append((opt, 9999))
+            except Exception:
+                per_option_growth.append((opt, 9999, uid))
                 continue
 
-        # Pick the choice with smallest expansion. Last-clicked is whatever
-        # is currently selected in the DOM — if it's not the smallest, we
-        # need to switch back to it.
         if not per_option_growth:
             continue
         per_option_growth.sort(key=lambda t: t[1])
-        winner_label, winner_growth = per_option_growth[0]
-        if winner_label != last_clicked:
-            # Re-click the winner so the DOM reflects our actual choice
-            snap_now = await adapter.raw_snapshot_text()
-            uid = _find_uid_by_text(snap_now, winner_label)
-            if uid:
-                try:
-                    await server.call_tool("click", {"uid": uid})
-                    await asyncio.sleep(0.4)
-                except Exception:
-                    pass
+        winner_label, winner_growth, winner_uid = per_option_growth[0]
+        # Re-click the winner if it isn't the one currently selected
+        if winner_label != last_clicked and winner_uid:
+            try:
+                await server.call_tool("click", {"uid": winner_uid})
+                await asyncio.sleep(0.4)
+                last_uid = winner_uid
+            except Exception:
+                pass
+
+        # Mark every uid we tried (winner + losers) as 'used' so the
+        # next group doesn't accidentally pick them up. This is the
+        # core fix: question 2's 'Yes' search now skips question 1's
+        # 'Yes' uid.
+        for _label, _growth, _uid in per_option_growth:
+            if _uid:
+                clicked_uids_global.add(_uid)
 
         decisions.append({
             "question": question,
             "chose": winner_label,
-            "options_tried": [o for o, _ in per_option_growth],
+            "uid": last_uid,
+            "options_tried": [o for o, _, _ in per_option_growth],
             "expanded": winner_growth >= expansion_threshold,
             "growth": winner_growth,
         })
         print(
             f"  [wizard] decision: {question or '(no prompt)'!r} → "
-            f"{winner_label!r} (growth={winner_growth})"
+            f"{winner_label!r} (uid={last_uid} growth={winner_growth})"
         )
 
     return decisions
