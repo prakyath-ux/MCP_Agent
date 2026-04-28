@@ -502,3 +502,96 @@ TAG_NEW_VS_CARRYOVER_SCHEMA = {
         "required": ["tags"],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: pick a strategy for the current page (Phase 2 / Strategist).
+# Given a snapshot, the LLM chooses which registered strategy applies.
+# Strategies are app-agnostic recipes that compose primitives — the
+# strategy name maps to a Python handler function in
+# qa.orchestrators.strategies.
+# ──────────────────────────────────────────────────────────────────────
+
+PICK_STRATEGY_PROMPT = """You are looking at a web page snapshot. Pick
+which strategy the autonomous testing agent should run on this page.
+
+Available strategies:
+
+  • wizard_step
+      A flat form: a set of input fields (text/email/phone/dropdown),
+      possibly file uploads, with one navigation button (Save & Continue
+      / Next / Submit) at the bottom. Wizard fills every field from
+      defaults, optionally handles an inline OTP block if present, and
+      clicks the navigation button. Use this for normal personal-
+      information / additional-details / preferences pages.
+
+  • gated_step
+      A multi-section page where each section has its own
+      dropdown → file upload → OCR → auto-fill cycle. Look for: section
+      tabs ("1. First form of ID", "2. Second form of ID", ...), each
+      tab containing a "Choose document type" dropdown and an upload
+      slot. KYC / document verification pages match this. Wizard fill
+      will NOT work here — each section needs its own complete cycle.
+
+  • terminal
+      The form is complete. Look for: a "Thank you", "Application
+      submitted", "Welcome <name>", confirmation number, success page,
+      or a final review-only screen with no editable inputs. Stop the
+      run cleanly.
+
+  • blocked
+      The page exists but the agent can't proceed: a login screen
+      requesting credentials we don't have, a CAPTCHA, a 2FA prompt,
+      a "Service unavailable" error, an unexpected redirect to
+      something other than the expected app URL. Stop and report.
+
+  • unknown
+      The page doesn't fit any of the above patterns clearly. Examples:
+      a heavily custom widget set (drag-drop UI, canvas-based form,
+      pure JS picker with no <input>), a shadow-DOM or iframe-bound
+      form, or anything where the strategy isn't obvious. Stop with a
+      clear note so a human can extend the strategy library.
+
+Decision rules:
+- If you see numbered section tabs each with their own doc-type
+  dropdown + upload, pick gated_step.
+- If you see a flat form with text/dropdown fields and a single
+  Save & Continue button, pick wizard_step. An OTP block in the
+  same view is fine — wizard handles it.
+- If the page is clearly post-completion (no editable inputs, success
+  message), pick terminal.
+- If it's a login / CAPTCHA / error page, pick blocked.
+- If you can't tell, pick unknown — never guess.
+
+Provide one short reasoning sentence and confidence ('high' if obvious,
+'low' if you'd have flipped a coin)."""
+
+PICK_STRATEGY_SCHEMA = {
+    "name": "pick_strategy",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "strategy": {
+                "type": "string",
+                "enum": [
+                    "wizard_step",
+                    "gated_step",
+                    "terminal",
+                    "blocked",
+                    "unknown",
+                ],
+            },
+            "confidence": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "One short sentence explaining the choice",
+            },
+        },
+        "required": ["strategy", "confidence", "reasoning"],
+    },
+}
