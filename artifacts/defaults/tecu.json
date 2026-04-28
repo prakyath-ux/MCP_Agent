@@ -18,6 +18,16 @@
     "Work Email": "john.doe.work@example.com",
     "Add profile picture": "profile_picture.png",
 
+    "OTP": "121212",
+    "Enter OTP": "121212",
+    "OTP Code": "121212",
+    "Verification Code": "121212",
+    "Enter Verification Code": "121212",
+    "Code": "121212",
+    "Enter Code": "121212",
+    "One-Time Password": "121212",
+
+
     "Please select the document type": "Passport",
     "Select File": "passport.png",
 
