@@ -138,6 +138,7 @@ async def run_agent(
     model: str,
     randomize: bool,
     defaults_path: str | None,
+    reveal_scan: bool = False,
 ) -> int:
     """Top-level autonomous loop. Returns process exit code."""
 
@@ -260,6 +261,7 @@ async def run_agent(
                 page_url=url,
                 section_num=iteration,
                 model=model,
+                reveal_scan=reveal_scan,
             )
 
             t0 = time.time()
@@ -403,6 +405,16 @@ async def main() -> int:
         help="Use static PII defaults (reproducibility / debugging).",
     )
     ap.add_argument(
+        "--reveal-scan", action="store_true",
+        help=(
+            "Enable the LLM 'reveal-on-click button' scan after fill. OFF by "
+            "default — in TECU testing it misclassified dropdown display "
+            "labels as reveal buttons and corrupted Save & Continue. Turn "
+            "on for apps with genuine '+ Add Another' / 'Show Advanced' "
+            "buttons that the wizard would otherwise skip."
+        ),
+    )
+    ap.add_argument(
         "--defaults", default="",
         help="Path to defaults JSON. Defaults to artifacts/defaults/<app>.json.",
     )
@@ -418,6 +430,7 @@ async def main() -> int:
         model=args.model,
         randomize=randomize,
         defaults_path=args.defaults.strip() or None,
+        reveal_scan=args.reveal_scan,
     )
 
 

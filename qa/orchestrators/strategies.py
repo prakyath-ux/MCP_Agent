@@ -34,6 +34,11 @@ class StrategyContext:
     page_url: str
     section_num: int          # 1-indexed iteration counter
     model: str = "gpt-5.1"
+    # The reveal-button LLM scan is OFF by default — in TECU testing it
+    # misfired twice (clicked an internal marker, then a dropdown's
+    # display label). Apps with genuine "+ Add Another" buttons can
+    # enable it via --reveal-scan.
+    reveal_scan: bool = False
 
 
 @dataclass
@@ -386,18 +391,34 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
                 cost=ctx.budget.current_cost - cost_at_start,
             )
 
-    # ── 6.4. Reveal-on-click button scan. Some pages have buttons like
-    # "+ Add Another" / "Show Advanced" that surface more form fields
-    # without navigating. The LLM looks at the post-fill snapshot,
-    # identifies reveal buttons, clicks each in turn, and we re-fill
-    # whatever appears. Bounded to 4 clicks per page.
+    # ── 6.4. Reveal-on-click button scan (OPT-IN via --reveal-scan).
+    # Disabled by default: in TECU testing it misclassified the Branch
+    # dropdown's display text as a reveal button and broke Save & Continue
+    # by re-opening the popup mid-submission. Apps with genuine "+ Add
+    # Another" / "Show Advanced" buttons can opt in.
     from qa.orchestrators.wizard_steps import (
         find_and_click_reveal_buttons,
         wait_for_inline_validation_settle,
     )
-    reveal_clicked, reveal_skipped = await find_and_click_reveal_buttons(
-        adapter, budget=ctx.budget, max_clicks=4,
-    )
+    if ctx.reveal_scan:
+        # Pass known field names so the helper rejects any LLM-suggested
+        # label that just matches an existing L0 element on this page.
+        known_names: set[str] = set()
+        for el in screen.l0:
+            if el.name:
+                known_names.add(el.name)
+            # Dropdown options also surface as button labels after
+            # selection ("100 - TECU - MARABELLA BRANCH"). Add them
+            # so the reveal scan can't pick them.
+            for opt in (getattr(el, "options", None) or []):
+                if isinstance(opt, str) and opt:
+                    known_names.add(opt)
+        reveal_clicked, reveal_skipped = await find_and_click_reveal_buttons(
+            adapter, budget=ctx.budget, max_clicks=4,
+            known_field_names=known_names,
+        )
+    else:
+        reveal_clicked, reveal_skipped = ([], [])
     if reveal_clicked:
         print(
             f"  [strat:wizard] reveal scan clicked {len(reveal_clicked)} "

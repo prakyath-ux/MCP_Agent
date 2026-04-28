@@ -407,6 +407,7 @@ async def find_and_click_reveal_buttons(
     guardrails=None,
     model: str = "gpt-5.1",
     max_clicks: int = 4,
+    known_field_names: set[str] | None = None,
 ) -> tuple[list[str], list[str]]:
     """LLM scans the current snapshot for in-page buttons that reveal
     more form fields ("+ Add Another", "Show Advanced", etc.) and
@@ -450,6 +451,19 @@ async def find_and_click_reveal_buttons(
     # snapshot if not cleaned up and the LLM mistakes them for real
     # buttons. Never let the agent click them.
     INTERNAL_MARKER_PREFIXES = ("qa-",)
+    # Defensive: also reject any label that matches an L0 element name
+    # already captured on this page. The LLM occasionally picks the
+    # display text of an already-selected dropdown ('100 - TECU -
+    # MARABELLA BRANCH') as a "reveal button". Those clicks just
+    # re-open the popup and corrupt subsequent fills.
+    known_lower: set[str] = (
+        {n.lower().strip() for n in known_field_names if n}
+        if known_field_names
+        else set()
+    )
+    # Also match dropdown OPTION values — selected branch shows as a
+    # button labelled with the option text. Pull these out of the L0
+    # element names list (they're stored on the dropdown's options[]).
     clicked: list[str] = []
     skipped: list[str] = []
 
@@ -468,6 +482,12 @@ async def find_and_click_reveal_buttons(
         # Defensive: never click an internal helper marker
         if any(label.lower().startswith(p) for p in INTERNAL_MARKER_PREFIXES):
             skipped.append(f"{label} (internal marker — not a real button)")
+            continue
+        # Defensive: never click a label that matches a known L0 field
+        # name — that's the field's own button (dropdown trigger, upload
+        # trigger, etc.), not a reveal button.
+        if known_lower and label.lower().strip() in known_lower:
+            skipped.append(f"{label} (matches a known L0 field — likely the field's own trigger)")
             continue
 
         # Re-snapshot — earlier clicks may have shifted uids
