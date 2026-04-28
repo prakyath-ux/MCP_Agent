@@ -203,6 +203,23 @@ async def run_agent(
             print(f"  [agent] iteration {iteration}/{max_iterations}")
             print("=" * 60)
 
+            # ── 0. Wait for the page to actually render before picking
+            # a strategy. Apps with loading spinners / progress bars
+            # between transitions confuse the strategist — it saw an
+            # in-flight loading state on TECU after Verify OTP and
+            # returned 'unknown'. Bound to 12s; falls through to pick
+            # anyway if nothing rendered (so genuinely-empty pages
+            # still surface as 'unknown').
+            from qa.orchestrators.wizard_steps import wait_for_content_render
+            rendered, n_int, wait_el = await wait_for_content_render(
+                adapter, min_interactive_elements=3, timeout=12.0,
+            )
+            if not rendered:
+                print(
+                    f"  [agent] ⚠ page only had {n_int} interactive element(s) "
+                    f"after {wait_el:.1f}s — picking strategy anyway"
+                )
+
             # ── 1. Pick a strategy
             name, conf, reason = await pick_strategy(adapter, budget, model)
             print(f"  [agent] strategy={name} confidence={conf}")

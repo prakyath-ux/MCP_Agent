@@ -610,7 +610,14 @@ on this page from defaults. Before clicking the final Save & Continue
 / Submit button, identify any in-page buttons whose purpose is to
 REVEAL or ADD MORE form fields (not navigate / submit).
 
-Examples of reveal-on-click buttons:
+A reveal button has ALL of these properties:
+  • Visible button role (uid + role 'button' / 'link' in the snapshot)
+  • Label clearly indicates adding / showing / expanding more form
+    content (the literal action — not just a noun)
+  • Clicking it would surface NEW editable fields, not change state
+    of an existing field
+
+Examples of valid reveal-on-click buttons:
   • "+ Add Another"
   • "Add Beneficiary"
   • "Show Advanced Options"
@@ -618,19 +625,29 @@ Examples of reveal-on-click buttons:
   • "Add Income Source"
   • "Expand"
 
-Examples of buttons to NEVER include:
-  • Save & Continue / Save & Exit / Save / Submit
-  • Next / Previous / Back / Continue
-  • Cancel / Discard / Clear / Reset
-  • Delete / Remove
-  • Verify OTP / Confirm (these advance the OTP step, not reveal fields)
-  • Re-upload / Replace
-  • Section navigation tabs
-  • Action buttons inside already-filled dropdowns
+NEVER include any of the following — even if they're styled as
+buttons in the DOM:
 
-Only include a button if you're confident clicking it adds new editable
-fields the wizard should fill on this same page. If the page looks
-complete and ready to submit, return an empty array.
+  • Save & Continue / Save & Exit / Save / Submit / Next / Previous /
+    Back / Continue / Cancel / Discard / Clear / Reset — these
+    advance / cancel the form
+  • Delete / Remove / Trash — destructive
+  • Verify OTP / Confirm OTP / Resend OTP — OTP flow, not reveal
+  • Re-upload / Replace / Change — file replacement
+  • Section navigation tabs (numbered: "1. ", "2. ", "Step 3:")
+  • The DISPLAY LABEL of an already-selected dropdown
+    (e.g. "100 - TECU - MARABELLA BRANCH" appears as a button after
+    selection — that's the dropdown's chosen-value display, NOT a
+    reveal button)
+  • An option text from inside a now-closed dropdown popup
+  • Filename / item-summary buttons that show what was uploaded
+    (e.g. "passport.png", "delete attachment")
+  • Static text rendered as a button-like span/div with no actual
+    action handler
+
+The safest default is an empty array. Only return a button if you're
+certain it would add new fillable fields. If you're guessing,
+return empty.
 
 Return the EXACT visible label so Python can find the uid."""
 
