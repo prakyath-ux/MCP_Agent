@@ -24,7 +24,16 @@ from qa.tools.web_tools import _find_uid_by_text, _safe_parse
 # Common labels for "advance the wizard" buttons. Order matters — most
 # specific first so we don't click a generic "Submit" when a "Save &
 # Continue" is also visible. All matching is case-insensitive substring.
+#
+# OTP-family labels lead the list because OTP screens often render both
+# a "Verify OTP" button AND keep the prior "Save & Continue" visible —
+# we want to click Verify first so the OTP submits before any save flow.
 DEFAULT_NAV_LABELS = (
+    "Verify OTP",
+    "Verify Code",
+    "Verify",
+    "Confirm OTP",
+    "Submit OTP",
     "Save & Continue",
     "Save and Continue",
     "Save & Next",
@@ -34,6 +43,19 @@ DEFAULT_NAV_LABELS = (
     "Next",
     "Proceed",
     "Submit",
+)
+
+
+# Regex matching a single digit-input slot in a multi-box OTP widget.
+# Captures the trailing index so we can sort and fill in order. Catches
+# common shapes:
+#   • TECU: Otp-Input-0 .. Otp-Input-5
+#   • Some libs: otp_digit_1, OtpDigit1, otp-1
+#   • Pin code variants: pin_1, code-digit-2
+import re
+_OTP_SLOT_RE = re.compile(
+    r"^\s*(?:otp|pin|verif(?:y|ication))[-_\s]*(?:input|digit|code|box)?[-_\s]*(\d+)\s*$",
+    re.IGNORECASE,
 )
 
 
@@ -62,6 +84,66 @@ async def fill_page_from_defaults(
     set_server(adapter.get_mcp_server())
     set_kb(kb, kb.app.app_name if kb.app else "")
 
+    # ── OTP / multi-box pattern detection ────────────────────────────
+    # Detect any cluster of single-digit OTP boxes (Otp-Input-0 ..
+    # Otp-Input-5 etc.). When present, look up the OTP code in defaults
+    # under common label aliases and fill each box with one digit in
+    # index order. Mark the cluster as filled so the per-element loop
+    # skips them. Per-box fills go through _set_parent_value as normal.
+    otp_slots: list[tuple[int, object]] = []
+    for el in screen.l0:
+        tname = el.type.value if hasattr(el.type, "value") else str(el.type)
+        if tname != "text_input":
+            continue
+        m = _OTP_SLOT_RE.match(el.name or "")
+        if m:
+            otp_slots.append((int(m.group(1)), el))
+
+    otp_consumed: set[str] = set()
+    if otp_slots:
+        otp_slots.sort(key=lambda t: t[0])
+        otp_value = ""
+        for alias in (
+            "OTP", "Enter OTP", "OTP Code", "Verification Code",
+            "Enter Verification Code", "Code", "Enter Code",
+            "One-Time Password",
+        ):
+            v = defaults.get(alias)
+            if v:
+                otp_value = v
+                break
+
+        if not otp_value:
+            for _idx, el in otp_slots:
+                skipped.append((el.name, "no OTP default declared"))
+                otp_consumed.add(el.name)
+        elif len(otp_value) < len(otp_slots):
+            for _idx, el in otp_slots:
+                skipped.append((el.name, f"OTP default {otp_value!r} shorter than {len(otp_slots)} boxes"))
+                otp_consumed.add(el.name)
+        else:
+            from qa.orchestrators.execute_flow import _set_parent_value
+            print(f"  [wizard] detected OTP pattern: {len(otp_slots)} boxes — filling with {otp_value[:len(otp_slots)]!r}")
+            for digit_idx, (_idx, el) in enumerate(otp_slots):
+                digit = otp_value[digit_idx]
+                # Patch defaults to return this digit for THIS slot only.
+                # Same trick execute_flow uses for one-off value injection.
+                orig_get = defaults.get
+                def _patched(label, section="", _expected=el.name, _val=digit):
+                    if label == _expected:
+                        return _val
+                    return orig_get(label, section)
+                defaults.get = _patched  # type: ignore[method-assign]
+                try:
+                    ok, note = await _set_parent_value(
+                        adapter, kb, defaults, el.element_id,
+                    )
+                finally:
+                    defaults.get = orig_get  # type: ignore[method-assign]
+                (filled if ok else skipped).append((el.name, note if ok else f"otp digit fill failed: {note}"))
+                otp_consumed.add(el.name)
+                await asyncio.sleep(0.15)
+
     by_type: dict[str, list] = {
         "dropdown": [],
         "text_input": [],
@@ -69,6 +151,8 @@ async def fill_page_from_defaults(
         "other": [],
     }
     for el in screen.l0:
+        if el.name in otp_consumed:
+            continue
         tname = el.type.value if hasattr(el.type, "value") else str(el.type)
         if tname in by_type:
             by_type[tname].append(el)
