@@ -545,52 +545,21 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
         adapter, before_sig, timeout=12.0,
     )
     if not transitioned:
-        # Same modal-dismiss as gated_step: dismiss → wait for transition
-        # WITHOUT re-clicking. Yes on the modal IS the submit confirmation
-        # in the apps we've tested; re-clicking just re-fires the modal.
-        # Re-click is kept as a fallback only when the page is idle (no
-        # modal visible) after dismiss.
+        # Dismiss confirmation modal once, wait long, no re-click.
+        # Same reasoning as gated_step: Yes is the submit on apps we've
+        # seen, re-clicking re-fires the modal in a loop.
         from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
 
-        async def _modal_still_visible_w() -> bool:
-            snap = await adapter.raw_snapshot_text()
-            sl = (snap or "").lower()
-            return any(s in sl for s in (
-                "role=dialog", "role=alertdialog", '"alert"',
-                '"confirmation"', "are you sure", '"warning"',
-            ))
-
-        for modal_attempt in range(3):
-            dismissed, modal_label = await dismiss_confirmation_modal(adapter)
-            if not dismissed:
-                break
+        dismissed, modal_label = await dismiss_confirmation_modal(adapter)
+        if dismissed:
             print(
-                f"  [strat:wizard] dismissed modal via {modal_label!r} "
-                f"(attempt {modal_attempt + 1}) — waiting for transition"
+                f"  [strat:wizard] dismissed modal via {modal_label!r} — "
+                f"waiting up to 30s for form to advance (no re-click)"
             )
             await wait_for_inline_validation_settle(adapter, timeout=4.0)
             transitioned, signal = await wait_for_page_transition(
-                adapter, before_sig, timeout=10.0,
+                adapter, before_sig, timeout=30.0,
             )
-            if transitioned:
-                break
-            if await _modal_still_visible_w():
-                # Modal popped again — let the next loop iter dismiss it
-                continue
-            # Page idle, no modal — fallback re-click
-            print(
-                f"  [strat:wizard] page idle after dismiss — fallback "
-                f"re-click of Save & Continue"
-            )
-            reclicked, relabel = await click_save_and_continue(adapter)
-            if reclicked:
-                print(f"  [strat:wizard] re-clicked {relabel!r} (fallback)")
-            await wait_for_inline_validation_settle(adapter, timeout=4.0)
-            transitioned, signal = await wait_for_page_transition(
-                adapter, before_sig, timeout=10.0,
-            )
-            if transitioned:
-                break
 
     if not transitioned:
         return StrategyOutcome(
@@ -803,115 +772,26 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
         ctx.adapter, before_sig, timeout=15.0,
     )
     if not transitioned:
-        # Save & Continue triggered a confirmation modal (TECU shows
-        # 'Names don't match — Are you sure?' when OCR'd names
-        # mismatch). User-confirmed flow: clicking Yes on the modal
-        # IS the submit confirmation — the form advances on its own.
-        # We wait for transition WITHOUT re-clicking Save & Continue,
-        # since re-clicking just re-fires the same modal.
+        # User-confirmed flow on TECU: click Save & Continue → modal pops
+        # → click Yes → form advances. Yes IS the submit. So we dismiss
+        # ONCE and wait LONG for transition. Do NOT re-click Save &
+        # Continue — re-clicking re-fires the same modal in a loop.
         #
-        # Re-clicking is kept as a last-resort fallback for apps where
-        # the modal genuinely absorbs the original click (we'll know
-        # because the page sits idle without showing a modal).
-        from qa.orchestrators.wizard_steps import (
-            dismiss_confirmation_modal, fill_page_from_defaults,
-        )
-        from qa.orchestrators.form_extract import extract_form
+        # Generous transition timeout (30s) because gated-page submission
+        # on TECU includes server-side document validation that can take
+        # 10-20s before the next page renders.
+        from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
 
-        async def _modal_still_visible() -> bool:
-            snap = await ctx.adapter.raw_snapshot_text()
-            sl = (snap or "").lower()
-            return any(s in sl for s in (
-                "role=dialog", "role=alertdialog", '"alert"',
-                '"confirmation"', "are you sure", '"warning"',
-            ))
-
-        for modal_attempt in range(3):
-            dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
-            if not dismissed:
-                break
+        dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
+        if dismissed:
             print(
-                f"  [strat:gated] dismissed modal via {modal_label!r} "
-                f"(attempt {modal_attempt + 1}) — waiting for transition"
+                f"  [strat:gated] dismissed modal via {modal_label!r} — "
+                f"waiting up to 30s for form to advance (no re-click)"
             )
             await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
             transitioned, signal = await wait_for_page_transition(
-                ctx.adapter, before_sig, timeout=10.0,
+                ctx.adapter, before_sig, timeout=30.0,
             )
-            if transitioned:
-                break
-
-            # No transition. Two cases:
-            #   A) Modal reappeared (form re-validated, popped same warning).
-            #      The Yes click was registered but the underlying state
-            #      hasn't changed — re-clicking would just loop. Try
-            #      filling any unfilled required fields and let the next
-            #      modal-attempt's dismiss try again.
-            #   B) No modal visible, page is just idle. The original click
-            #      was absorbed; re-click Save & Continue as a fallback.
-            modal_present = await _modal_still_visible()
-            if modal_present:
-                # Case A — try to find missing fields the modal might be
-                # waiting on. Re-extract + fill. If nothing fillable, the
-                # modal will dismiss again on next loop iteration.
-                try:
-                    refresh_screen = await extract_form(
-                        adapter=ctx.adapter,
-                        app_name=ctx.app_name,
-                        screen_name=f"post_modal_{modal_attempt + 1}",
-                        budget=ctx.budget,
-                        page_url=ctx.page_url,
-                        defaults=ctx.defaults,
-                    )
-                    rfilled, rskipped = await fill_page_from_defaults(
-                        ctx.adapter, ctx.kb, ctx.defaults, refresh_screen,
-                    )
-                    if rfilled:
-                        print(
-                            f"  [strat:gated] filled {len(rfilled)} field(s) "
-                            f"that surfaced after modal — retrying"
-                        )
-                    missing_req = [
-                        el.name for el in refresh_screen.l0
-                        if getattr(el, "required", False)
-                        and el.name not in {n for n, _ in rfilled}
-                        and not any(
-                            m in (getattr(el, "behavior", "") or "").lower()
-                            for m in ("auto_filled", "auto-filled", "autofilled",
-                                     "read_only", "readonly", "masked")
-                        )
-                    ]
-                    if missing_req:
-                        last_screen = captured[-1] if captured else None
-                        return StrategyOutcome(
-                            success=True, advance=False, captured=last_screen,
-                            note=(
-                                f"gated captured {len(captured)} section(s); "
-                                f"modal kept reappearing because "
-                                f"{len(missing_req)} required field(s) are "
-                                f"unfilled (no default for: {missing_req[:3]})"
-                            ),
-                            cost=ctx.budget.current_cost - cost_at_start,
-                        )
-                except Exception as e:
-                    print(f"  [strat:gated] post-modal re-extract raised: {e}")
-                # Modal still visible after fill → loop will dismiss it again
-                continue
-
-            # Case B — page idle, no modal. Re-click as fallback.
-            print(
-                f"  [strat:gated] page idle after dismiss — fallback "
-                f"re-click of Save & Continue"
-            )
-            reclicked, relabel = await click_save_and_continue(ctx.adapter)
-            if reclicked:
-                print(f"  [strat:gated] re-clicked {relabel!r} (fallback)")
-            await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
-            transitioned, signal = await wait_for_page_transition(
-                ctx.adapter, before_sig, timeout=10.0,
-            )
-            if transitioned:
-                break
 
     if not transitioned:
         last_screen = captured[-1] if captured else None
