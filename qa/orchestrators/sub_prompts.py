@@ -374,3 +374,131 @@ VERIFY_CLAIM_SCHEMA = {
         "required": ["verified_items", "unsupported_items", "reasoning"],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: classify a "transition" — did clicking a nav button take us
+# to a genuinely new page, or did the same page just re-render with an
+# error / expansion / revealed section?
+# Used by wizard mode after wait_for_page_transition fires.
+# ──────────────────────────────────────────────────────────────────────
+
+CLASSIFY_PAGE_TRANSITION_PROMPT = """You will receive two snapshots of
+a web page taken before and after the wizard clicked a 'Save & Continue'
+or 'Next' / 'Verify' button.
+
+Your job: decide which of these happened.
+
+  • NEW_PAGE — the user genuinely advanced to a new page or wizard step.
+    Look for: different page heading text, different URL, completely
+    different field set, a different section header.
+
+  • SAME_PAGE_WITH_ERROR — the click was rejected. The app is still on
+    the original page but is now showing a validation message, error
+    banner, "user already exists", "field is required", a red toast,
+    inline field errors, etc. Most fields from the BEFORE snapshot
+    are still present in the AFTER snapshot.
+
+  • SAME_PAGE_WITH_EXPANSION — the click revealed a sub-section on the
+    SAME page (e.g. expanded an accordion, revealed an OTP block,
+    showed a previously-hidden upload row). All BEFORE fields still
+    visible AND new fields appeared in the same screen context.
+
+If you're unsure, lean toward SAME_PAGE_WITH_ERROR — wrongly accepting
+a fake transition pollutes the KB; wrongly rejecting a real one only
+costs another extract on retry.
+
+Provide a one-sentence reason and, if relevant, the error_text you saw
+verbatim from the snapshot."""
+
+CLASSIFY_PAGE_TRANSITION_SCHEMA = {
+    "name": "page_transition",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "verdict": {
+                "type": "string",
+                "enum": [
+                    "NEW_PAGE",
+                    "SAME_PAGE_WITH_ERROR",
+                    "SAME_PAGE_WITH_EXPANSION",
+                ],
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "One short sentence explaining the verdict",
+            },
+            "error_text": {
+                "type": "string",
+                "description": "Verbatim error/validation text from the after-snapshot, or '' if none",
+            },
+        },
+        "required": ["verdict", "reasoning", "error_text"],
+    },
+}
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: tag each L0 field as NEW (specific to this screen) or
+# CARRYOVER (already captured on a prior screen / part of the persistent
+# header / not testable here). Lets the wizard write a clean per-screen
+# KB instead of dumping the whole DOM into every page entry.
+# ──────────────────────────────────────────────────────────────────────
+
+TAG_NEW_VS_CARRYOVER_PROMPT = """You will receive:
+  1. A list of field names captured on the CURRENT page.
+  2. A list of field names already captured on PRIOR pages of the same
+     wizard / form.
+  3. The current page's snapshot (a11y tree).
+
+Tag each current field as NEW or CARRYOVER:
+
+  • NEW — the field is specific to this page, the user is meant to
+    interact with it here for the first time. Even if a similarly-named
+    field exists on a prior page, mark NEW if THIS instance is in a
+    different section / serves a different purpose / is freshly
+    rendered for this step.
+
+  • CARRYOVER — the field is just the same one as before, persisting in
+    the DOM across pages. Common patterns: a sticky header summarising
+    the user's name, or fields that the framework re-renders identically
+    on every wizard step. The user has already filled it. Do not test
+    it again here.
+
+Heuristic: if the field appears on prior pages AND it's in a header /
+summary section of the current page (vs. inside the current step's
+main form area), it's almost always CARRYOVER. New fields specific to
+this step are usually NEW even if they share a name with something
+historical.
+
+Return one entry per field in the input list, preserving order."""
+
+TAG_NEW_VS_CARRYOVER_SCHEMA = {
+    "name": "field_tags",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "tags": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "field_name": {"type": "string"},
+                        "tag": {
+                            "type": "string",
+                            "enum": ["NEW", "CARRYOVER"],
+                        },
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["field_name", "tag", "reason"],
+                },
+            },
+        },
+        "required": ["tags"],
+    },
+}

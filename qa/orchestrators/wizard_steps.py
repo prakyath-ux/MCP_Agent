@@ -262,6 +262,122 @@ async def click_save_and_continue(
     return (False, "")
 
 
+async def classify_transition(
+    adapter: PlatformAdapter,
+    before_snapshot: str,
+    budget,
+    guardrails=None,
+    model: str = "gpt-5.1",
+) -> tuple[str, str, str]:
+    """Ask the LLM whether the post-click DOM is a NEW_PAGE, the same
+    page with an error, or the same page with an expanded section. The
+    deterministic wait_for_page_transition can be fooled by content
+    reshuffling (e.g. an inline 'user already exists' error makes body
+    length change without advancing the wizard). This narrow LLM call
+    fixes that.
+
+    Returns (verdict, reasoning, error_text). verdict is one of:
+      NEW_PAGE | SAME_PAGE_WITH_ERROR | SAME_PAGE_WITH_EXPANSION
+
+    On LLM failure (timeout, parse error), returns ('NEW_PAGE',
+    'classifier failed — defaulting to NEW_PAGE', '') so the wizard
+    keeps going. The deterministic transition check already passed at
+    this point; the classifier is a quality gate, not a hard stop."""
+    from qa.orchestrators.llm_subtask import llm_classify
+    from qa.orchestrators.sub_prompts import (
+        CLASSIFY_PAGE_TRANSITION_PROMPT,
+        CLASSIFY_PAGE_TRANSITION_SCHEMA,
+    )
+
+    after_snapshot = await adapter.raw_snapshot_text()
+    user = (
+        f"BEFORE_SNAPSHOT:\n{(before_snapshot or '')[:6000]}\n\n"
+        f"AFTER_SNAPSHOT:\n{(after_snapshot or '')[:6000]}\n"
+    )
+    try:
+        result = await llm_classify(
+            CLASSIFY_PAGE_TRANSITION_PROMPT,
+            user,
+            CLASSIFY_PAGE_TRANSITION_SCHEMA,
+            model=model,
+            budget=budget,
+            label="classify_transition",
+            guardrails=guardrails,
+        )
+    except Exception as e:
+        print(f"  [wizard] transition classifier raised {type(e).__name__}: {e} — defaulting to NEW_PAGE")
+        return ("NEW_PAGE", "classifier raised exception — defaulting", "")
+
+    verdict = (result.get("verdict") or "").strip() or "NEW_PAGE"
+    reasoning = (result.get("reasoning") or "").strip()
+    error_text = (result.get("error_text") or "").strip()
+    return (verdict, reasoning, error_text)
+
+
+async def tag_fields_new_vs_carryover(
+    adapter: PlatformAdapter,
+    current_field_names: list[str],
+    prior_field_names: list[str],
+    budget,
+    guardrails=None,
+    model: str = "gpt-5.1",
+) -> dict[str, str]:
+    """Ask the LLM to tag each current field as NEW or CARRYOVER given
+    what's already been captured on prior pages. Returns a dict
+    {field_name: 'NEW' | 'CARRYOVER'}. Fields not returned by the LLM
+    default to NEW (don't accidentally drop unknowns).
+
+    Used by the wizard before saving a screen to KB so persistent
+    header/footer fields and re-rendered carryovers don't pollute the
+    per-page L0 list."""
+    from qa.orchestrators.llm_subtask import llm_classify
+    from qa.orchestrators.sub_prompts import (
+        TAG_NEW_VS_CARRYOVER_PROMPT,
+        TAG_NEW_VS_CARRYOVER_SCHEMA,
+    )
+
+    if not current_field_names:
+        return {}
+    if not prior_field_names:
+        # First page — nothing to compare against, everything is NEW
+        return {n: "NEW" for n in current_field_names}
+
+    snapshot = await adapter.raw_snapshot_text()
+    user = (
+        "CURRENT page fields:\n"
+        + "\n".join(f"  - {n}" for n in current_field_names)
+        + "\n\nPRIOR pages already captured these fields:\n"
+        + "\n".join(f"  - {n}" for n in prior_field_names)
+        + f"\n\nCURRENT page snapshot:\n{(snapshot or '')[:6000]}\n"
+    )
+    try:
+        result = await llm_classify(
+            TAG_NEW_VS_CARRYOVER_PROMPT,
+            user,
+            TAG_NEW_VS_CARRYOVER_SCHEMA,
+            model=model,
+            budget=budget,
+            label="tag_new_vs_carryover",
+            guardrails=guardrails,
+        )
+    except Exception as e:
+        print(f"  [wizard] field tagger raised {type(e).__name__}: {e} — keeping all as NEW")
+        return {n: "NEW" for n in current_field_names}
+
+    tags: dict[str, str] = {}
+    for entry in result.get("tags", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("field_name", "")
+        tag = entry.get("tag", "NEW")
+        if name and tag in ("NEW", "CARRYOVER"):
+            tags[name] = tag
+    # Anything the LLM didn't return → keep as NEW (safer than dropping)
+    for n in current_field_names:
+        tags.setdefault(n, "NEW")
+    return tags
+
+
 async def page_signature(adapter: PlatformAdapter) -> dict | None:
     """Capture a stable-ish signature for the current page. Used by
     wait_for_page_transition to detect SPA navigation that doesn't change

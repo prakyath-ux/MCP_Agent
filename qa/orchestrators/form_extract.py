@@ -2853,6 +2853,41 @@ async def main() -> int:
                 defaults=defaults,
             )
 
+            # ── LLM field tagger (wizard mode, page ≥ 2) ──────────
+            # Many SPAs keep prior-page fields rendered (header summary,
+            # persistent sidebar, sticky review panel). The DOM-walk
+            # extract picks them all up, polluting the per-page L0
+            # with carryovers. Ask the LLM which fields are NEW to
+            # this screen vs. CARRYOVER from earlier pages, and drop
+            # the carryovers from the screen we save. Only runs on
+            # iteration 2+ where we have prior-page fields to compare.
+            if args.wizard and section_num > 1 and kb.screens:
+                from qa.orchestrators.wizard_steps import tag_fields_new_vs_carryover
+                prior_names = [
+                    el.name for s in kb.screens for el in s.l0
+                    if s.screen_name != screen.screen_name and el.name
+                ]
+                current_names = [el.name for el in screen.l0]
+                tags = await tag_fields_new_vs_carryover(
+                    adapter, current_names, prior_names, budget=budget,
+                )
+                carryovers = [n for n, t in tags.items() if t == "CARRYOVER"]
+                if carryovers:
+                    print(
+                        f"  [wizard] LLM tagged {len(carryovers)}/"
+                        f"{len(current_names)} field(s) as CARRYOVER — "
+                        f"dropping from {screen.screen_name!r}'s L0:"
+                    )
+                    for n in carryovers[:8]:
+                        print(f"  [wizard]   · {n}")
+                    if len(carryovers) > 8:
+                        print(f"  [wizard]   …and {len(carryovers) - 8} more")
+                    keep_names = {n for n, t in tags.items() if t == "NEW"}
+                    screen.l0 = [el for el in screen.l0 if el.name in keep_names]
+                    # Same filter on L1 so locators don't leak.
+                    keep_ids = {el.element_id for el in screen.l0}
+                    screen.l1 = [l1 for l1 in screen.l1 if l1.element_id in keep_ids]
+
             # Final save for this section. form_extract's _build_screen
             # already deduped/merged at the L0 level; here we replace the
             # whole screen entry in the KB by name so a re-extract of the
@@ -2944,6 +2979,10 @@ async def main() -> int:
                     break
 
                 before = await page_signature(adapter)
+                # Snapshot before the click — fed to the LLM transition
+                # classifier later so it can compare DOM state pre/post
+                # without a second round trip.
+                before_snap = await adapter.raw_snapshot_text()
                 print(f"  [wizard] looking for nav button on page {section_num}...")
                 clicked, label = await click_save_and_continue(adapter)
                 if not clicked:
@@ -2963,7 +3002,42 @@ async def main() -> int:
                         f"app may have shown a validation error. Stopping."
                     )
                     break
-                print(f"  [wizard] transitioned ({signal}) — settling before next extract")
+                print(f"  [wizard] transitioned ({signal}) — classifying with LLM")
+
+                # ── LLM transition classifier ──────────────────────
+                # The deterministic transition check above is easily
+                # fooled (inline error toast inflates body length, OTP
+                # box reveal changes heading, etc.). Ask the LLM to
+                # judge: did we actually advance, or is this a same-
+                # page re-render? On SAME_PAGE_WITH_ERROR, stop and
+                # report — saving a fake page to KB is worse than
+                # missing one. On SAME_PAGE_WITH_EXPANSION, treat the
+                # current screen as still the same page (re-extract
+                # will pick up the expanded section).
+                from qa.orchestrators.wizard_steps import classify_transition
+                verdict, reasoning, error_text = await classify_transition(
+                    adapter, before_snap, budget=budget,
+                )
+                print(f"  [wizard] verdict: {verdict} — {reasoning}")
+                if verdict == "SAME_PAGE_WITH_ERROR":
+                    if error_text:
+                        print(f"  [wizard] error from page: {error_text!r}")
+                    print(
+                        f"  [wizard] stopping — app rejected the click. "
+                        f"Captured {section_num} valid page(s)."
+                    )
+                    break
+                if verdict == "SAME_PAGE_WITH_EXPANSION":
+                    print(
+                        f"  [wizard] same page expanded — re-extracting "
+                        f"in place (no new screen counter increment)"
+                    )
+                    # Re-extract the same screen_name; do not advance
+                    # section_num so the expanded content overwrites.
+                    await asyncio.sleep(1.0)
+                    continue
+
+                # NEW_PAGE — proceed normally
                 await asyncio.sleep(1.5)
                 section_num += 1
                 continue
