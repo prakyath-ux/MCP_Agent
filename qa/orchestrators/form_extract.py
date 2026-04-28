@@ -2909,6 +2909,40 @@ async def main() -> int:
                     if len(skipped) > 5:
                         print(f"  [wizard]   …and {len(skipped) - 5} more")
 
+                # Required-field precheck: don't click Save & Continue if
+                # any required (*) field failed to fill — the form will
+                # just reject submission with a validation error and
+                # transition will time out. Better to stop here with a
+                # clear list of what's missing than burn 12s on a doomed
+                # click. Match by element name (skipped tuple's first
+                # entry) against the L0's `required` flag.
+                required_misses: list[tuple[str, str]] = []
+                filled_names = {n for n, _ in filled}
+                for el in screen.l0:
+                    if not getattr(el, "required", False):
+                        continue
+                    if el.name in filled_names:
+                        continue
+                    note = next(
+                        (n for fname, n in skipped if fname == el.name),
+                        "not filled (no entry in fill report)",
+                    )
+                    required_misses.append((el.name, note))
+
+                if required_misses:
+                    print(
+                        f"\n  [wizard] ✗ {len(required_misses)} required "
+                        f"field(s) not filled — refusing to click Save & "
+                        f"Continue (would fail validation):"
+                    )
+                    for name, note in required_misses:
+                        print(f"  [wizard]   ✗ {name}: {note}")
+                    print(
+                        f"  [wizard] stopping. Fix defaults / locators and "
+                        f"re-run, or fill these fields manually before next attempt."
+                    )
+                    break
+
                 before = await page_signature(adapter)
                 print(f"  [wizard] looking for nav button on page {section_num}...")
                 clicked, label = await click_save_and_continue(adapter)
