@@ -2780,9 +2780,26 @@ async def main() -> int:
                     title_raw = await adapter.evaluate_script("() => document.title")
                     parsed = _safe_parse(title_raw)
                     screen_name = (str(parsed) if parsed else "").strip()
+                    # Fallback: if <title> is empty/generic, use the visible
+                    # main heading. Many SPAs leave <title> blank and put
+                    # the page name in an <h1>/<h2>. Avoids landing every
+                    # extract on the same "Extracted Form" name and breaking
+                    # the section-qualified defaults lookup.
+                    if not screen_name or screen_name.lower() in (
+                        "extracted form", "react app", "vue app", "loading",
+                    ):
+                        h_raw = await adapter.evaluate_script(
+                            "() => { const h = document.querySelector("
+                            "'h1, h2, [role=heading]'); "
+                            "return h ? (h.textContent || '').trim() : ''; }"
+                        )
+                        h_parsed = _safe_parse(h_raw)
+                        h_text = (str(h_parsed) if h_parsed else "").strip()
+                        if h_text:
+                            screen_name = h_text
                     if not screen_name:
                         screen_name = "Extracted Form"
-                    print(f"  Screen name (from <title>): {screen_name!r}")
+                    print(f"  Screen name: {screen_name!r}")
             elif args.wizard:
                 # Autonomous wizard mode — derive screen_name from the
                 # document. User isn't at the keyboard; we want a stable

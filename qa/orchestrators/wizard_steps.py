@@ -82,14 +82,24 @@ async def fill_page_from_defaults(
 
     for el in ordered:
         tname = el.type.value if hasattr(el.type, "value") else str(el.type)
-        if tname in ("date_picker", "button"):
-            skipped.append((el.name, f"{tname} — wizard skips"))
+        if tname == "date_picker":
+            skipped.append((el.name, "date_picker — wizard skips"))
             continue
 
         value = defaults.get(el.name, section=el.screen_name)
         if not value:
             skipped.append((el.name, "no default declared"))
             continue
+
+        # Buttons that have a default entry are treated as upload triggers.
+        # Pages like TECU page 1 sometimes lazy-render the hidden
+        # input[type=file], so extract sees only the visible "Add profile
+        # picture" button. The upload tool handles the trigger click +
+        # post-click input injection itself, so all we need is the field
+        # name and file. Buttons WITHOUT a default fall through to skip
+        # (Save & Continue, Save & Exit, etc. — those have no default).
+        if tname == "button":
+            tname = "file_upload"  # route to the upload branch below
 
         if tname == "file_upload":
             from qa.tools.web_tools import _upload_file_for_field_impl
