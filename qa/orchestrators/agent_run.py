@@ -196,6 +196,10 @@ async def run_agent(
     expansion_streak = 0
     EXPANSION_LIMIT = 3
     exit_code = 0
+    # Track screens captured in THIS run (not historical KB) so the
+    # wizard's carryover tagger doesn't poison the per-page L0 with
+    # leftover screens from prior sessions.
+    in_run_screens: list[str] = []
 
     try:
         for iteration in range(1, max_iterations + 1):
@@ -262,6 +266,7 @@ async def run_agent(
                 section_num=iteration,
                 model=model,
                 reveal_scan=reveal_scan,
+                in_run_screens=list(in_run_screens),
             )
 
             t0 = time.time()
@@ -292,6 +297,15 @@ async def run_agent(
                 f"({duration:.1f}s)"
             )
             print(f"  [agent] note: {outcome.note}")
+
+            # Record screen captured this iteration so the wizard's
+            # carryover tagger has the right comparison set on later
+            # iterations. Even if advance=False, the screen was
+            # captured (and is in the KB), so include it.
+            if outcome.captured is not None:
+                cap_name = outcome.captured.screen_name
+                if cap_name and cap_name not in in_run_screens:
+                    in_run_screens.append(cap_name)
 
             # ── 4. Continue / stop logic
             if not outcome.success:

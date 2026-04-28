@@ -39,6 +39,12 @@ class StrategyContext:
     # display label). Apps with genuine "+ Add Another" buttons can
     # enable it via --reveal-scan.
     reveal_scan: bool = False
+    # Screen names captured during the CURRENT run only. Used by the
+    # carryover tagger so historical KB entries don't poison the
+    # comparison: every legit field on a fresh page would otherwise be
+    # tagged as 'CARRYOVER' because past runs put it under a similar
+    # name in the KB. Updated by the runner after each iteration.
+    in_run_screens: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -148,26 +154,36 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
             cost=ctx.budget.current_cost - cost_at_start,
         )
 
-    # ── 3. Tag NEW vs CARRYOVER (skip on first page — nothing to compare)
-    if ctx.section_num > 1 and ctx.kb.screens:
+    # ── 3. Tag NEW vs CARRYOVER (skip on first page — nothing to compare).
+    # Only compare against screens captured DURING THIS RUN. Historical
+    # KB entries from past runs would falsely match legitimate new
+    # fields and tag them all as CARRYOVER, dropping them from L0 and
+    # leaving the wizard with nothing to fill.
+    in_run_set = set(ctx.in_run_screens)
+    if ctx.section_num > 1 and in_run_set:
         prior_names = [
-            el.name for s in ctx.kb.screens for el in s.l0
-            if s.screen_name != screen.screen_name and el.name
+            el.name
+            for s in ctx.kb.screens
+            for el in s.l0
+            if s.screen_name in in_run_set
+            and s.screen_name != screen.screen_name
+            and el.name
         ]
         current_names = [el.name for el in screen.l0]
-        tags = await tag_fields_new_vs_carryover(
-            adapter, current_names, prior_names, budget=ctx.budget,
-        )
-        carryovers = [n for n, t in tags.items() if t == "CARRYOVER"]
-        if carryovers:
-            keep = {n for n, t in tags.items() if t == "NEW"}
-            screen.l0 = [el for el in screen.l0 if el.name in keep]
-            keep_ids = {el.element_id for el in screen.l0}
-            screen.l1 = [l1 for l1 in screen.l1 if l1.element_id in keep_ids]
-            print(
-                f"  [strat:wizard] dropped {len(carryovers)} carryover field(s) "
-                f"from {screen.screen_name!r}"
+        if prior_names:
+            tags = await tag_fields_new_vs_carryover(
+                adapter, current_names, prior_names, budget=ctx.budget,
             )
+            carryovers = [n for n, t in tags.items() if t == "CARRYOVER"]
+            if carryovers:
+                keep = {n for n, t in tags.items() if t == "NEW"}
+                screen.l0 = [el for el in screen.l0 if el.name in keep]
+                keep_ids = {el.element_id for el in screen.l0}
+                screen.l1 = [l1 for l1 in screen.l1 if l1.element_id in keep_ids]
+                print(
+                    f"  [strat:wizard] dropped {len(carryovers)} carryover field(s) "
+                    f"from {screen.screen_name!r} (vs {len(in_run_set)} in-run prior screens)"
+                )
 
     # ── 4. Persist
     store = KnowledgeStore()

@@ -106,6 +106,42 @@ class Defaults:
                     and kp[0] == screen and kp[2] == label and kp[3] == etype
                 ):
                     return _clean(v)
+
+        # 4. Screen-agnostic fallback — match on (label, type) only.
+        # When wizard mode auto-generates a screen name like 'Page 4'
+        # but the deps file uses canonical 'new_member_application_
+        # additional_details', strict matching fails. This fallback
+        # finds deps regardless of screen prefix and rewrites the
+        # parent ids to use the CURRENT screen so the unlock helper's
+        # dropdown-by-id lookup also works against this run's data.
+        if len(parts) >= 3:
+            cur_screen = parts[0]
+            label = parts[-2]
+            etype = parts[-1]
+            for k, v in self.dependencies.items():
+                kp = k.split(":")
+                if len(kp) < 3:
+                    continue
+                k_label = kp[-2]
+                k_type = kp[-1]
+                if k_label != label or k_type != etype:
+                    continue
+                # Found a matching child by (label, type). Rewrite the
+                # parent ids to use the current screen so they resolve
+                # against this run's captured data.
+                parents_raw = _clean(v)
+                rewritten: list[str] = []
+                for pid in parents_raw:
+                    pp = pid.split(":")
+                    if len(pp) >= 3:
+                        # pp = [screen, ?section, label, type] OR [screen, label, type]
+                        p_label = pp[-2]
+                        p_type = pp[-1]
+                        rewritten.append(f"{cur_screen}:{p_label}:{p_type}")
+                    else:
+                        rewritten.append(pid)
+                if rewritten:
+                    return rewritten
         return []
 
     def get(self, label: str, section: str = "") -> str | None:
