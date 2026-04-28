@@ -631,12 +631,92 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
     # checkpointed each section, but a second save is cheap.
     KnowledgeStore().save(ctx.kb)
 
+    # ── Click Save & Continue to leave the gated page ────────────────
+    # Without this the next strategist iteration re-picks gated_step
+    # (section tabs still visible) and gated_step re-runs against an
+    # already-filled DOM, crashing on missing inputs that are now
+    # thumbnails. Click the page-level nav button to advance to the
+    # next wizard step in the SAME iteration.
+    from qa.orchestrators.wizard_steps import (
+        click_save_and_continue,
+        page_signature,
+        wait_for_page_transition,
+        wait_for_inline_validation_settle,
+        wait_for_content_render,
+        classify_transition,
+    )
+
+    # Some apps surface a "verify all fields" warning banner after the
+    # last upload completes — give it a moment to settle so the nav
+    # click doesn't race a banner spinner.
+    await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
+
+    before_sig = await page_signature(ctx.adapter)
+    before_snap = await ctx.adapter.raw_snapshot_text()
+    clicked, label = await click_save_and_continue(ctx.adapter)
+    if not clicked:
+        # No nav button after gated completion — unusual but we still
+        # captured the sections, surface as a soft stop.
+        last_screen = captured[-1] if captured else None
+        return StrategyOutcome(
+            success=True,
+            advance=False,
+            captured=last_screen,
+            note=(
+                f"gated captured {len(captured)} section(s) but no Save & "
+                f"Continue button found — page may need manual review"
+            ),
+            cost=ctx.budget.current_cost - cost_at_start,
+        )
+    print(f"  [strat:gated] clicked {label!r} after sections — advancing")
+
+    transitioned, signal = await wait_for_page_transition(
+        ctx.adapter, before_sig, timeout=15.0,
+    )
+    if not transitioned:
+        last_screen = captured[-1] if captured else None
+        return StrategyOutcome(
+            success=True,
+            advance=False,
+            captured=last_screen,
+            note=(
+                f"gated captured {len(captured)} section(s); Save & Continue "
+                f"clicked but no transition detected ({signal}) — likely a "
+                f"validation banner blocked submission"
+            ),
+            cost=ctx.budget.current_cost - cost_at_start,
+        )
+
+    # Settle the destination page so the next iteration's pick_strategy
+    # doesn't see a loading state.
+    await wait_for_inline_validation_settle(ctx.adapter, timeout=8.0)
+    await wait_for_content_render(
+        ctx.adapter, min_interactive_elements=3, timeout=12.0,
+    )
+    verdict, reasoning, error_text = await classify_transition(
+        ctx.adapter, before_snap, budget=ctx.budget,
+    )
+    print(f"  [strat:gated] post-advance verdict: {verdict} — {reasoning}")
+
     last_screen = captured[-1] if captured else None
+    if verdict == "SAME_PAGE_WITH_ERROR":
+        msg = "validation error after Save & Continue"
+        if error_text:
+            msg += f": {error_text}"
+        return StrategyOutcome(
+            success=True,
+            advance=False,
+            captured=last_screen,
+            note=msg,
+            cost=ctx.budget.current_cost - cost_at_start,
+        )
+
+    # NEW_PAGE or SAME_PAGE_WITH_EXPANSION — both treated as advance
     return StrategyOutcome(
         success=True,
-        advance=True,  # gated always advances the page state forward
+        advance=True,
         captured=last_screen,
-        note=f"gated flow captured {len(captured)} section(s)",
+        note=f"gated captured {len(captured)} section(s); advanced via {label!r}",
         cost=ctx.budget.current_cost - cost_at_start,
     )
 
