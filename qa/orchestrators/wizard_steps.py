@@ -401,6 +401,69 @@ async def tag_fields_new_vs_carryover(
     return tags
 
 
+async def wait_for_inline_validation_settle(
+    adapter: PlatformAdapter,
+    timeout: float = 6.0,
+    poll_interval: float = 0.4,
+) -> tuple[bool, str, float]:
+    """Poll until any visible validation activity on the page clears.
+    Apps with debounced inline validation (email-uniqueness check,
+    server-side username check, masked phone validation) show a
+    spinner / 'Validating...' / aria-busy state for 1-5 seconds after
+    you fill a field. Clicking Save & Continue while validation is
+    still pending often submits the form with stale state and the
+    server rejects it.
+
+    Returns (settled, signal, elapsed):
+      • settled=True, signal='clean' — no validation activity ever seen
+      • settled=True, signal='cleared' — saw activity, waited it out
+      • settled=False, signal='timeout' — still showing activity at cap
+
+    Detection is structural (aria-busy attributes, role=progressbar,
+    common spinner class names) plus textual ('validating', 'checking',
+    'verifying'). Avoids running a full LLM judgement call for what's
+    fundamentally a CSS pattern match."""
+    js = (
+        "() => {"
+        "  const busyEls = document.querySelectorAll("
+        "    '[aria-busy=\"true\"], [role=progressbar], '"
+        "    + '.spinner, .loading, .loader, [class*=spinner], '"
+        "    + '[class*=loading]'"
+        "  );"
+        "  const visibleBusy = [...busyEls].filter("
+        "    e => e.offsetParent !== null"
+        "  ).length;"
+        "  const txt = (document.body.innerText || '').toLowerCase();"
+        "  const txtBusy = ("
+        "    /\\b(validating|checking|verifying|please wait)\\b/.test(txt)"
+        "  );"
+        "  return JSON.stringify({"
+        "    busy_count: visibleBusy, text_busy: txtBusy"
+        "  });"
+        "}"
+    )
+
+    elapsed = 0.0
+    saw_activity = False
+    while elapsed < timeout:
+        try:
+            raw = await adapter.evaluate_script(js)
+            parsed = _safe_parse(raw) or {}
+            count = int(parsed.get("busy_count", 0)) if isinstance(parsed, dict) else 0
+            text_busy = bool(parsed.get("text_busy")) if isinstance(parsed, dict) else False
+        except Exception:
+            count, text_busy = 0, False
+
+        active = count > 0 or text_busy
+        if not active:
+            return (True, "cleared" if saw_activity else "clean", elapsed)
+        saw_activity = True
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+
+    return (False, "timeout", elapsed)
+
+
 async def wait_for_content_render(
     adapter: PlatformAdapter,
     min_interactive_elements: int = 3,

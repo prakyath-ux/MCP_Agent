@@ -215,6 +215,18 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
             cost=ctx.budget.current_cost - cost_at_start,
         )
 
+    # ── 6.5. Wait for inline validation to settle before nav-clicking.
+    # Apps with debounced server-side checks (email-uniqueness,
+    # username availability) show a spinner for 1-5s after fill.
+    # Clicking Save & Continue while it's still validating submits
+    # stale state and gets rejected. 6s cap is a comfortable margin.
+    from qa.orchestrators.wizard_steps import wait_for_inline_validation_settle
+    settled, signal, vwait = await wait_for_inline_validation_settle(
+        adapter, timeout=6.0,
+    )
+    if signal != "clean":
+        print(f"  [strat:wizard] inline validation {signal} after {vwait:.1f}s")
+
     # ── 7. Capture transition baseline + click
     before_sig = await page_signature(adapter)
     before_snap = await adapter.raw_snapshot_text()
