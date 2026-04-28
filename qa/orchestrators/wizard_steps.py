@@ -482,8 +482,19 @@ async def dismiss_confirmation_modal(
                 text_str = result
             if "error" in text_str.lower():
                 continue
+            await asyncio.sleep(0.8)
+            # Verify the modal is actually gone — clicking the Yes
+            # button may have triggered ANOTHER popup or been
+            # absorbed by a misdirected event handler. Re-snapshot
+            # and check the modal signals; if still present, this
+            # click didn't dismiss anything useful.
+            after = await adapter.raw_snapshot_text()
+            after_lower = (after or "").lower()
+            still_modal = any(sig in after_lower for sig in modal_signals)
+            if still_modal:
+                print(f"  [wizard] click on {label!r} did NOT dismiss modal — trying next label")
+                continue
             print(f"  [wizard] dismissed confirmation modal via {label!r}")
-            await asyncio.sleep(0.6)
             return (True, label)
         except Exception:
             continue

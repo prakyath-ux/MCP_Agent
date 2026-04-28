@@ -784,23 +784,80 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
         # Save & Continue may have triggered a confirmation modal
         # (TECU shows 'Names don't match — Are you sure?' Yes/No
         # popup when OCR'd names mismatch). Try to dismiss it via
-        # the affirmative button. After dismissing, many apps also
-        # require RE-CLICKING Save & Continue — the modal swallowed
-        # the original click without actually submitting. Loop up to
-        # 2 times in case stacked modals fire.
-        from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
+        # the affirmative button. After dismissing:
+        #   • Re-extract the page — modal dismissal can reveal fields
+        #     that need filling (user's instruction)
+        #   • Fill any new required fields from defaults
+        #   • Re-click Save & Continue
+        # Loop up to 2 times. If the SAME modal text reappears after a
+        # successful dismiss + re-click, it's a hard validation block
+        # (TECU's name-mismatch can't be overridden by clicking Yes).
+        # Stop with a clear note rather than churning.
+        from qa.orchestrators.wizard_steps import (
+            dismiss_confirmation_modal, fill_page_from_defaults,
+        )
+        from qa.orchestrators.form_extract import extract_form
+        prior_modal_snap = ""
         for modal_attempt in range(2):
             dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
             if not dismissed:
                 break
             print(
                 f"  [strat:gated] dismissed modal via {modal_label!r} "
-                f"(attempt {modal_attempt + 1}), re-clicking Save & Continue"
+                f"(attempt {modal_attempt + 1})"
             )
             await wait_for_inline_validation_settle(ctx.adapter, timeout=3.0)
-            # Re-click Save & Continue — modal-dismiss alone often
-            # doesn't progress the form; the underlying click was
-            # absorbed by the modal opening.
+
+            # Re-extract: the modal-dismiss may have surfaced new
+            # required fields (the modal might wrap a 'Reason for
+            # mismatch' dropdown that needs picking before YES means
+            # anything). Extract → fill any new fields from defaults.
+            try:
+                refresh_screen = await extract_form(
+                    adapter=ctx.adapter,
+                    app_name=ctx.app_name,
+                    screen_name=f"post_modal_{modal_attempt + 1}",
+                    budget=ctx.budget,
+                    page_url=ctx.page_url,
+                    defaults=ctx.defaults,
+                )
+                rfilled, rskipped = await fill_page_from_defaults(
+                    ctx.adapter, ctx.kb, ctx.defaults, refresh_screen,
+                )
+                if rfilled:
+                    print(
+                        f"  [strat:gated] filled {len(rfilled)} field(s) "
+                        f"that surfaced after modal dismiss"
+                    )
+                # Check for unfilled required fields — if the modal
+                # exposed a required dropdown we don't have a default
+                # for, we'd loop forever otherwise.
+                missing_req = [
+                    el.name for el in refresh_screen.l0
+                    if getattr(el, "required", False)
+                    and el.name not in {n for n, _ in rfilled}
+                    and not any(
+                        m in (getattr(el, "behavior", "") or "").lower()
+                        for m in ("auto_filled", "auto-filled", "autofilled",
+                                 "read_only", "readonly", "masked")
+                    )
+                ]
+                if missing_req:
+                    last_screen = captured[-1] if captured else None
+                    return StrategyOutcome(
+                        success=True, advance=False, captured=last_screen,
+                        note=(
+                            f"gated captured {len(captured)} section(s); "
+                            f"modal dismissed but {len(missing_req)} required "
+                            f"field(s) still unfilled "
+                            f"(no default for: {missing_req[:3]})"
+                        ),
+                        cost=ctx.budget.current_cost - cost_at_start,
+                    )
+            except Exception as e:
+                print(f"  [strat:gated] post-modal re-extract raised: {e}")
+
+            # Re-click Save & Continue
             reclicked, relabel = await click_save_and_continue(ctx.adapter)
             if reclicked:
                 print(f"  [strat:gated] re-clicked {relabel!r} after modal dismiss")
@@ -810,6 +867,46 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
             )
             if transitioned:
                 break
+
+            # Detect the same modal repeating — hard validation block.
+            cur_snap = await ctx.adapter.raw_snapshot_text()
+            cur_lower = (cur_snap or "").lower()
+            still_has_modal = any(
+                sig in cur_lower for sig in (
+                    "role=dialog", "role=alertdialog", '"alert"',
+                    '"confirmation"', "are you sure", '"warning"',
+                )
+            )
+            # Stable modal-text fingerprint (rough)
+            modal_fingerprint = ""
+            if still_has_modal and cur_snap:
+                # Take ~500 chars of the snapshot starting at the first
+                # modal signal — gives a stable comparable string for
+                # 'is this the same modal as last attempt?'.
+                idx = -1
+                for sig in ("role=dialog", "role=alertdialog", '"alert"', "are you sure"):
+                    idx = cur_lower.find(sig)
+                    if idx >= 0:
+                        break
+                if idx >= 0:
+                    modal_fingerprint = cur_snap[idx:idx + 500]
+            if (
+                still_has_modal
+                and modal_fingerprint
+                and modal_fingerprint == prior_modal_snap
+            ):
+                last_screen = captured[-1] if captured else None
+                return StrategyOutcome(
+                    success=True, advance=False, captured=last_screen,
+                    note=(
+                        f"gated captured {len(captured)} section(s); same "
+                        f"validation modal reappeared after dismiss — hard "
+                        f"app-side block (e.g. mismatched names that can't "
+                        f"be overridden by Yes)"
+                    ),
+                    cost=ctx.budget.current_cost - cost_at_start,
+                )
+            prior_modal_snap = modal_fingerprint
 
     if not transitioned:
         last_screen = captured[-1] if captured else None
