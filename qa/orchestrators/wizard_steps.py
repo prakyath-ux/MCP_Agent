@@ -122,7 +122,6 @@ async def fill_page_from_defaults(
                 skipped.append((el.name, f"OTP default {otp_value!r} shorter than {len(otp_slots)} boxes"))
                 otp_consumed.add(el.name)
         else:
-            from qa.orchestrators.execute_flow import _set_parent_value
             print(f"  [wizard] detected OTP pattern: {len(otp_slots)} boxes — filling with {otp_value[:len(otp_slots)]!r}")
             for digit_idx, (_idx, el) in enumerate(otp_slots):
                 digit = otp_value[digit_idx]
