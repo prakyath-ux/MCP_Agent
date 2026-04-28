@@ -76,5 +76,18 @@
       "section_5:employer:dropdown",
       "section_5:sector:dropdown"
     ]
+  },
+
+  "_upload_modes_comment": "Modal-aware upload metadata for file_upload fields where the visible button opens a modal. The wizard / orchestrator passes doc_type into the dropdown that appears in the modal, then clicks confirm_label after the file is attached. Empty strings disable that step. Only relevant in --wizard mode.",
+
+  "upload_modes": {
+    "Add profile picture": {
+      "doc_type": "",
+      "confirm_label": ""
+    },
+    "Select File": {
+      "doc_type": "Passport",
+      "confirm_label": "Submit"
+    }
   }
 }

@@ -39,10 +39,16 @@ from qa.engine.guardrails import (
     GuardrailContext, GuardrailExit,
     per_dropdown_scope, per_page_scope, per_verify_scope,
 )
+from qa.knowledge.file_resolver import discover_test_files
 from qa.knowledge.store import KnowledgeStore
-from qa.models import KnowledgeBase, Platform, TargetApp
+from qa.models import ExploreInput, KnowledgeBase, Platform, TargetApp
 from qa.models.common import ElementType, make_element_id
 from qa.models.knowledge import L0Element, L1Element, Locator, ScreenKnowledge
+from qa.orchestrators.base import RunContext
+from qa.orchestrators.gated_multi_section import (
+    GatedMultiSectionFlow,
+    SectionFailed,
+)
 from qa.orchestrators.llm_subtask import llm_classify
 from qa.orchestrators.sub_prompts import (
     EXTRACT_DROPDOWN_OPTIONS_PROMPT,
@@ -2616,6 +2622,32 @@ async def main() -> int:
             "across extractions."
         ),
     )
+    ap.add_argument(
+        "--gated", action="store_true",
+        help=(
+            "Autonomous gated multi-section mode. Dispatches to "
+            "GatedMultiSectionFlow: detects section tabs, then loops each "
+            "one (click tab → pick dropdown option → upload file → wait for "
+            "OCR → extract auto-filled fields). Designed for KYC-style "
+            "document-upload pages (e.g. TECU page 2). Mutex with --loop."
+        ),
+    )
+    ap.add_argument(
+        "--wizard", action="store_true",
+        help=(
+            "Autonomous multi-page wizard mode. After extracting the first "
+            "page, fills its fields from artifacts/defaults/<app>.json, "
+            "clicks 'Save & Continue' (or similar), waits for the page to "
+            "transition, then extracts the next page. Repeats up to "
+            "--max-pages. Stops cleanly if no nav button is found, no "
+            "page transition is detected, or extract returns 0 elements. "
+            "Mutex with --loop and --gated."
+        ),
+    )
+    ap.add_argument(
+        "--max-pages", type=int, default=6,
+        help="Max pages for --wizard mode (default 6, matches TECU)",
+    )
     ap.add_argument("--model", default="gpt-5.1", help="Model for option extraction")
     ap.add_argument("--budget", type=float, default=0.50, help="Max $ budget cap")
     ap.add_argument(
@@ -2628,6 +2660,11 @@ async def main() -> int:
         ),
     )
     args = ap.parse_args()
+
+    mutex_flags = sum(int(bool(f)) for f in (args.loop, args.gated, args.wizard))
+    if mutex_flags > 1:
+        print("  ERROR: --loop, --gated, --wizard are mutually exclusive. Pick one.")
+        return 2
 
     app = TargetApp(platform=Platform.WEB, url=args.url, app_name=args.app_name)
 
@@ -2658,6 +2695,58 @@ async def main() -> int:
             input("  >>> Press Enter to extract... ")
         except EOFError:
             pass
+
+    # ── Gated dispatch ───────────────────────────────────────────────────
+    # --gated short-circuits the normal DOM-scan extract loop. We hand off
+    # to GatedMultiSectionFlow which detects section tabs, then iterates
+    # each one (click → dropdown → upload → OCR → snapshot post-OCR fields).
+    # The flow already merges captured screens into ctx.knowledge and
+    # checkpoints to disk after each section, so we just report afterwards.
+    if args.gated:
+        available = discover_test_files(args.app_name)
+        print(f"  [gated] available test files: {available}")
+        if not available:
+            print(
+                f"  [gated] ⚠ no test files in artifacts/test_files/"
+                f"{args.app_name.lower()}/ or artifacts/test_files/global/. "
+                "Drop documents (passport.png etc.) there before running."
+            )
+            await adapter.close()
+            return 2
+
+        budget = BudgetTracker(model=args.model, max_budget=args.budget)
+        inp = ExploreInput(app=app, model=args.model, budget=args.budget)
+        ctx = RunContext(
+            adapter=adapter,
+            inp=inp,
+            knowledge=kb,
+            budget=budget,
+            available_files=available,
+        )
+        flow = GatedMultiSectionFlow()
+        status = 0
+        captured: list[ScreenKnowledge] = []
+        try:
+            captured = await flow.run(ctx)
+        except SectionFailed as e:
+            print(f"\n  [gated] ✗ SectionFailed: {e}")
+            print("  [gated] Prior sections were saved before the failure.")
+            status = 1
+        except Exception as e:
+            print(f"\n  [gated] ✗ Unhandled error: {type(e).__name__}: {e}")
+            status = 2
+        finally:
+            await adapter.close()
+
+        final = store.load(app)
+        if final and final.screens:
+            print(f"\n  ── Sections in saved KB ──")
+            captured_names = {c.screen_name for c in captured}
+            for s in final.screens:
+                tag = "✓" if s.screen_name in captured_names else " "
+                print(f"  {tag} {s.screen_name} ({len(s.l0)} elements)")
+        print(f"\n  Final cost: ${budget.current_cost:.4f}")
+        return status
 
     # Checkpoint callback: after every meaningful step inside extract_form
     # (step 1 finished, each dropdown captured), persist a partial KB so a
@@ -2694,10 +2783,26 @@ async def main() -> int:
                     if not screen_name:
                         screen_name = "Extracted Form"
                     print(f"  Screen name (from <title>): {screen_name!r}")
+            elif args.wizard:
+                # Autonomous wizard mode — derive screen_name from the
+                # document. User isn't at the keyboard; we want a stable
+                # auto-generated name so the KB grows cleanly.
+                title_raw = await adapter.evaluate_script("() => document.title")
+                parsed = _safe_parse(title_raw)
+                screen_name = (str(parsed) if parsed else "").strip()
+                if not screen_name:
+                    h_raw = await adapter.evaluate_script(
+                        "() => { const h = document.querySelector('h1, h2'); "
+                        "return h ? (h.textContent || '').trim() : ''; }"
+                    )
+                    screen_name = (str(_safe_parse(h_raw) or "")).strip()
+                if not screen_name:
+                    screen_name = f"Page {section_num}"
+                print(f"  [wizard] page {section_num} screen_name: {screen_name!r}")
             else:
-                # Loop iteration — prompt user for a section name. Show
-                # existing KB screen names so they can re-extract a known
-                # screen (overwrite-in-place) rather than accidentally
+                # Manual --loop iteration — prompt user for a section name.
+                # Show existing KB screen names so they can re-extract a
+                # known screen (overwrite-in-place) rather than accidentally
                 # forking a new "Section N" entry that diverges from any
                 # cascade-dependency keys already declared in defaults.
                 existing_names = [s.screen_name for s in kb.screens]
@@ -2753,10 +2858,69 @@ async def main() -> int:
 
             extracted.append((screen.screen_name, len(screen.l0)))
 
+            if args.wizard:
+                # Autonomous advance: fill defaults → click nav → wait for
+                # transition → loop. If any step fails we stop cleanly so
+                # the partial KB up to here is preserved.
+                if section_num >= args.max_pages:
+                    print(f"\n  [wizard] reached --max-pages={args.max_pages} — stopping")
+                    break
+                if not screen.l0:
+                    print(f"\n  [wizard] page {section_num} extracted 0 elements — stopping")
+                    break
+
+                from qa.orchestrators.wizard_steps import (
+                    click_save_and_continue,
+                    fill_page_from_defaults,
+                    page_signature,
+                    wait_for_page_transition,
+                )
+
+                print(f"\n  [wizard] ── advancing from page {section_num} ──")
+                filled, skipped = await fill_page_from_defaults(
+                    adapter, kb, defaults, screen,
+                )
+                print(f"  [wizard] filled {len(filled)} field(s):")
+                for name, note in filled[:10]:
+                    print(f"  [wizard]   ✓ {name}: {note}")
+                if len(filled) > 10:
+                    print(f"  [wizard]   …and {len(filled) - 10} more")
+                if skipped:
+                    print(f"  [wizard] skipped {len(skipped)} field(s):")
+                    for name, note in skipped[:5]:
+                        print(f"  [wizard]   · {name}: {note}")
+                    if len(skipped) > 5:
+                        print(f"  [wizard]   …and {len(skipped) - 5} more")
+
+                before = await page_signature(adapter)
+                print(f"  [wizard] looking for nav button on page {section_num}...")
+                clicked, label = await click_save_and_continue(adapter)
+                if not clicked:
+                    print(
+                        f"  [wizard] no Save & Continue / Next button found — "
+                        f"stopping (captured {section_num} page(s))"
+                    )
+                    break
+                print(f"  [wizard] clicked {label!r} — waiting for transition")
+
+                transitioned, signal = await wait_for_page_transition(
+                    adapter, before, timeout=12.0,
+                )
+                if not transitioned:
+                    print(
+                        f"  [wizard] no page transition detected ({signal}) — "
+                        f"app may have shown a validation error. Stopping."
+                    )
+                    break
+                print(f"  [wizard] transitioned ({signal}) — settling before next extract")
+                await asyncio.sleep(1.5)
+                section_num += 1
+                continue
+
             if not args.loop:
                 break
 
-            # Prompt for next iteration. Keep Chrome open between sections.
+            # Manual --loop: prompt user to advance. Keep Chrome open between sections.
             print()
             print("=" * 60)
             print("  Section captured. To advance:")

@@ -21,7 +21,7 @@ load_dotenv()
 
 from qa.adapters import make_adapter
 from qa.engine.budget import BudgetTracker
-from qa.knowledge.file_resolver import _safe_app_dir
+from qa.knowledge.file_resolver import _safe_app_dir, discover_test_files
 from qa.knowledge.store import KnowledgeStore
 from qa.models import (
     ExploreInput,
@@ -34,28 +34,6 @@ from qa.orchestrators.gated_multi_section import (
     GatedMultiSectionFlow,
     SectionFailed,
 )
-
-
-def _discover_available_files(app_name: str) -> list[str]:
-    """List test files available to hand to the orchestrator, app-specific
-    first, then global fallback."""
-    root = Path("artifacts/test_files").resolve()
-    found: list[str] = []
-
-    app_dir = root / _safe_app_dir(app_name)
-    if app_dir.exists():
-        for f in sorted(app_dir.iterdir()):
-            if f.is_file() and f.suffix.lower() != ".json":
-                found.append(f.name)
-
-    gdir = root / "global"
-    if gdir.exists():
-        for f in sorted(gdir.iterdir()):
-            if f.is_file() and f.suffix.lower() != ".json" and f.name != "README.md":
-                if f.name not in found:
-                    found.append(f.name)
-
-    return found
 
 
 async def main() -> int:
@@ -81,7 +59,7 @@ async def main() -> int:
     else:
         print("  No existing KB — starting fresh.")
 
-    available_files = _discover_available_files(args.app_name)
+    available_files = discover_test_files(args.app_name)
     print(f"  Available test files: {available_files}")
     if not available_files:
         print("  ⚠ No test files found. Drop some into "

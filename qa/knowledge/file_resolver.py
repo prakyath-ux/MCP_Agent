@@ -41,6 +41,30 @@ def _safe_app_dir(app_name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", app_name.lower()).strip("_")
 
 
+def discover_test_files(app_name: str) -> list[str]:
+    """List test files available to hand to an orchestrator. Looks first in
+    the app-specific directory, then falls back to global. Skips JSON files
+    (those are config) and the global README. Returns filenames only — the
+    orchestrator passes them to upload tools that resolve the full path."""
+    root = Path("artifacts/test_files").resolve()
+    found: list[str] = []
+
+    app_dir = root / _safe_app_dir(app_name)
+    if app_dir.exists():
+        for f in sorted(app_dir.iterdir()):
+            if f.is_file() and f.suffix.lower() != ".json":
+                found.append(f.name)
+
+    gdir = root / "global"
+    if gdir.exists():
+        for f in sorted(gdir.iterdir()):
+            if f.is_file() and f.suffix.lower() != ".json" and f.name != "README.md":
+                if f.name not in found:
+                    found.append(f.name)
+
+    return found
+
+
 # Synonyms expand a semantic_hint into alternative words the filename might use.
 # E.g. a file named "passport.png" should match hint "id_document".
 _HINT_SYNONYMS: dict[str, list[str]] = {

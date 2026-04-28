@@ -55,6 +55,13 @@ class Defaults:
     # dropdowns). Optional override channel for manual tuning until the
     # extract pipeline learns to detect dependencies automatically.
     dependencies: dict[str, list[str]] = field(default_factory=dict)
+    # Modal upload metadata — for file_upload fields where the visible
+    # trigger opens a modal (TECU "Upload Document" pattern). Maps the
+    # field label (plain or section-qualified, same rules as `mapping`)
+    # to {doc_type, confirm_label}. Empty values disable that step. Only
+    # consulted by wizard / orchestrator paths that pass these through to
+    # _upload_file_for_field_impl.
+    upload_modes: dict[str, dict[str, str]] = field(default_factory=dict)
     source_path: str = ""
 
     def get_dependencies(self, element_id: str) -> list[str]:
@@ -141,6 +148,36 @@ class Defaults:
     def has(self, label: str, section: str = "") -> bool:
         return self.get(label, section) is not None
 
+    def get_upload_mode(
+        self, label: str, section: str = "",
+    ) -> tuple[str, str]:
+        """Return (doc_type, confirm_label) for a file_upload field.
+        Empty strings disable the corresponding modal step. Same lookup
+        rules as `get`: section-qualified key wins, case-insensitive
+        fallback after exact match."""
+        if not label or not self.upload_modes:
+            return ("", "")
+
+        candidates = []
+        if section:
+            candidates.append(f"{section} > {label}")
+        candidates.append(label)
+
+        for key in candidates:
+            entry = self.upload_modes.get(key)
+            if entry is None:
+                low = key.lower().strip()
+                for k, v in self.upload_modes.items():
+                    if k.lower().strip() == low:
+                        entry = v
+                        break
+            if isinstance(entry, dict):
+                return (
+                    str(entry.get("doc_type", "") or ""),
+                    str(entry.get("confirm_label", "") or ""),
+                )
+        return ("", "")
+
     def summary(self) -> str:
         if not self.mapping:
             return f"Defaults({self.app_name!r}): empty"
@@ -216,9 +253,28 @@ def load_defaults(app_name: str, path: str | Path | None = None) -> Defaults:
             f"mapping child element_id → list of parent element_ids."
         )
 
+    # Optional upload_modes — { label_or_section_qualified: {doc_type, confirm_label} }
+    upload_modes_raw = data.get("upload_modes", {})
+    upload_modes: dict[str, dict[str, str]] = {}
+    if isinstance(upload_modes_raw, dict):
+        for k, v in upload_modes_raw.items():
+            if not isinstance(k, str) or not isinstance(v, dict):
+                continue
+            entry: dict[str, str] = {}
+            for sub in ("doc_type", "confirm_label"):
+                val = v.get(sub, "")
+                entry[sub] = str(val) if val is not None else ""
+            upload_modes[k] = entry
+    elif upload_modes_raw:
+        raise ValueError(
+            f"Defaults file {resolved} 'upload_modes' must be an object "
+            f"mapping field label → {{doc_type, confirm_label}}."
+        )
+
     return Defaults(
         app_name=data.get("app_name", app_name),
         mapping=mapping,
         dependencies=dependencies,
+        upload_modes=upload_modes,
         source_path=str(resolved),
     )

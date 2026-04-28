@@ -590,6 +590,8 @@ async def _upload_file_for_field_impl(
     file_name: str = "",
     wait_for_ocr: bool = True,
     target_input_id: str = "",
+    doc_type: str = "",
+    confirm_label: str = "",
 ) -> str:
     """Internal implementation. The decorated @function_tool wrapper below
     delegates here so orchestrators can call this function directly from
@@ -604,6 +606,18 @@ async def _upload_file_for_field_impl(
     (e.g. KYC "front of ID" + "back of ID"), the caller can route this
     upload to a specific input by its DOM id. Empty string keeps the old
     "grab the last input in the DOM" behavior.
+
+    doc_type → for modal-based uploaders (TECU's "Upload Document" pattern):
+    after the trigger click opens the modal, the modal exposes a doc-type
+    dropdown BEFORE the file input becomes available. When `doc_type` is
+    provided we scan the post-trigger snapshot for a dropdown, select the
+    matching option, then continue to the file-input step. Empty = behave
+    as plain (single-step) upload.
+
+    confirm_label → for modal flows that need a final "Submit" / "Upload" /
+    "Verify" click after the file is attached. When provided we click the
+    button by snapshot label after upload but before OCR polling. Empty =
+    no extra click (most apps trigger OCR on attach).
     """
     import asyncio
     import re
@@ -723,6 +737,26 @@ async def _upload_file_for_field_impl(
         )
         recheck = (_safe_parse(recheck_raw) or {}).get("n", 0)
         print(f"  [upload] input[type=file] after trigger click: {recheck}")
+
+        # ── Step 2b: Modal-aware fork — TECU pattern ──────────────────
+        # If we still have 0 inputs AND the caller passed doc_type, the
+        # app probably opened a modal with a doc-type dropdown that must
+        # be filled BEFORE the file input renders. Find a combobox /
+        # select inside the modal and click the matching option.
+        if recheck == 0 and doc_type:
+            print(f"  [upload] Step 2b: trying modal doc-type select with doc_type={doc_type!r}")
+            picked = await _select_modal_dropdown_option(post_click_snapshot, doc_type)
+            if picked:
+                await asyncio.sleep(0.8)
+                post_click_snapshot = await _call_mcp("take_snapshot", {})
+                recheck_raw = await _eval(
+                    "() => JSON.stringify({n: document.querySelectorAll('input[type=file]').length})"
+                )
+                recheck = (_safe_parse(recheck_raw) or {}).get("n", 0)
+                print(f"  [upload]   doc_type selected, input count now: {recheck}")
+            else:
+                print(f"  [upload]   could not find modal dropdown matching doc_type={doc_type!r}")
+
         if recheck == 0:
             print(f"  [upload] ✗ Trigger click did not inject input. App likely uses pure JS picker.")
             return json.dumps({
@@ -730,6 +764,7 @@ async def _upload_file_for_field_impl(
                 "reason": "No input[type=file] in DOM even after trigger click. App may use drag-drop or pure JS picker.",
                 "file_resolved": file_path,
                 "trigger_uid": trigger_uid,
+                "doc_type_attempted": bool(doc_type),
             })
     else:
         print(f"  [upload] Step 2: skipped — input already in DOM from page load")
@@ -809,6 +844,22 @@ async def _upload_file_for_field_impl(
     upload_result = await _call_mcp("upload_file", {"uid": file_input_uid, "filePath": file_path})
     print(f"  [upload] upload_file MCP returned: {str(upload_result)[:150]}")
 
+    # ── Step 6b: Click confirm button (modal flows only) ──────────────
+    # TECU and similar apps require a final "Submit" / "Upload" / "Verify"
+    # click after the file is attached but before OCR kicks off. Caller
+    # opts in via `confirm_label`. We click by snapshot label using the
+    # post-attach DOM (the button may have only just appeared).
+    if confirm_label:
+        await asyncio.sleep(0.5)
+        confirm_snap = await _call_mcp("take_snapshot", {})
+        confirm_uid = _find_uid_by_text(confirm_snap, confirm_label)
+        if confirm_uid:
+            print(f"  [upload] Step 6b: clicking confirm button uid={confirm_uid} {confirm_label!r}")
+            await _call_mcp("click", {"uid": confirm_uid})
+            await asyncio.sleep(0.8)
+        else:
+            print(f"  [upload] Step 6b: confirm button {confirm_label!r} not found — continuing")
+
     # ── Step 7: Wait for verification / OCR processing ──────────────────────
     # Orchestrators set wait_for_ocr=False so they can click a confirm
     # button (Upload / Verify / Continue) BEFORE OCR starts, then handle
@@ -869,6 +920,64 @@ async def upload_file_for_field(field_name: str, file_name: str = "") -> str:
 
 
 # ── Internal helpers for upload_file_for_field ───────────────────────────────
+
+async def _select_modal_dropdown_option(snapshot: str, option_text: str) -> bool:
+    """For modal-based uploaders (TECU "Upload Document" pattern): the modal
+    typically opens with a doc-type combobox/select that must be filled before
+    the file input is rendered. This helper:
+      1. Scans `snapshot` for the first combobox / button / listbox in the
+         currently-open modal that doesn't already show the option text
+      2. Clicks it to open the option list
+      3. Clicks the option whose visible text matches `option_text`
+
+    Returns True if both clicks succeed AND the trigger element's text now
+    reflects the chosen option (best-effort verification). Falls through
+    silently on any miss — the upload caller checks the file-input count
+    afterwards to decide whether the modal flow advanced.
+    """
+    import asyncio
+    import re as _re
+
+    if not snapshot or not option_text:
+        return False
+
+    # ── Step 1: find the trigger ──
+    # Look for the FIRST combobox/listbox/button in the snapshot that
+    # plausibly is the doc-type dropdown. We don't know its label, so we
+    # take a structural approach: pick any combobox or any button whose
+    # visible text matches a "select / choose / type" pattern.
+    trigger_uid = ""
+    placeholder_re = _re.compile(
+        r"(select|choose|please|document\s*type|pick)", _re.IGNORECASE,
+    )
+    for line in snapshot.split("\n"):
+        m = _re.search(r'uid=(\S+)\s+(\S+)\s+"([^"]*)"', line)
+        if not m:
+            continue
+        uid, role, text = m.group(1), m.group(2).lower(), m.group(3)
+        if role == "combobox":
+            trigger_uid = uid
+            break
+        if role in ("button", "listbox") and placeholder_re.search(text):
+            trigger_uid = uid
+            break
+    if not trigger_uid:
+        return False
+
+    # ── Step 2: open it ──
+    open_text = await _call_mcp("click", {"uid": trigger_uid})
+    if "error" in (open_text or "").lower():
+        return False
+    await asyncio.sleep(0.6)
+
+    # ── Step 3: pick the option ──
+    open_snap = await _call_mcp("take_snapshot", {})
+    option_uid = _find_uid_by_text(open_snap, option_text)
+    if not option_uid:
+        return False
+    pick_text = await _call_mcp("click", {"uid": option_uid})
+    return "error" not in (pick_text or "").lower()
+
 
 def _find_uid_by_text(snapshot: str, text: str) -> str:
     """Find uid of an element whose visible text/label matches `text` exactly
