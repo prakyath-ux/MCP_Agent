@@ -401,6 +401,139 @@ async def tag_fields_new_vs_carryover(
     return tags
 
 
+async def find_and_click_reveal_buttons(
+    adapter: PlatformAdapter,
+    budget,
+    guardrails=None,
+    model: str = "gpt-5.1",
+    max_clicks: int = 4,
+) -> tuple[list[str], list[str]]:
+    """LLM scans the current snapshot for in-page buttons that reveal
+    more form fields ("+ Add Another", "Show Advanced", etc.) and
+    clicks them in priority order. Returns (clicked, skipped) labels
+    for the audit log.
+
+    Filters out anything that would advance / submit / cancel via the
+    DEFAULT_NAV_LABELS list before clicking, defending against the
+    LLM occasionally returning a Save & Continue label by mistake.
+
+    Bounded to `max_clicks` per call to prevent runaway loops on pages
+    with many reveal buttons that each spawn more reveal buttons. If
+    you need more, the wizard's mid-fill reveal pass will catch them
+    on the next iteration."""
+    from qa.orchestrators.llm_subtask import llm_classify
+    from qa.orchestrators.sub_prompts import (
+        FIND_REVEAL_BUTTONS_PROMPT,
+        FIND_REVEAL_BUTTONS_SCHEMA,
+    )
+
+    snap = await adapter.raw_snapshot_text()
+    user = f"PAGE_SNAPSHOT (after wizard fill):\n{(snap or '')[:7000]}\n"
+    try:
+        result = await llm_classify(
+            FIND_REVEAL_BUTTONS_PROMPT,
+            user,
+            FIND_REVEAL_BUTTONS_SCHEMA,
+            model=model,
+            budget=budget,
+            label="find_reveal_buttons",
+            guardrails=guardrails,
+        )
+    except Exception as e:
+        print(f"  [wizard] reveal-button scan raised {type(e).__name__}: {e}")
+        return ([], [])
+
+    nav_labels_lower = {l.lower() for l in DEFAULT_NAV_LABELS}
+    clicked: list[str] = []
+    skipped: list[str] = []
+
+    server = adapter.get_mcp_server()
+
+    for entry in (result.get("buttons") or [])[:max_clicks]:
+        if not isinstance(entry, dict):
+            continue
+        label = (entry.get("label") or "").strip()
+        if not label:
+            continue
+        # Defensive: never click a known nav button even if the LLM lists it
+        if any(nl in label.lower() for nl in nav_labels_lower):
+            skipped.append(f"{label} (matches a known nav label)")
+            continue
+
+        # Re-snapshot — earlier clicks may have shifted uids
+        snap_now = await adapter.raw_snapshot_text()
+        uid = _find_uid_by_text(snap_now, label)
+        if not uid:
+            skipped.append(f"{label} (uid not found in snapshot)")
+            continue
+
+        try:
+            text = await server.call_tool("click", {"uid": uid})
+            text_str = ""
+            if hasattr(text, "content") and text.content:
+                text_str = text.content[0].text or ""
+            elif isinstance(text, str):
+                text_str = text
+            if "error" in text_str.lower():
+                skipped.append(f"{label} (MCP click error)")
+                continue
+            clicked.append(label)
+            print(f"  [wizard] clicked reveal button {label!r}")
+            await asyncio.sleep(0.6)
+        except Exception as e:
+            skipped.append(f"{label} ({type(e).__name__}: {e})")
+
+    return (clicked, skipped)
+
+
+async def suggest_alternate_value(
+    field_name: str,
+    field_type: str,
+    attempted_value: str,
+    actual_value: str,
+    error_text: str,
+    validation_rules: str,
+    budget,
+    guardrails=None,
+    model: str = "gpt-5.1",
+) -> tuple[str, str]:
+    """Ask the LLM for an alternate value when a fill failed or the
+    form rejected what we sent. Returns (value, reasoning). Empty
+    string for value means 'no plausible alternate' — caller stops
+    retrying and treats the field as failed."""
+    from qa.orchestrators.llm_subtask import llm_classify
+    from qa.orchestrators.sub_prompts import (
+        SUGGEST_ALTERNATE_VALUE_PROMPT,
+        SUGGEST_ALTERNATE_VALUE_SCHEMA,
+    )
+
+    user = (
+        f"field_name: {field_name!r}\n"
+        f"field_type: {field_type!r}\n"
+        f"validation_rules: {validation_rules!r}\n"
+        f"attempted_value: {attempted_value!r}\n"
+        f"actual_value_in_field: {actual_value!r}\n"
+        f"error_text_from_page: {error_text!r}\n"
+    )
+    try:
+        result = await llm_classify(
+            SUGGEST_ALTERNATE_VALUE_PROMPT,
+            user,
+            SUGGEST_ALTERNATE_VALUE_SCHEMA,
+            model=model,
+            budget=budget,
+            label="suggest_alt",
+            guardrails=guardrails,
+        )
+    except Exception as e:
+        return ("", f"LLM call failed: {type(e).__name__}: {e}")
+
+    return (
+        (result.get("value") or "").strip(),
+        (result.get("reasoning") or "").strip(),
+    )
+
+
 async def wait_for_inline_validation_settle(
     adapter: PlatformAdapter,
     timeout: float = 6.0,

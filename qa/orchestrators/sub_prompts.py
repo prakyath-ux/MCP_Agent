@@ -595,3 +595,109 @@ PICK_STRATEGY_SCHEMA = {
         "required": ["strategy", "confidence", "reasoning"],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: identify reveal-on-click buttons that the wizard should
+# press BEFORE the final Save & Continue. Catches "+ Add Another",
+# "Show Advanced", "Add Beneficiary", expand-section toggles, etc.
+# Does NOT include Save / Submit / Cancel / navigation — those advance
+# the form, not reveal new fields.
+# ──────────────────────────────────────────────────────────────────────
+
+FIND_REVEAL_BUTTONS_PROMPT = """The wizard has filled the form fields
+on this page from defaults. Before clicking the final Save & Continue
+/ Submit button, identify any in-page buttons whose purpose is to
+REVEAL or ADD MORE form fields (not navigate / submit).
+
+Examples of reveal-on-click buttons:
+  • "+ Add Another"
+  • "Add Beneficiary"
+  • "Show Advanced Options"
+  • "More Details"
+  • "Add Income Source"
+  • "Expand"
+
+Examples of buttons to NEVER include:
+  • Save & Continue / Save & Exit / Save / Submit
+  • Next / Previous / Back / Continue
+  • Cancel / Discard / Clear / Reset
+  • Delete / Remove
+  • Verify OTP / Confirm (these advance the OTP step, not reveal fields)
+  • Re-upload / Replace
+  • Section navigation tabs
+  • Action buttons inside already-filled dropdowns
+
+Only include a button if you're confident clicking it adds new editable
+fields the wizard should fill on this same page. If the page looks
+complete and ready to submit, return an empty array.
+
+Return the EXACT visible label so Python can find the uid."""
+
+FIND_REVEAL_BUTTONS_SCHEMA = {
+    "name": "reveal_buttons",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "buttons": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "label": {"type": "string"},
+                        "reasoning": {"type": "string"},
+                    },
+                    "required": ["label", "reasoning"],
+                },
+                "description": "Reveal-on-click buttons to press before the final nav, in priority order",
+            },
+        },
+        "required": ["buttons"],
+    },
+}
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Sub-task: when a fill fails or the form rejects a value, suggest an
+# alternate value to try. The retry helper invokes this with the field's
+# context (name, type, validation_rules), the value we tried, what the
+# field now shows, and any error_text the page surfaces.
+# ──────────────────────────────────────────────────────────────────────
+
+SUGGEST_ALTERNATE_VALUE_PROMPT = """A form field rejected the value
+the wizard tried. Suggest an alternate value the field is most likely
+to accept based on its name, type, the value attempted, what's
+currently in the field, and the error message (if any).
+
+Constraints:
+  • Output a SINGLE alternate value as a string.
+  • If the error suggests the field needs a different format (e.g.
+    'phone must be 10 digits' but we sent 7), produce a value matching
+    that format.
+  • If the error suggests duplicate / already-used, alter the value
+    enough to be unique (add/change a few characters).
+  • If you can't tell what would work, return an empty string ''.
+  • Do NOT include explanation text in the value itself — value field
+    only contains the literal text to type.
+
+Reasoning field: 1 short sentence on why this alternate should work."""
+
+SUGGEST_ALTERNATE_VALUE_SCHEMA = {
+    "name": "alternate_value",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "value": {
+                "type": "string",
+                "description": "Alternate value to try, or '' if no plausible alternate",
+            },
+            "reasoning": {"type": "string"},
+        },
+        "required": ["value", "reasoning"],
+    },
+}

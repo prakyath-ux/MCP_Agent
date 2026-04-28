@@ -269,12 +269,72 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
             cost=ctx.budget.current_cost - cost_at_start,
         )
 
+    # ── 6.4. Reveal-on-click button scan. Some pages have buttons like
+    # "+ Add Another" / "Show Advanced" that surface more form fields
+    # without navigating. The LLM looks at the post-fill snapshot,
+    # identifies reveal buttons, clicks each in turn, and we re-fill
+    # whatever appears. Bounded to 4 clicks per page.
+    from qa.orchestrators.wizard_steps import (
+        find_and_click_reveal_buttons,
+        wait_for_inline_validation_settle,
+    )
+    reveal_clicked, reveal_skipped = await find_and_click_reveal_buttons(
+        adapter, budget=ctx.budget, max_clicks=4,
+    )
+    if reveal_clicked:
+        print(
+            f"  [strat:wizard] reveal scan clicked {len(reveal_clicked)} "
+            f"button(s): {reveal_clicked}"
+        )
+        await asyncio.sleep(0.8)
+        # Reveal clicks may have surfaced new fields — extend KB + fill them
+        revealed2 = await extract_form(
+            adapter=adapter,
+            app_name=ctx.app_name,
+            screen_name=screen.screen_name,
+            budget=ctx.budget,
+            page_url=ctx.page_url,
+            defaults=ctx.defaults,
+        )
+        prior_ids2 = {el.element_id for el in screen.l0}
+        new_l02 = [el for el in revealed2.l0 if el.element_id not in prior_ids2]
+        if new_l02:
+            print(
+                f"  [strat:wizard] reveal-fill: {len(new_l02)} new field(s) "
+                f"appeared after reveal-button clicks"
+            )
+            from qa.models.knowledge import ScreenKnowledge
+            delta2 = ScreenKnowledge(
+                screen_name=screen.screen_name,
+                screen_url=screen.screen_url,
+                l0=new_l02,
+                l1=[
+                    l1 for l1 in revealed2.l1
+                    if l1.element_id not in prior_ids2
+                ],
+            )
+            screen.l0 = list(screen.l0) + new_l02
+            screen.l1 = list(screen.l1) + delta2.l1
+            from qa.knowledge.store import KnowledgeStore
+            existing2 = ctx.kb.get_screen(screen.screen_name)
+            if existing2:
+                ctx.kb.screens = [
+                    s for s in ctx.kb.screens
+                    if s.screen_name != screen.screen_name
+                ]
+            ctx.kb.screens.append(screen)
+            KnowledgeStore().save(ctx.kb)
+            d2_filled, d2_skipped = await fill_page_from_defaults(
+                adapter, ctx.kb, ctx.defaults, delta2,
+            )
+            filled.extend(d2_filled)
+            skipped.extend(d2_skipped)
+
     # ── 6.5. Wait for inline validation to settle before nav-clicking.
     # Apps with debounced server-side checks (email-uniqueness,
     # username availability) show a spinner for 1-5s after fill.
     # Clicking Save & Continue while it's still validating submits
     # stale state and gets rejected. 6s cap is a comfortable margin.
-    from qa.orchestrators.wizard_steps import wait_for_inline_validation_settle
     settled, signal, vwait = await wait_for_inline_validation_settle(
         adapter, timeout=6.0,
     )
