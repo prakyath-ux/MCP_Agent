@@ -1035,10 +1035,21 @@ async def _select_option(
         return ("OPEN_FAILED", options)
 
     # Custom combobox path — click trigger, wait, read options, click target.
+    # Tag the trigger with a marker BEFORE clicking. If the synthetic click
+    # doesn't open the popup (React/Tailwind custom dropdowns ignore
+    # synthetic events), we fall back to MCP click via uid using this marker.
+    DROPDOWN_MARKER = "qa-dropdown-trigger"
+    marker_js = json.dumps(DROPDOWN_MARKER)
     open_fn = (
         "() => {"
         f"  const el = {resolve_expr};"
         "  if (!el) return 'ELEMENT_NOT_FOUND';"
+        "  document.querySelectorAll('[data-qa-marker=\"" + DROPDOWN_MARKER + "\"]')"
+        "    .forEach(e => { e.removeAttribute('data-qa-marker'); "
+        "                    if (e.getAttribute('aria-label') === " + marker_js + ") "
+        "                      e.removeAttribute('aria-label'); });"
+        f"  el.setAttribute('data-qa-marker', {marker_js});"
+        f"  el.setAttribute('aria-label', {marker_js});"
         "  el.click();"
         "  return 'OPENED';"
         "}"
@@ -1079,6 +1090,26 @@ async def _select_option(
     raw_opts = await adapter.evaluate_script(read_fn)
     parsed = _parse_mcp_result(raw_opts)
     options = parsed if isinstance(parsed, list) else []
+
+    # Fallback: synthetic el.click() didn't open the popup — common on
+    # React/Tailwind custom dropdowns that listen for real PointerEvents.
+    # Find the trigger uid via the marker we set, then click through MCP
+    # which dispatches a real input event. Re-read options afterwards.
+    if not options:
+        try:
+            from qa.tools.web_tools import _find_uid_by_text
+            snap = await _raw_snapshot(adapter)
+            uid = _find_uid_by_text(snap, DROPDOWN_MARKER)
+            if uid:
+                server = adapter.get_mcp_server()
+                await server.call_tool("click", {"uid": uid})
+                await asyncio.sleep(0.6)
+                raw_opts = await adapter.evaluate_script(read_fn)
+                parsed = _parse_mcp_result(raw_opts)
+                options = parsed if isinstance(parsed, list) else []
+        except Exception as e:
+            print(f"    [select_option] mcp-click fallback raised: {e}")
+
     if not options:
         await _close_popup(adapter)
         return ("OPEN_FAILED", [])
