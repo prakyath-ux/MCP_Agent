@@ -1262,7 +1262,12 @@ async def _restore_field_to_default(
 
 
 async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
-    """React-safe native-setter fill via CSS selector. Returns True on 'OK'."""
+    """React-safe native-setter fill via CSS selector. Returns True only
+    when the field's actual `.value` matches what we tried to set after
+    the input/change events fire — catches React phone-input libraries
+    and other controlled components that silently revert or reformat the
+    value despite the dispatch succeeding. Tolerates digit-only fields
+    that strip formatting (e.g. tel inputs)."""
     fn = (
         "() => {"
         f"  const el = document.querySelector({json.dumps(css)});"
@@ -1276,19 +1281,32 @@ async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
         "  el.dispatchEvent(new Event('input', {bubbles: true}));"
         "  el.dispatchEvent(new Event('change', {bubbles: true}));"
         "  el.blur();"
-        "  return 'OK';"
+        "  const want = " + json.dumps(value) + ".trim();"
+        "  const actual = (el.value || '').trim();"
+        "  if (actual === want) return 'OK';"
+        "  const stripD = s => (s || '').replace(/\\D/g, '');"
+        "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
+        "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
         "}"
     )
     try:
         result = await adapter.evaluate_script(fn)
     except Exception:
         return False
-    return "OK" in (result or "")
+    out = result or ""
+    if "OK" in out:
+        return True
+    if "VALUE_MISMATCH" in out:
+        print(f"    [fill] ⚠ value did not stick on {css!r}: {out[:160]}")
+    elif "ELEMENT_NOT_FOUND" in out:
+        print(f"    [fill] ⚠ element not found for {css!r}")
+    return False
 
 
 async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -> bool:
     """Same React-safe native-setter fill, but resolves the element via XPath.
-    Used for label-based locators that can't be expressed in CSS."""
+    Used for label-based locators that can't be expressed in CSS. Verifies
+    the value actually stuck (see _python_fill for rationale)."""
     fn = (
         "() => {"
         f"  const result = document.evaluate({json.dumps(xpath)}, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);"
@@ -1303,14 +1321,26 @@ async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -
         "  el.dispatchEvent(new Event('input', {bubbles: true}));"
         "  el.dispatchEvent(new Event('change', {bubbles: true}));"
         "  el.blur();"
-        "  return 'OK';"
+        "  const want = " + json.dumps(value) + ".trim();"
+        "  const actual = (el.value || '').trim();"
+        "  if (actual === want) return 'OK';"
+        "  const stripD = s => (s || '').replace(/\\D/g, '');"
+        "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
+        "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
         "}"
     )
     try:
         result = await adapter.evaluate_script(fn)
     except Exception:
         return False
-    return "OK" in (result or "")
+    out = result or ""
+    if "OK" in out:
+        return True
+    if "VALUE_MISMATCH" in out:
+        print(f"    [fill-xpath] ⚠ value did not stick on {xpath!r}: {out[:160]}")
+    elif "ELEMENT_NOT_FOUND" in out:
+        print(f"    [fill-xpath] ⚠ element not found for {xpath!r}")
+    return False
 
 
 async def _fill_trying_all_locators(
