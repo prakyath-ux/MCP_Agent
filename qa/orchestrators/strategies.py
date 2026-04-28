@@ -179,6 +179,60 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
     )
     print(f"  [strat:wizard] filled {len(filled)} field(s), skipped {len(skipped)}")
 
+    # ── 5b. Mid-fill reveal: filling cascade dropdowns / radios may
+    # reveal new fields that weren't in the original L0. Re-extract.
+    # If new fields appeared, fill them too. Bounded to one pass —
+    # avoids runaway loops on pages where every fill reveals more.
+    revealed_screen = await extract_form(
+        adapter=adapter,
+        app_name=ctx.app_name,
+        screen_name=screen.screen_name,
+        budget=ctx.budget,
+        page_url=ctx.page_url,
+        defaults=ctx.defaults,
+    )
+    prior_ids = {el.element_id for el in screen.l0}
+    new_l0 = [el for el in revealed_screen.l0 if el.element_id not in prior_ids]
+    if new_l0:
+        print(
+            f"  [strat:wizard] mid-fill reveal: {len(new_l0)} new field(s) "
+            f"appeared after initial fill — extending"
+        )
+        # Build a synthetic screen containing only the new fields so
+        # fill_page_from_defaults targets only them.
+        from qa.models.knowledge import ScreenKnowledge
+        delta = ScreenKnowledge(
+            screen_name=screen.screen_name,
+            screen_url=screen.screen_url,
+            l0=new_l0,
+            l1=[
+                l1 for l1 in revealed_screen.l1
+                if l1.element_id not in prior_ids
+            ],
+        )
+        # Merge new L0/L1 into the persisted screen so KB reflects reality.
+        screen.l0 = list(screen.l0) + new_l0
+        screen.l1 = list(screen.l1) + delta.l1
+        # Update kb in place (we already saved screen earlier).
+        from qa.knowledge.store import KnowledgeStore
+        existing = ctx.kb.get_screen(screen.screen_name)
+        if existing:
+            ctx.kb.screens = [
+                s for s in ctx.kb.screens if s.screen_name != screen.screen_name
+            ]
+        ctx.kb.screens.append(screen)
+        KnowledgeStore().save(ctx.kb)
+
+        delta_filled, delta_skipped = await fill_page_from_defaults(
+            adapter, ctx.kb, ctx.defaults, delta,
+        )
+        filled.extend(delta_filled)
+        skipped.extend(delta_skipped)
+        print(
+            f"  [strat:wizard] reveal-fill: +{len(delta_filled)} filled, "
+            f"+{len(delta_skipped)} skipped"
+        )
+
     # ── 6. Required-field precheck
     # Autofilled / read-only fields are intentionally skipped during fill
     # (see _is_autofilled in wizard_steps), so they shouldn't be flagged
