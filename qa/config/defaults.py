@@ -278,3 +278,61 @@ def load_defaults(app_name: str, path: str | Path | None = None) -> Defaults:
         upload_modes=upload_modes,
         source_path=str(resolved),
     )
+
+
+# Names / phone bases used by randomize_pii. Kept short so the output
+# is readable; suffix-based uniqueness handles the duplicate-account
+# problem without needing a 100-row dictionary.
+_FIRST_NAMES = (
+    "JOHN", "JANE", "SARAH", "MIKE", "ANNA", "DAVID", "LISA",
+    "ALEX", "EMMA", "OMAR", "MAYA", "ZARA", "NOAH", "RUBY",
+)
+_LAST_NAMES = (
+    "DOE", "SMITH", "JONES", "BROWN", "GARCIA", "PATEL", "LEE",
+    "TAYLOR", "KING", "MARTIN", "CLARK", "ROY", "OWENS",
+)
+
+
+def randomize_pii(defaults: Defaults) -> dict[str, str]:
+    """Replace the mapping entries for name / email / phone fields with
+    unique random-but-valid values. Mutates `defaults.mapping` in place
+    and returns the override dict so callers can log what was used.
+
+    The suffix (6 digits) is reused across name / email so the email
+    is traceable to the user — `john_847291@example.com` matches first
+    name `JOHN` + suffix `847291`. Phones get their own 7-digit value
+    (Trinidad format) since the mask is digits-only.
+
+    Only keys that already exist in defaults.mapping are overridden;
+    if an app's defaults don't list e.g. 'Work Phone', this won't add
+    one. Keeps the override channel additive-only — the loaded
+    defaults file is never the source of confusion."""
+    import random
+    import string
+
+    suffix = "".join(random.choices(string.digits, k=6))
+    first = random.choice(_FIRST_NAMES)
+    last = random.choice(_LAST_NAMES)
+    email = f"{first.lower()}_{suffix}@example.com"
+    # Trinidad-style 7-digit local mobile; lead digit avoids 0 to dodge
+    # leading-zero strip behaviour on number-typed inputs.
+    mobile = "5" + "".join(random.choices(string.digits, k=6))
+
+    overrides = {
+        "First Name": first,
+        "Last Name": last,
+        "Email": email,
+        "Email ID": email,
+        "Email Address": email,
+        "Mobile Number": mobile,
+        "Home Phone": mobile,
+        "Work Phone": mobile,
+        "Work Email": email,
+    }
+
+    applied: dict[str, str] = {}
+    for k, v in overrides.items():
+        if k in defaults.mapping:
+            defaults.mapping[k] = v
+            applied[k] = v
+    return applied

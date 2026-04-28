@@ -2648,6 +2648,16 @@ async def main() -> int:
         "--max-pages", type=int, default=6,
         help="Max pages for --wizard mode (default 6, matches TECU)",
     )
+    ap.add_argument(
+        "--randomize", action="store_true",
+        help=(
+            "Override name/email/phone defaults with unique random "
+            "(but valid) values for this run. Avoids 'user already "
+            "exists' rejections on apps that enforce account uniqueness "
+            "across submissions. The override is in-memory only — "
+            "artifacts/defaults/<app>.json is not modified."
+        ),
+    )
     ap.add_argument("--model", default="gpt-5.1", help="Model for option extraction")
     ap.add_argument("--budget", type=float, default=0.50, help="Max $ budget cap")
     ap.add_argument(
@@ -2675,6 +2685,16 @@ async def main() -> int:
     defaults_path = args.defaults.strip() or None
     defaults = load_defaults(args.app_name, path=defaults_path)
     print(f"  {defaults.summary()}")
+
+    if args.randomize:
+        from qa.config.defaults import randomize_pii
+        applied = randomize_pii(defaults)
+        if applied:
+            print(f"  Randomized {len(applied)} PII default(s) for this run:")
+            for k, v in applied.items():
+                print(f"    {k!r:20} → {v!r}")
+        else:
+            print("  --randomize: no PII keys present in defaults to override")
 
     store = KnowledgeStore()
     kb = store.load(app) or KnowledgeBase(app=app)
