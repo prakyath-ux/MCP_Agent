@@ -2788,6 +2788,13 @@ async def main() -> int:
     # to the KB. User presses Enter to continue, 'q' to quit.
     extracted: list[tuple[str, int]] = []
     section_num = 1
+    # Circuit breaker for wizard mode: counts consecutive
+    # SAME_PAGE_WITH_EXPANSION verdicts. If we accumulate too many
+    # without a NEW_PAGE in between, the wizard is in a loop (TECU's
+    # email OTP keeps re-triggering on duplicate users, etc.). Stop
+    # with a clear message instead of churning forever.
+    expansion_streak = 0
+    EXPANSION_STREAK_LIMIT = 3
 
     try:
         while True:
@@ -3048,16 +3055,36 @@ async def main() -> int:
                     )
                     break
                 if verdict == "SAME_PAGE_WITH_EXPANSION":
+                    expansion_streak += 1
+                    if expansion_streak > EXPANSION_STREAK_LIMIT:
+                        print(
+                            f"  [wizard] ✗ {expansion_streak} consecutive "
+                            f"SAME_PAGE_WITH_EXPANSION verdicts — wizard is "
+                            f"stuck in a loop."
+                        )
+                        print(
+                            f"  [wizard] Likely cause: the app keeps re-"
+                            f"triggering an inline step (e.g. TECU re-shows "
+                            f"OTP on duplicate users)."
+                        )
+                        print(
+                            f"  [wizard] Try re-running with --randomize "
+                            f"so each run uses a fresh email + mobile, OR "
+                            f"check the browser for an error TECU isn't "
+                            f"surfacing in the snapshot."
+                        )
+                        break
                     print(
-                        f"  [wizard] same page expanded — re-extracting "
-                        f"in place (no new screen counter increment)"
+                        f"  [wizard] same page expanded ({expansion_streak}/"
+                        f"{EXPANSION_STREAK_LIMIT}) — re-extracting in place"
                     )
                     # Re-extract the same screen_name; do not advance
                     # section_num so the expanded content overwrites.
                     await asyncio.sleep(1.0)
                     continue
 
-                # NEW_PAGE — proceed normally
+                # NEW_PAGE — reset the expansion streak and advance
+                expansion_streak = 0
                 await asyncio.sleep(1.5)
                 section_num += 1
                 continue
