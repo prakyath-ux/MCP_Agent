@@ -2648,15 +2648,22 @@ async def main() -> int:
         "--max-pages", type=int, default=6,
         help="Max pages for --wizard mode (default 6, matches TECU)",
     )
-    ap.add_argument(
-        "--randomize", action="store_true",
+    # --randomize is DEFAULT-ON in --wizard mode (apps with unique-account
+    # constraints reject re-runs with the same email). Use --no-randomize
+    # to opt out for reproducibility. Outside of wizard mode the default
+    # is OFF since other modes don't submit forms.
+    rand_grp = ap.add_mutually_exclusive_group()
+    rand_grp.add_argument(
+        "--randomize", dest="randomize", action="store_true", default=None,
         help=(
-            "Override name/email/phone defaults with unique random "
-            "(but valid) values for this run. Avoids 'user already "
-            "exists' rejections on apps that enforce account uniqueness "
-            "across submissions. The override is in-memory only — "
+            "Force PII randomization (name/email/phone) for this run. "
+            "Default in --wizard mode. The override is in-memory only — "
             "artifacts/defaults/<app>.json is not modified."
         ),
+    )
+    rand_grp.add_argument(
+        "--no-randomize", dest="randomize", action="store_false",
+        help="Disable PII randomization even in --wizard mode (use static defaults).",
     )
     ap.add_argument("--model", default="gpt-5.1", help="Model for option extraction")
     ap.add_argument("--budget", type=float, default=0.50, help="Max $ budget cap")
@@ -2686,15 +2693,31 @@ async def main() -> int:
     defaults = load_defaults(args.app_name, path=defaults_path)
     print(f"  {defaults.summary()}")
 
-    if args.randomize:
+    # Resolve the tristate randomize flag:
+    #   args.randomize is True  → user passed --randomize
+    #   args.randomize is False → user passed --no-randomize
+    #   args.randomize is None  → user passed neither — default ON for wizard
+    if args.randomize is None:
+        randomize_on = bool(args.wizard)
+    else:
+        randomize_on = bool(args.randomize)
+
+    if randomize_on:
         from qa.config.defaults import randomize_pii
         applied = randomize_pii(defaults)
+        print()
+        print("=" * 60)
         if applied:
-            print(f"  Randomized {len(applied)} PII default(s) for this run:")
+            print(f"  ★ RANDOMIZED {len(applied)} PII default(s) for this run:")
             for k, v in applied.items():
-                print(f"    {k!r:20} → {v!r}")
+                print(f"      {k!r:20} → {v!r}")
         else:
-            print("  --randomize: no PII keys present in defaults to override")
+            print("  ★ --randomize requested but no PII keys present in defaults")
+        print("=" * 60)
+    elif args.wizard:
+        print()
+        print("  ⚠ --no-randomize: wizard will use STATIC defaults this run")
+        print()
 
     store = KnowledgeStore()
     kb = store.load(app) or KnowledgeBase(app=app)
