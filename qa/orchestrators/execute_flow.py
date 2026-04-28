@@ -1349,6 +1349,82 @@ async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -
     return False
 
 
+async def _mcp_fill_via_marker(
+    adapter: PlatformAdapter, css: str, value: str,
+) -> bool:
+    """Last-resort fill using chrome-devtools-mcp's `fill` tool. Drives
+    real keyboard events through the Chrome DevTools Protocol, below the
+    JavaScript layer — React-controlled inputs that ignore JS-dispatched
+    `input` events still receive these because they look identical to a
+    human typing on the keyboard.
+
+    Flow: tag the input with a marker (data-qa-fill-target + aria-label),
+    snapshot the page, find uid via marker, call MCP `fill`. The marker
+    is cleared from any previously-tagged inputs first so stale tags from
+    earlier fills can't misdirect this one.
+    """
+    MARKER = "qa-mcp-fill-target"
+    tag_fn = (
+        "() => {"
+        "  document.querySelectorAll('[data-qa-fill-target=\"" + MARKER + "\"]')"
+        "    .forEach(e => { e.removeAttribute('data-qa-fill-target'); "
+        "                    if (e.getAttribute('aria-label') === " + json.dumps(MARKER) + ") "
+        "                      e.removeAttribute('aria-label'); });"
+        f"  const el = document.querySelector({json.dumps(css)});"
+        "  if (!el) return 'ELEMENT_NOT_FOUND';"
+        "  el.setAttribute('data-qa-fill-target', " + json.dumps(MARKER) + ");"
+        "  el.setAttribute('aria-label', " + json.dumps(MARKER) + ");"
+        "  return 'TAGGED';"
+        "}"
+    )
+    try:
+        tagged = (await adapter.evaluate_script(tag_fn) or "").strip()
+    except Exception as e:
+        print(f"    [mcp-fill] tag step failed: {e}")
+        return False
+    if "TAGGED" not in tagged:
+        return False
+
+    try:
+        from qa.tools.web_tools import _find_uid_by_text
+        snap = await _raw_snapshot(adapter)
+        uid = _find_uid_by_text(snap, MARKER)
+        if not uid:
+            print(f"    [mcp-fill] could not locate uid for marker {MARKER!r}")
+            return False
+        server = adapter.get_mcp_server()
+        await server.call_tool("fill", {"uid": uid, "value": value})
+        await asyncio.sleep(0.3)
+    except Exception as e:
+        print(f"    [mcp-fill] MCP fill call failed: {e}")
+        return False
+
+    # Verify after fill — same logic as _python_fill
+    verify_fn = (
+        "() => {"
+        f"  const el = document.querySelector({json.dumps(css)});"
+        "  if (!el) return JSON.stringify({status: 'ELEMENT_NOT_FOUND'});"
+        f"  const want = {json.dumps(value)}.trim();"
+        "  const actual = (el.value || '').trim();"
+        "  if (actual === want) return 'OK';"
+        "  if (actual.toLowerCase() === want.toLowerCase()) return 'OK';"
+        "  const stripD = s => (s || '').replace(/\\D/g, '');"
+        "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
+        "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
+        "}"
+    )
+    try:
+        result = await adapter.evaluate_script(verify_fn)
+    except Exception:
+        return False
+    out = result or ""
+    if "OK" in out:
+        return True
+    if "VALUE_MISMATCH" in out:
+        print(f"    [mcp-fill] ⚠ value still didn't stick on {css!r}: {out[:160]}")
+    return False
+
+
 async def _python_type_chars(
     adapter: PlatformAdapter, css: str, value: str,
 ) -> bool:
@@ -1417,8 +1493,13 @@ async def _fill_trying_all_locators(
         if strategy == "css":
             ok = await _python_fill(adapter, sel, value)
             if not ok:
-                # Fallback: per-character typing for React-controlled inputs
+                # Fallback 1: per-character JS typing for React-controlled inputs
                 ok = await _python_type_chars(adapter, sel, value)
+            if not ok:
+                # Fallback 2: chrome-devtools-mcp's `fill` tool — drives real
+                # CDP keyboard events. Last resort for components that ignore
+                # all JS event dispatching (strict React phone/mask libraries).
+                ok = await _mcp_fill_via_marker(adapter, sel, value)
         elif strategy == "xpath":
             ok = await _python_fill_xpath(adapter, sel, value)
         else:
