@@ -1284,6 +1284,9 @@ async def _python_fill(adapter: PlatformAdapter, css: str, value: str) -> bool:
         "  const want = " + json.dumps(value) + ".trim();"
         "  const actual = (el.value || '').trim();"
         "  if (actual === want) return 'OK';"
+        "  // Case-insensitive — TECU and others uppercase emails on input"
+        "  if (actual.toLowerCase() === want.toLowerCase()) return 'OK';"
+        "  // Digit-only — tel inputs that strip formatting still pass"
         "  const stripD = s => (s || '').replace(/\\D/g, '');"
         "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
         "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
@@ -1324,6 +1327,9 @@ async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -
         "  const want = " + json.dumps(value) + ".trim();"
         "  const actual = (el.value || '').trim();"
         "  if (actual === want) return 'OK';"
+        "  // Case-insensitive — TECU and others uppercase emails on input"
+        "  if (actual.toLowerCase() === want.toLowerCase()) return 'OK';"
+        "  // Digit-only — tel inputs that strip formatting still pass"
         "  const stripD = s => (s || '').replace(/\\D/g, '');"
         "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
         "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
@@ -1343,6 +1349,56 @@ async def _python_fill_xpath(adapter: PlatformAdapter, xpath: str, value: str) -
     return False
 
 
+async def _python_type_chars(
+    adapter: PlatformAdapter, css: str, value: str,
+) -> bool:
+    """Per-character typing simulation as a fallback for React-controlled
+    inputs (phone-input libraries, masked inputs, etc.) that silently
+    reject native-setter dispatches. Dispatches an InputEvent with
+    inputType='insertText' for each character, which is what React's
+    SyntheticEvent layer expects from real user input. Verifies the
+    final value (digit-only tolerance for tel inputs)."""
+    fn = (
+        "() => {"
+        f"  const el = document.querySelector({json.dumps(css)});"
+        "  if (!el) return 'ELEMENT_NOT_FOUND';"
+        "  const proto = el.tagName === 'TEXTAREA' "
+        "    ? HTMLTextAreaElement.prototype "
+        "    : HTMLInputElement.prototype;"
+        "  const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;"
+        "  el.focus();"
+        "  setter.call(el, '');"
+        "  el.dispatchEvent(new Event('input', {bubbles: true}));"
+        f"  const value = {json.dumps(value)};"
+        "  for (const ch of value) {"
+        "    const cur = el.value || '';"
+        "    setter.call(el, cur + ch);"
+        "    el.dispatchEvent(new InputEvent('input', "
+        "      {bubbles: true, data: ch, inputType: 'insertText'}));"
+        "  }"
+        "  el.dispatchEvent(new Event('change', {bubbles: true}));"
+        "  el.blur();"
+        "  const want = value.trim();"
+        "  const actual = (el.value || '').trim();"
+        "  if (actual === want) return 'OK';"
+        "  if (actual.toLowerCase() === want.toLowerCase()) return 'OK';"
+        "  const stripD = s => (s || '').replace(/\\D/g, '');"
+        "  if (stripD(actual) && stripD(actual) === stripD(want)) return 'OK';"
+        "  return JSON.stringify({status: 'VALUE_MISMATCH', actual, want});"
+        "}"
+    )
+    try:
+        result = await adapter.evaluate_script(fn)
+    except Exception:
+        return False
+    out = result or ""
+    if "OK" in out:
+        return True
+    if "VALUE_MISMATCH" in out:
+        print(f"    [type-chars] ⚠ value did not stick on {css!r}: {out[:160]}")
+    return False
+
+
 async def _fill_trying_all_locators(
     adapter: PlatformAdapter,
     locators: list[tuple[str, str]],
@@ -1351,12 +1407,18 @@ async def _fill_trying_all_locators(
     """Try each (strategy, value) locator in order until one succeeds.
     Returns (ok, strategy_used, selector_used). Used to gracefully fall
     through from stale id-based CSS to label-based XPath when SPAs
-    regenerate IDs between extract and execute."""
+    regenerate IDs between extract and execute. For each CSS locator,
+    if the standard native-setter fill fails, retry the same locator
+    with per-character InputEvent simulation — this catches React phone
+    / masked input components that ignore single-shot input events."""
     for strategy, sel in locators:
         if not sel:
             continue
         if strategy == "css":
             ok = await _python_fill(adapter, sel, value)
+            if not ok:
+                # Fallback: per-character typing for React-controlled inputs
+                ok = await _python_type_chars(adapter, sel, value)
         elif strategy == "xpath":
             ok = await _python_fill_xpath(adapter, sel, value)
         else:
