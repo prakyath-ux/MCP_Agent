@@ -180,12 +180,25 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
     print(f"  [strat:wizard] filled {len(filled)} field(s), skipped {len(skipped)}")
 
     # ── 6. Required-field precheck
+    # Autofilled / read-only fields are intentionally skipped during fill
+    # (see _is_autofilled in wizard_steps), so they shouldn't be flagged
+    # as misses here either — the app populates them itself.
+    AUTOFILL_MARKERS_PRECHECK = (
+        "auto_filled", "auto-filled", "autofilled",
+        "read_only", "read-only", "readonly", "masked",
+    )
     filled_names = {n for n, _ in filled}
     required_misses: list[tuple[str, str]] = []
     for el in screen.l0:
         if not getattr(el, "required", False):
             continue
         if el.name in filled_names:
+            continue
+        # Autofilled-required fields don't count as misses — the app
+        # fills them itself and inspecting them as "missing" leads to
+        # false stops on pages with OCR'd values.
+        behavior = (getattr(el, "behavior", "") or "").lower()
+        if any(m in behavior for m in AUTOFILL_MARKERS_PRECHECK):
             continue
         note = next(
             (n for fname, n in skipped if fname == el.name),

@@ -163,10 +163,33 @@ async def fill_page_from_defaults(
         + by_type["file_upload"] + by_type["other"]
     )
 
+    # Autofill-marker patterns. If an L0's `behavior` text contains any
+    # of these, the field is populated by the app itself (OCR auto-fill,
+    # session-derived value, masked input). The wizard MUST NOT overwrite
+    # — doing so corrupts state shared with the next page (e.g. an
+    # OCR'd passport number that downstream KYC checks rely on). Same
+    # rule the plan-side prompt enforces for VERIFY_ONLY tests in
+    # qa/prompts/plan.py.
+    AUTOFILL_MARKERS = (
+        "auto_filled", "auto-filled", "autofilled",
+        "read_only", "read-only", "readonly",
+        "masked",
+    )
+
+    def _is_autofilled(el) -> bool:
+        b = (getattr(el, "behavior", "") or "").lower()
+        return any(m in b for m in AUTOFILL_MARKERS)
+
     for el in ordered:
         tname = el.type.value if hasattr(el.type, "value") else str(el.type)
         if tname == "date_picker":
             skipped.append((el.name, "date_picker — wizard skips"))
+            continue
+
+        # Don't touch auto-filled / read-only fields — they're populated
+        # by the app and overwriting can break downstream state.
+        if _is_autofilled(el):
+            skipped.append((el.name, f"auto-filled / read-only ({tname}) — protected"))
             continue
 
         value = defaults.get(el.name, section=el.screen_name)
