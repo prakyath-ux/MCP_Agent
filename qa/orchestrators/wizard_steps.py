@@ -421,20 +421,27 @@ async def dismiss_confirmation_modal(
       Yes, Continue · Continue · OK · Confirm · Proceed · Accept ·
       Agree · Yes · Submit Anyway · Continue Anyway · I Understand
     """
+    # 'Yes' first — TECU and most confirmation modals use Yes/No.
+    # Multi-word labels follow ('Yes, Continue', 'Continue Anyway')
+    # so they win over plain 'Continue' when a modal has them.
+    # 'Continue' / 'Submit' are LAST among ambiguous single-word labels
+    # because they often substring-match the underlying page's
+    # 'Save and Continue' / 'Submit' button instead of the modal.
     AFFIRMATIVE_LABELS = (
         "Yes, Continue",
         "Yes Continue",
+        "Yes, Proceed",
         "Continue Anyway",
         "Submit Anyway",
         "I Understand",
-        "Continue",
+        "I Agree",
+        "Yes",
         "Confirm",
-        "Proceed",
         "Accept",
         "Agree",
-        "I Agree",
         "OK",
-        "Yes",
+        "Proceed",
+        "Continue",
     )
 
     # Take a snapshot first. The modal must be visible — we don't

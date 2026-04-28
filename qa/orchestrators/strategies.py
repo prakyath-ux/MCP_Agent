@@ -547,14 +547,28 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
     if not transitioned:
         # Same modal-dismiss fallback as gated_step. Some apps confirm
         # 'Are you sure you want to submit?' after Save & Continue.
+        # Loop up to 2 times in case stacked modals fire, and re-click
+        # Save & Continue after each dismiss since the modal often
+        # absorbed the original click without actually submitting.
         from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
-        dismissed, modal_label = await dismiss_confirmation_modal(adapter)
-        if dismissed:
-            print(f"  [strat:wizard] dismissed modal via {modal_label!r}, re-checking transition")
+        for modal_attempt in range(2):
+            dismissed, modal_label = await dismiss_confirmation_modal(adapter)
+            if not dismissed:
+                break
+            print(
+                f"  [strat:wizard] dismissed modal via {modal_label!r} "
+                f"(attempt {modal_attempt + 1}), re-clicking Save & Continue"
+            )
+            await wait_for_inline_validation_settle(adapter, timeout=3.0)
+            reclicked, relabel = await click_save_and_continue(adapter)
+            if reclicked:
+                print(f"  [strat:wizard] re-clicked {relabel!r} after modal dismiss")
             await wait_for_inline_validation_settle(adapter, timeout=4.0)
             transitioned, signal = await wait_for_page_transition(
                 adapter, before_sig, timeout=10.0,
             )
+            if transitioned:
+                break
 
     if not transitioned:
         return StrategyOutcome(
@@ -770,15 +784,32 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
         # Save & Continue may have triggered a confirmation modal
         # (TECU shows 'Names don't match — Are you sure?' Yes/No
         # popup when OCR'd names mismatch). Try to dismiss it via
-        # the affirmative button and re-check transition.
+        # the affirmative button. After dismissing, many apps also
+        # require RE-CLICKING Save & Continue — the modal swallowed
+        # the original click without actually submitting. Loop up to
+        # 2 times in case stacked modals fire.
         from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
-        dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
-        if dismissed:
-            print(f"  [strat:gated] dismissed modal via {modal_label!r}, re-checking transition")
+        for modal_attempt in range(2):
+            dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
+            if not dismissed:
+                break
+            print(
+                f"  [strat:gated] dismissed modal via {modal_label!r} "
+                f"(attempt {modal_attempt + 1}), re-clicking Save & Continue"
+            )
+            await wait_for_inline_validation_settle(ctx.adapter, timeout=3.0)
+            # Re-click Save & Continue — modal-dismiss alone often
+            # doesn't progress the form; the underlying click was
+            # absorbed by the modal opening.
+            reclicked, relabel = await click_save_and_continue(ctx.adapter)
+            if reclicked:
+                print(f"  [strat:gated] re-clicked {relabel!r} after modal dismiss")
             await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
             transitioned, signal = await wait_for_page_transition(
                 ctx.adapter, before_sig, timeout=12.0,
             )
+            if transitioned:
+                break
 
     if not transitioned:
         last_screen = captured[-1] if captured else None
