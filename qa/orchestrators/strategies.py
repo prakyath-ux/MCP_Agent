@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
@@ -260,14 +261,130 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
         )
         required_misses.append((el.name, note))
     if required_misses:
-        details = "; ".join(f"{n}: {note}" for n, note in required_misses[:3])
-        return StrategyOutcome(
-            success=True,
-            advance=False,
-            captured=screen,
-            note=f"{len(required_misses)} required field(s) failed to fill: {details}",
-            cost=ctx.budget.current_cost - cost_at_start,
+        # ── 6.7. LLM retry with alternate values.
+        # Before giving up, give each missed required field ONE retry
+        # with an LLM-suggested alternate. The LLM reads the field's
+        # name + type + validation_rules, the value we tried, what's
+        # actually in the field now, and any error_text the page
+        # surfaces. Returns a single alternate value to try.
+        from qa.orchestrators.execute_flow import (
+            _fill_trying_all_locators, _find_l1_locators_sorted,
         )
+        from qa.orchestrators.wizard_steps import suggest_alternate_value
+
+        # Pull error text from the page so the LLM has context.
+        err_js = (
+            "() => {"
+            "  const errs = [...document.querySelectorAll("
+            "    '.error, [role=alert], [class*=error], [class*=Error], '"
+            "    + '.helper-text, .MuiFormHelperText-root.Mui-error, '"
+            "    + '[aria-invalid=true] ~ * '"
+            "  )].filter(e => e.offsetParent !== null);"
+            "  return JSON.stringify({"
+            "    errors: errs.map(e => (e.textContent||'').trim()).filter(t => t).slice(0, 8)"
+            "  });"
+            "}"
+        )
+        try:
+            err_raw = await adapter.evaluate_script(err_js)
+            err_parsed = _safe_parse(err_raw) or {}
+            page_errors = err_parsed.get("errors", []) if isinstance(err_parsed, dict) else []
+        except Exception:
+            page_errors = []
+
+        # Build a name → L0 lookup so we can resolve element type / rules
+        l0_by_name = {el.name: el for el in screen.l0}
+
+        retried_filled: list[tuple[str, str]] = []
+        retry_failed: list[tuple[str, str]] = []
+        for name, original_note in required_misses:
+            el = l0_by_name.get(name)
+            if el is None:
+                retry_failed.append((name, original_note))
+                continue
+            tname = el.type.value if hasattr(el.type, "value") else str(el.type)
+            attempted = ctx.defaults.get(name, section=el.screen_name) or ""
+
+            # Read the field's actual current value (helpful for the LLM)
+            actual_now = ""
+            locators = _find_l1_locators_sorted(ctx.kb, el.element_id)
+            for strategy, sel in locators:
+                if strategy != "css" or not sel:
+                    continue
+                try:
+                    val_js = (
+                        "() => {"
+                        f"  const e = document.querySelector({json.dumps(sel)});"
+                        "  return JSON.stringify({v: e ? (e.value || '') : ''});"
+                        "}"
+                    )
+                    val_raw = await adapter.evaluate_script(val_js)
+                    val_parsed = _safe_parse(val_raw) or {}
+                    if isinstance(val_parsed, dict):
+                        actual_now = str(val_parsed.get("v", ""))
+                        break
+                except Exception:
+                    pass
+
+            err_text = " | ".join(page_errors)
+            validation_rules = getattr(el, "validation_rules", "") or ""
+
+            alt_value, alt_reason = await suggest_alternate_value(
+                field_name=name,
+                field_type=tname,
+                attempted_value=attempted,
+                actual_value=actual_now,
+                error_text=err_text,
+                validation_rules=validation_rules,
+                budget=ctx.budget,
+            )
+            if not alt_value:
+                retry_failed.append((name, f"{original_note}; LLM had no alternate ({alt_reason})"))
+                continue
+
+            print(
+                f"  [strat:wizard] retry {name!r}: trying {alt_value!r} "
+                f"({alt_reason[:80]})"
+            )
+
+            # Try the alternate. Only text-style fills here — dropdown
+            # alternates would need re-enumeration which is rare for
+            # required-field rejections.
+            if tname not in ("text_input", "email", "phone", "url", "tel"):
+                retry_failed.append((name, f"{original_note}; alt-retry only handles text-style fields, got {tname}"))
+                continue
+            ok, used_strategy, used_sel = await _fill_trying_all_locators(
+                ctx.adapter, locators, alt_value,
+            )
+            if ok:
+                retried_filled.append((name, f"alt={alt_value!r} ({used_strategy})"))
+            else:
+                retry_failed.append((name, f"{original_note}; alt {alt_value!r} also rejected"))
+
+        if retried_filled:
+            print(
+                f"  [strat:wizard] retry recovered {len(retried_filled)} "
+                f"required field(s):"
+            )
+            for n, note in retried_filled:
+                print(f"  [strat:wizard]   ✓ {n}: {note}")
+            filled.extend(retried_filled)
+
+        # Recompute misses after retry
+        retried_names = {n for n, _ in retried_filled}
+        still_missing = [
+            (n, note) for n, note in required_misses
+            if n not in retried_names
+        ]
+        if still_missing:
+            details = "; ".join(f"{n}: {note}" for n, note in still_missing[:3])
+            return StrategyOutcome(
+                success=True,
+                advance=False,
+                captured=screen,
+                note=f"{len(still_missing)} required field(s) failed even after retry: {details}",
+                cost=ctx.budget.current_cost - cost_at_start,
+            )
 
     # ── 6.4. Reveal-on-click button scan. Some pages have buttons like
     # "+ Add Another" / "Show Advanced" that surface more form fields
