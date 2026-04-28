@@ -1,8 +1,6 @@
 {
   "app_name": "TECU",
-
-  "_comment": "User-provided valid default values for TECU. Orchestrators look these up when they need to fill a field with a known-good value — e.g. to unlock a dependent dropdown during extract, or to reach a target page during execute's setup phase. Keys can be plain labels (First Name) or section-qualified (Nominee Details > First Name). Section-qualified wins when both exist.",
-
+  "_comment": "User-provided valid default values for TECU. Orchestrators look these up when they need to fill a field with a known-good value \u2014 e.g. to unlock a dependent dropdown during extract, or to reach a target page during execute's setup phase. Keys can be plain labels (First Name) or section-qualified (Nominee Details > First Name). Section-qualified wins when both exist.",
   "defaults": {
     "First Name": "JOHN",
     "Middle Name": "A",
@@ -14,10 +12,8 @@
     "Work Phone": "5551234567",
     "Work Email": "john.doe.work@example.com",
     "Add profile picture": "profile_picture.png",
-
     "Please select the document type": "Passport",
     "Select File": "passport.png",
-
     "Employment Status": "PART TIME",
     "Employer": "OTHER EMPLOYERS",
     "Employer Description": "Independent Consulting",
@@ -32,7 +28,6 @@
     "Salary Frequency": "MONTHLY",
     "Salary": "25000",
     "Account Funded": "Via Salary",
-
     "Nationality": "TRINIDAD AND TOBAGO",
     "Country of Birth": "TRINIDAD AND TOBAGO",
     "Country of Issuance": "TRINIDAD AND TOBAGO",
@@ -40,16 +35,13 @@
     "Marital Status": "SINGLE",
     "Highest Level of Education": "UNIVERSITY DEGREE",
     "Preferred Method of communication": "Email",
-
     "Address Line 1": "1 Test Street",
     "Address Line 2": "Apt 1",
     "City": "Port of Spain",
     "Zip Code": "00000",
     "Country": "TRINIDAD AND TOBAGO"
   },
-
-  "_dependencies_comment": "Wall 1.1 — child element_id → ordered list of parent element_ids that must be selected first. Page 3 cascade observed in TECU: Employment Status → Employer → Sector → Employment Type. Execute fills each parent with its default before enumerating the child's options.",
-
+  "_dependencies_comment": "Wall 1.1 \u2014 child element_id \u2192 ordered list of parent element_ids that must be selected first. Page 3 cascade observed in TECU: Employment Status \u2192 Employer \u2192 Sector \u2192 Employment Type. Execute fills each parent with its default before enumerating the child's options.",
   "dependencies": {
     "new_member_application_additional_details:employer:dropdown": [
       "new_member_application_additional_details:employment_status:dropdown"
@@ -62,19 +54,6 @@
       "new_member_application_additional_details:employment_status:dropdown",
       "new_member_application_additional_details:employer:dropdown",
       "new_member_application_additional_details:sector:dropdown"
-    ],
-
-    "section_5:employer:dropdown": [
-      "section_5:employment_status:dropdown"
-    ],
-    "section_5:sector:dropdown": [
-      "section_5:employment_status:dropdown",
-      "section_5:employer:dropdown"
-    ],
-    "section_5:employment_type:dropdown": [
-      "section_5:employment_status:dropdown",
-      "section_5:employer:dropdown",
-      "section_5:sector:dropdown"
     ]
   }
 }

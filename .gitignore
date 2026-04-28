@@ -21,3 +21,7 @@ Documents
 # Agent Monitor
 .agent/
 mobile_version/runs/
+*.json
+*.txt
+*.mov
+artifacts/test_files/tecu copy/

@@ -1,7 +1,5 @@
 # Web QA Agent — Scope, Limits, and Blockers
 
-*Honest assessment for stakeholder review.*
-
 ---
 
 ## What the agent does
