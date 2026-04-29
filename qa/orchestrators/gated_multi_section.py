@@ -405,23 +405,11 @@ async def _run_single_section(
 
         uploaded_files.append(fname)
         used_files.add(fname)
-
-        # ── Wait for THIS upload to be fully recognized before starting
-        # the next. TECU rejected runs where the back-of-ID upload fired
-        # 0.8s after the front-of-ID upload — its React state was still
-        # processing the front when we attached the back, the back's
-        # onChange never fired, and the form showed 'upload both front
-        # and back of ID' as a hard validation error that blocked tab
-        # navigation to Section 3.
-        #
-        # Per-upload settle: poll for either an 'uploaded' marker, a
-        # filename indicator, or a stable progressbar count for up to
-        # 25s. Skip the wait on the LAST upload of the section since
-        # the section's existing post-attach classifier will handle it.
-        if upload_idx < len(assignments) - 1:
-            await _wait_for_individual_upload_settle(
-                adapter, fname=fname, timeout=25.0,
-            )
+        # Reverting to the simple inter-upload sleep that worked
+        # before — adding poll-based wait helpers caused regressions
+        # by repeatedly snapshotting the page while React was mid-
+        # processing the front upload.
+        await asyncio.sleep(0.8)
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
@@ -744,90 +732,6 @@ async def _click_tab(adapter: PlatformAdapter, tab_label: str) -> bool:
         print(f"    [click_tab] click error: {text[:120]}")
         return False
     return True
-
-
-async def _wait_for_individual_upload_settle(
-    adapter: PlatformAdapter, fname: str, timeout: float = 45.0,
-    poll_interval: float = 1.0,
-) -> bool:
-    """After uploading file `fname` to ONE input in a multi-input
-    section (e.g. Front of ID + Back of ID), wait until the app has
-    FINISHED OCR-ing the file before starting the next. Returns True
-    if an OCR-completion signal fired.
-
-    Why filename-visibility is NOT enough: TECU shows the filename
-    immediately on file attach, but OCR runs asynchronously for
-    ~10-15s afterwards. If we fire the back upload during front's
-    OCR, TECU's React state aborts the front upload AND only
-    processes the back — the form ends up showing 'upload both
-    front and back' as a hard validation error and Section 3's tab
-    click is silently blocked by the error overlay.
-
-    Phase 1: wait for OCR to START (progressbar appears OR filename
-             surfaces — confirms the attach hit React).
-    Phase 2: wait for OCR to COMPLETE:
-              • progressbar count drops back to baseline, OR
-              • 'uploaded' / 'verified' text count grew vs baseline.
-
-    Both phases must fire. Filename alone is too weak — that's the
-    bug we're fixing.
-    """
-    import re as _re
-    from pathlib import Path as _Path
-
-    stem = _Path(fname).stem.lower()
-    elapsed = 0.0
-    initial_snap = await adapter.raw_snapshot_text() or ""
-    initial_lower = initial_snap.lower()
-    initial_busy = len(_re.findall(r"progressbar", initial_lower))
-    initial_uploaded = sum(initial_lower.count(m) for m in ("uploaded", "verified"))
-
-    # ── Phase 1: wait for OCR to start (or filename to surface) ──
-    # This proves the attach was received by React.
-    phase1_done = False
-    phase1_elapsed = 0.0
-    while phase1_elapsed < min(timeout, 10.0):
-        await asyncio.sleep(poll_interval)
-        phase1_elapsed += poll_interval
-        elapsed += poll_interval
-        snap = (await adapter.raw_snapshot_text() or "").lower()
-        cur_busy = len(_re.findall(r"progressbar", snap))
-        filename_visible = stem and len(stem) > 3 and stem in snap
-        ocr_started = cur_busy > initial_busy
-        if filename_visible or ocr_started:
-            phase1_done = True
-            print(
-                f"    [upload-wait] phase 1 (attach registered) at {elapsed:.1f}s "
-                f"— filename={filename_visible}, ocr_started={ocr_started}"
-            )
-            break
-    if not phase1_done:
-        print(f"    [upload-wait] ⚠ phase 1 timeout — attach may not have registered")
-        # Don't return False yet — try phase 2 anyway in case the
-        # signals are weird on this app.
-
-    # ── Phase 2: wait for OCR to complete ──
-    # Either the progressbar count returns to baseline (or below),
-    # or an 'uploaded' / 'verified' marker appears that wasn't there
-    # before. This is what stops the React state from being busy.
-    while elapsed < timeout:
-        await asyncio.sleep(poll_interval)
-        elapsed += poll_interval
-        snap = (await adapter.raw_snapshot_text() or "").lower()
-        cur_busy = len(_re.findall(r"progressbar", snap))
-        cur_uploaded = sum(snap.count(m) for m in ("uploaded", "verified"))
-        ocr_done_busy = cur_busy <= initial_busy
-        ocr_done_text = cur_uploaded > initial_uploaded
-        if ocr_done_busy or ocr_done_text:
-            print(
-                f"    [upload-wait] phase 2 (OCR complete) at {elapsed:.1f}s "
-                f"— busy_drop={ocr_done_busy} ({cur_busy} vs {initial_busy}), "
-                f"text_grew={ocr_done_text}"
-            )
-            return True
-
-    print(f"    [upload-wait] ⚠ phase 2 timeout {timeout:.0f}s — OCR may still be running for {fname}")
-    return False
 
 
 def _filenames_of(screen: ScreenKnowledge) -> list[str]:
