@@ -399,6 +399,12 @@ async def _run_single_section(
         # Debug: confirm React received the file. If the input's
         # .files[0] is empty, the upload didn't stick.
         await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}")
+        # Debug: snapshot what's HAPPENING on the page right after the
+        # MCP upload returned — busy indicators, status text, nav button
+        # labels. Tells us whether TECU is mid-OCR, mid-submit, or just
+        # idle. User reported seeing 'loading' between the two uploads;
+        # this proves what that loading is.
+        await _debug_log_page_activity(adapter, f"post-upload-{upload_idx}")
 
         # Reverting to the simple inter-upload sleep that worked
         # before — adding poll-based wait helpers caused regressions
@@ -411,6 +417,7 @@ async def _run_single_section(
         # the React-state-reset bug we've been chasing.
         if upload_idx < len(assignments) - 1:
             await _debug_log_file_inputs(adapter, f"pre-next-upload-{upload_idx + 1}")
+            await _debug_log_page_activity(adapter, f"pre-next-upload-{upload_idx + 1}")
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
@@ -819,6 +826,66 @@ async def _debug_log_tab_state(adapter, tab_label: str, label: str) -> None:
             print(f"  [debug:{label}] tab probe — could not parse: {raw[:200]!r}")
     except Exception as e:
         print(f"  [debug:{label}] tab probe raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_page_activity(adapter, label: str) -> None:
+    """Diagnostic: snapshot what the page is doing — which loading
+    indicators are visible, what status text is showing, which buttons
+    are visible. Used between the two uploads in a multi-input section
+    to see whether TECU is mid-OCR / mid-submit / etc."""
+    js = (
+        "() => {"
+        "  const visible = el => el && el.offsetParent !== null;"
+        # Loading / busy indicators
+        "  const busy = [...document.querySelectorAll("
+        "    '[aria-busy=true], [role=progressbar], .spinner, .loader, "
+        "[class*=spinner], [class*=Loading], [class*=loading], "
+        "[class*=hourglass]'"
+        "  )].filter(visible);"
+        # Status text (look for processing words anywhere on page)
+        "  const txt = (document.body.innerText || '').toLowerCase();"
+        "  const status_words = "
+        "    ['validating', 'verifying', 'processing', 'uploading', "
+        "     'please wait', 'submitting', 'saving'];"
+        "  const status_hits = status_words.filter(w => txt.includes(w));"
+        # Visible buttons that could be acting as nav
+        "  const btns = [...document.querySelectorAll('button, [role=button]')]"
+        "    .filter(visible);"
+        "  const nav_words = ['save', 'continue', 'submit', 'next', 'verify'];"
+        "  const nav_btns = btns.filter(b => {"
+        "    const t = ((b.textContent || '') + '').trim().toLowerCase();"
+        "    return nav_words.some(w => t.includes(w));"
+        "  }).slice(0, 8);"
+        # Heading
+        "  const h = [...document.querySelectorAll('h1, h2, [role=heading]')]"
+        "    .filter(visible).slice(0, 3);"
+        "  return JSON.stringify({"
+        "    busy_count: busy.length,"
+        "    status_hits: status_hits,"
+        "    nav_btn_count: nav_btns.length,"
+        "    nav_btn_labels: nav_btns.map(b => (b.textContent || '').trim().slice(0, 60)),"
+        "    headings: h.map(e => (e.textContent || '').trim().slice(0, 80)),"
+        "    body_chars: (document.body.innerText || '').length"
+        "  });"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, dict):
+            print(f"  [debug:{label}] page activity:")
+            print(f"  [debug:{label}]   busy_count: {parsed.get('busy_count')}")
+            print(f"  [debug:{label}]   status_hits: {parsed.get('status_hits')}")
+            print(f"  [debug:{label}]   nav_btn_count: {parsed.get('nav_btn_count')}")
+            for lbl in parsed.get('nav_btn_labels') or []:
+                print(f"  [debug:{label}]     nav: {lbl!r}")
+            print(f"  [debug:{label}]   headings: {parsed.get('headings')}")
+            print(f"  [debug:{label}]   body_chars: {parsed.get('body_chars')}")
+        else:
+            print(f"  [debug:{label}] page activity probe — could not parse")
+    except Exception as e:
+        print(f"  [debug:{label}] activity probe raised: {type(e).__name__}: {e}")
 
 
 async def _debug_log_overlays(adapter, label: str) -> None:
