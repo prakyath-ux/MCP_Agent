@@ -376,7 +376,7 @@ async def _run_single_section(
 
     from qa.tools.web_tools import _upload_file_for_field_impl
     uploaded_files: list[str] = []
-    for inp, fname, is_reused in assignments:
+    for upload_idx, (inp, fname, is_reused) in enumerate(assignments):
         tid = inp.get("id") or ""
         label = (inp.get("label") or "").strip()[:60]
         reuse_tag = " [reused from prior section]" if is_reused else ""
@@ -401,12 +401,27 @@ async def _run_single_section(
         # immediately after upload even on a successful attach. Routing
         # correctness for multi-input sections is enforced upstream by
         # expose_js clearing all prior MARKER attributes before tagging the
-        # current target. The post-attach classifier (step 7) confirms the
-        # file actually reached the app via filename/loading-indicator text.
+        # current target.
 
         uploaded_files.append(fname)
         used_files.add(fname)
-        await asyncio.sleep(0.8)
+
+        # ── Wait for THIS upload to be fully recognized before starting
+        # the next. TECU rejected runs where the back-of-ID upload fired
+        # 0.8s after the front-of-ID upload — its React state was still
+        # processing the front when we attached the back, the back's
+        # onChange never fired, and the form showed 'upload both front
+        # and back of ID' as a hard validation error that blocked tab
+        # navigation to Section 3.
+        #
+        # Per-upload settle: poll for either an 'uploaded' marker, a
+        # filename indicator, or a stable progressbar count for up to
+        # 25s. Skip the wait on the LAST upload of the section since
+        # the section's existing post-attach classifier will handle it.
+        if upload_idx < len(assignments) - 1:
+            await _wait_for_individual_upload_settle(
+                adapter, fname=fname, timeout=25.0,
+            )
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
@@ -729,6 +744,62 @@ async def _click_tab(adapter: PlatformAdapter, tab_label: str) -> bool:
         print(f"    [click_tab] click error: {text[:120]}")
         return False
     return True
+
+
+async def _wait_for_individual_upload_settle(
+    adapter: PlatformAdapter, fname: str, timeout: float = 25.0,
+    poll_interval: float = 1.0,
+) -> bool:
+    """After uploading file `fname` to ONE input in a multi-input
+    section (e.g. Front of ID + Back of ID), wait until the app has
+    finished registering that specific upload before starting the
+    next. Returns True if a recognition signal fired.
+
+    Recognition signals (any one is enough):
+      • the filename's stem appears in the snapshot text (preview
+        or 'X.png attached' text)
+      • a generic 'uploaded' / 'attached' / 'verified' word appears
+        that wasn't there before
+      • the busy progressbar count drops to 0 (front OCR finished)
+
+    Without this wait TECU's React state is busy processing the
+    just-uploaded front-of-ID when we attach the back; the back's
+    onChange handler never fires and the form shows 'upload both
+    front and back' as a hard validation error.
+    """
+    import re as _re
+    from pathlib import Path as _Path
+
+    stem = _Path(fname).stem.lower()
+    elapsed = 0.0
+    initial_snap = await adapter.raw_snapshot_text() or ""
+    initial_lower = initial_snap.lower()
+    initial_busy = len(_re.findall(r"progressbar", initial_lower))
+
+    while elapsed < timeout:
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+        snap = (await adapter.raw_snapshot_text() or "").lower()
+
+        # Signal 1: filename stem appears in snapshot
+        if stem and len(stem) > 3 and stem in snap:
+            print(f"    [upload-wait] filename {stem!r} visible after {elapsed:.1f}s")
+            return True
+
+        # Signal 2: 'uploaded' / 'attached' / 'verified' text grew
+        for marker in ("uploaded", "attached", "verified"):
+            if snap.count(marker) > initial_lower.count(marker):
+                print(f"    [upload-wait] {marker!r} marker appeared after {elapsed:.1f}s")
+                return True
+
+        # Signal 3: busy progressbar count dropped (OCR cleared)
+        cur_busy = len(_re.findall(r"progressbar", snap))
+        if initial_busy > 0 and cur_busy < initial_busy:
+            print(f"    [upload-wait] progressbar count dropped after {elapsed:.1f}s")
+            return True
+
+    print(f"    [upload-wait] ⚠ timeout {timeout:.0f}s — no recognition signal for {fname}")
+    return False
 
 
 def _filenames_of(screen: ScreenKnowledge) -> list[str]:
