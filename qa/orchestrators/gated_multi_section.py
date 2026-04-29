@@ -133,30 +133,7 @@ class GatedMultiSectionFlow:
                     raise SectionFailed(
                         f"Could not click tab {tab_label!r} — section {idx + 1} unreachable"
                     )
-                # Wait for the new section's DOM to actually mount AND settle.
-                # 1.5s flat sleep was insufficient on TECU — Section 3's
-                # snapshot still showed Section 2's selected dropdown
-                # ('National Identification Card') causing a wrong file
-                # match. Poll the snapshot up to 8s, looking for the new
-                # section's distinctive content (a fresh dropdown showing
-                # 'Choose an option' / 'Please select' rather than the
-                # prior section's already-selected value).
-                await asyncio.sleep(1.0)
-                for _ in range(14):  # ~14 × 0.5s = 7s of polling
-                    snap_check = await adapter.raw_snapshot_text()
-                    sl = (snap_check or "").lower()
-                    # New section ready when the doc-type dropdown shows
-                    # the placeholder text instead of an already-picked
-                    # option. TECU placeholders: 'choose an option' /
-                    # 'please select' / 'choose document'.
-                    placeholder_visible = (
-                        "choose an option" in sl
-                        or "please select" in sl
-                        or "choose document" in sl
-                    )
-                    if placeholder_visible:
-                        break
-                    await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)  # let React mount the new section
 
             try:
                 screen = await _run_single_section(
