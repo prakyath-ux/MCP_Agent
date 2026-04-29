@@ -127,20 +127,26 @@ class GatedMultiSectionFlow:
 
             # Navigate to this section (skip for first — should already be active)
             if idx > 0:
-                # Debug: heading BEFORE tab click (should still be the
-                # previous section's heading)
+                # Debug: pre-click state
                 await _debug_log_heading(adapter, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_tab_state(adapter, tab_label, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_overlays(adapter, f"pre-tab-click-section-{idx + 1}")
                 print(f"  [orch] nav  click tab {tab_label!r}")
                 clicked = await _click_tab(adapter, tab_label)
                 if not clicked:
                     raise SectionFailed(
                         f"Could not click tab {tab_label!r} — section {idx + 1} unreachable"
                     )
-                await asyncio.sleep(1.5)  # let React mount the new section
-                # Debug: heading AFTER tab click + 1.5s settle. If still
-                # the previous section's heading, the click didn't
-                # navigate (likely an error toast blocking the change).
-                await _debug_log_heading(adapter, f"post-tab-click-section-{idx + 1}")
+                # Settle + check at 1.5s, 3s, 5s to see if navigation
+                # happens later. If heading doesn't change at any of
+                # these checkpoints, the click was genuinely ignored.
+                await asyncio.sleep(1.5)
+                await _debug_log_heading(adapter, f"post-tab-click-1.5s-section-{idx + 1}")
+                await asyncio.sleep(1.5)  # +3s total
+                await _debug_log_heading(adapter, f"post-tab-click-3s-section-{idx + 1}")
+                await asyncio.sleep(2.0)  # +5s total
+                await _debug_log_heading(adapter, f"post-tab-click-5s-section-{idx + 1}")
+                await _debug_log_overlays(adapter, f"post-tab-click-5s-section-{idx + 1}")
 
             try:
                 screen = await _run_single_section(
@@ -770,6 +776,93 @@ async def _debug_log_file_inputs(adapter, label: str) -> None:
             print(f"  [debug:{label}] could not parse: {raw[:200]!r}")
     except Exception as e:
         print(f"  [debug:{label}] raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_tab_state(adapter, tab_label: str, label: str) -> None:
+    """Diagnostic: probe the tab button's clickable state. If the tab
+    has aria-disabled, pointer-events:none, or is covered by an
+    overlay, the click will be silently ignored."""
+    js = (
+        "() => {"
+        "  const labelText = " + json.dumps(tab_label) + ";"
+        "  const all = [...document.querySelectorAll('button, [role=tab], [role=button]')];"
+        "  const candidates = all.filter(el => "
+        "    (el.textContent || '').trim().includes(labelText.replace(/^\\d+\\.\\s*/, '').trim().split(' ')[0])"
+        "  );"
+        "  const target = candidates.find(el => "
+        "    (el.textContent || '').trim().includes(labelText.replace(/^\\s*\\d+\\.\\s*/, '').trim())"
+        "  ) || candidates[0];"
+        "  if (!target) return JSON.stringify({status: 'NOT_FOUND'});"
+        "  const cs = window.getComputedStyle(target);"
+        "  const rect = target.getBoundingClientRect();"
+        "  return JSON.stringify({"
+        "    text: (target.textContent || '').trim().slice(0, 80),"
+        "    aria_disabled: target.getAttribute('aria-disabled'),"
+        "    disabled_attr: target.disabled,"
+        "    pointer_events: cs.pointerEvents,"
+        "    cursor: cs.cursor,"
+        "    visibility: cs.visibility,"
+        "    rect: {x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height)},"
+        "    classes: (target.className || '').toString().slice(0, 120)"
+        "  });"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, dict):
+            print(f"  [debug:{label}] tab {tab_label!r}:")
+            for k, v in parsed.items():
+                print(f"  [debug:{label}]   {k}: {v}")
+        else:
+            print(f"  [debug:{label}] tab probe — could not parse: {raw[:200]!r}")
+    except Exception as e:
+        print(f"  [debug:{label}] tab probe raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_overlays(adapter, label: str) -> None:
+    """Diagnostic: log any visible role=alert / role=dialog / toast /
+    overlay elements that might be blocking pointer events."""
+    js = (
+        "() => {"
+        "  const sel = '[role=alert], [role=dialog], [role=alertdialog], "
+        ".toast, .modal, .overlay, [class*=Toast], [class*=Modal], [class*=Overlay], "
+        "[class*=alert], [class*=Alert]';"
+        "  const visible = [...document.querySelectorAll(sel)].filter(e => e.offsetParent !== null);"
+        "  return JSON.stringify({"
+        "    count: visible.length,"
+        "    items: visible.slice(0, 6).map(e => ({"
+        "      role: e.getAttribute('role') || '',"
+        "      classes: (e.className || '').toString().slice(0, 100),"
+        "      text: (e.textContent || '').trim().slice(0, 200)"
+        "    }))"
+        "  });"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, dict):
+            count = parsed.get("count", 0)
+            items = parsed.get("items") or []
+            if count == 0:
+                print(f"  [debug:{label}] overlays/toasts visible: 0")
+            else:
+                print(f"  [debug:{label}] overlays/toasts visible: {count}")
+                for item in items:
+                    print(
+                        f"  [debug:{label}]   role={item.get('role')!r} "
+                        f"classes={item.get('classes')!r}"
+                    )
+                    txt = item.get('text') or ''
+                    if txt:
+                        print(f"  [debug:{label}]   text: {txt!r}")
+        else:
+            print(f"  [debug:{label}] overlay probe — could not parse")
+    except Exception as e:
+        print(f"  [debug:{label}] overlay probe raised: {type(e).__name__}: {e}")
 
 
 async def _debug_log_heading(adapter, label: str) -> None:
