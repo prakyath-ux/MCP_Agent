@@ -127,6 +127,9 @@ class GatedMultiSectionFlow:
 
             # Navigate to this section (skip for first — should already be active)
             if idx > 0:
+                # Debug: heading BEFORE tab click (should still be the
+                # previous section's heading)
+                await _debug_log_heading(adapter, f"pre-tab-click-section-{idx + 1}")
                 print(f"  [orch] nav  click tab {tab_label!r}")
                 clicked = await _click_tab(adapter, tab_label)
                 if not clicked:
@@ -134,6 +137,10 @@ class GatedMultiSectionFlow:
                         f"Could not click tab {tab_label!r} — section {idx + 1} unreachable"
                     )
                 await asyncio.sleep(1.5)  # let React mount the new section
+                # Debug: heading AFTER tab click + 1.5s settle. If still
+                # the previous section's heading, the click didn't
+                # navigate (likely an error toast blocking the change).
+                await _debug_log_heading(adapter, f"post-tab-click-section-{idx + 1}")
 
             try:
                 screen = await _run_single_section(
@@ -382,11 +389,22 @@ async def _run_single_section(
 
         uploaded_files.append(fname)
         used_files.add(fname)
+
+        # Debug: confirm React received the file. If the input's
+        # .files[0] is empty, the upload didn't stick.
+        await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}")
+
         # Reverting to the simple inter-upload sleep that worked
         # before — adding poll-based wait helpers caused regressions
         # by repeatedly snapshotting the page while React was mid-
         # processing the front upload.
         await asyncio.sleep(0.8)
+
+        # Debug: re-check after the sleep, before the next upload.
+        # If the front file disappeared between iterations, that's
+        # the React-state-reset bug we've been chasing.
+        if upload_idx < len(assignments) - 1:
+            await _debug_log_file_inputs(adapter, f"pre-next-upload-{upload_idx + 1}")
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
@@ -719,6 +737,67 @@ def _filenames_of(screen: ScreenKnowledge) -> list[str]:
         if el.type == ElementType.FILE_UPLOAD and el.default_value:
             names.append(el.default_value)
     return names
+
+
+async def _debug_log_file_inputs(adapter, label: str) -> None:
+    """Diagnostic: print the state of every input[type=file] in the DOM.
+    Used to confirm whether React kept the front file when the back was
+    uploaded. No behavioral side effects — pure read."""
+    js = (
+        "() => {"
+        "  const inps = [...document.querySelectorAll('input[type=file]')];"
+        "  return JSON.stringify(inps.map((el, i) => ({"
+        "    i: i,"
+        "    id: el.id || '',"
+        "    name: el.name || '',"
+        "    n: el.files ? el.files.length : 0,"
+        "    fname: el.files && el.files[0] ? el.files[0].name : ''"
+        "  })));"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, list):
+            print(f"  [debug:{label}] file inputs:")
+            for entry in parsed:
+                print(
+                    f"  [debug:{label}]   #{entry.get('i')} id={entry.get('id')!r} "
+                    f"files={entry.get('n')} name={entry.get('fname')!r}"
+                )
+        else:
+            print(f"  [debug:{label}] could not parse: {raw[:200]!r}")
+    except Exception as e:
+        print(f"  [debug:{label}] raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_heading(adapter, label: str) -> None:
+    """Diagnostic: print the visible h1/h2/heading text. Used at section
+    transitions to verify whether the snapshot reflects the new section."""
+    js = (
+        "() => {"
+        "  const headings = [...document.querySelectorAll('h1, h2, [role=heading]')]"
+        "    .filter(e => e.offsetParent !== null);"
+        "  return JSON.stringify({"
+        "    headings: headings.map(h => (h.textContent || '').trim().slice(0, 100)),"
+        "    url: window.location.href"
+        "  });"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, dict):
+            heads = parsed.get("headings") or []
+            url = parsed.get("url", "")
+            print(f"  [debug:{label}] url={url!r}")
+            print(f"  [debug:{label}] visible headings: {heads[:5]}")
+        else:
+            print(f"  [debug:{label}] could not parse: {raw[:200]!r}")
+    except Exception as e:
+        print(f"  [debug:{label}] raised: {type(e).__name__}: {e}")
 
 
 async def _detect_upload_inputs(adapter: PlatformAdapter) -> list[dict]:
