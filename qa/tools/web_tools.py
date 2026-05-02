@@ -839,6 +839,45 @@ async def _upload_file_for_field_impl(
         })
     print(f"  [upload] File input uid: {file_input_uid}")
 
+    # ── Step 5b: Click the VISIBLE upload button via JS dispatchEvent.
+    # User confirmed via network tab that uploading 'Upload Front of ID'
+    # makes ZERO API calls — the entire 'front uploaded' state is
+    # client-side React. Setting input.files via DOM doesn't run the
+    # React state-setter because TECU's component has the state-setter
+    # on the visible button's onClick, not the hidden input's onChange.
+    # A programmatic click via dispatchEvent fires React's onClick
+    # handler WITHOUT opening a file picker (browsers require
+    # isTrusted=true for the picker). After this primes the React
+    # state, the subsequent file injection should be picked up.
+    pre_click_js = (
+        "() => {"
+        f"  const fieldName = {json.dumps(field_name)}.toLowerCase();"
+        "  const buttons = [...document.querySelectorAll("
+        "    'button, [role=button], label[for], div[onclick], "
+        "div[role=button]'"
+        "  )].filter(e => e.offsetParent !== null);"
+        "  const target = buttons.find(b => {"
+        "    const txt = ((b.textContent || '') + '').trim().toLowerCase();"
+        "    return fieldName && txt.includes(fieldName);"
+        "  });"
+        "  if (!target) return JSON.stringify({status: 'BUTTON_NOT_FOUND', "
+        "    candidates: buttons.slice(0, 5).map(b => (b.textContent||'').trim().slice(0, 40))});"
+        "  try {"
+        "    target.dispatchEvent(new MouseEvent('click', "
+        "      {bubbles: true, cancelable: true, view: window}));"
+        "    return JSON.stringify({status: 'CLICKED', label: (target.textContent||'').trim().slice(0, 60)});"
+        "  } catch (e) {"
+        "    return JSON.stringify({status: 'ERROR', error: e.message});"
+        "  }"
+        "}"
+    )
+    try:
+        pre_click_raw = await _eval(pre_click_js)
+        print(f"  [upload] Step 5b: visible-button pre-click → {str(pre_click_raw)[:200]}")
+        await asyncio.sleep(0.4)
+    except Exception as e:
+        print(f"  [upload] Step 5b: pre-click raised {type(e).__name__}: {e}")
+
     # ── Step 6: Upload the file ─────────────────────────────────────────────
     print(f"  [upload] Step 6: upload_file(uid={file_input_uid}, filePath={file_path})")
     upload_result = await _call_mcp("upload_file", {"uid": file_input_uid, "filePath": file_path})
