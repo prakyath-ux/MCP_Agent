@@ -413,11 +413,18 @@ async def _run_single_section(
         await _debug_log_console(adapter, f"post-upload-{upload_idx}")
         await _debug_log_network(adapter, f"post-upload-{upload_idx}")
 
-        # Reverting to the simple inter-upload sleep that worked
-        # before — adding poll-based wait helpers caused regressions
-        # by repeatedly snapshotting the page while React was mid-
-        # processing the front upload.
-        await asyncio.sleep(0.8)
+        # 5s inter-upload sleep — was 0.8s, but network logs proved
+        # 0.8s isn't enough for TECU's React to commit the front
+        # upload's onChange state before the back upload fires.
+        # Symptom: only ONE OCR call fires after BOTH uploads (instead
+        # of 6: 3 per file), TECU's frontend loses front-upload state,
+        # and Section 3 tab click trips a 'please upload both front
+        # and back' validation toast that blocks navigation.
+        # 5s gives React multiple flush cycles + lets the front's
+        # OCR network round-trip start before we change input state
+        # again. No polling — this is the only safe wait for React's
+        # internal batching.
+        await asyncio.sleep(5.0)
 
         # Debug: re-check after the sleep, before the next upload.
         if upload_idx < len(assignments) - 1:
