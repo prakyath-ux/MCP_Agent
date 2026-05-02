@@ -844,6 +844,34 @@ async def _upload_file_for_field_impl(
     upload_result = await _call_mcp("upload_file", {"uid": file_input_uid, "filePath": file_path})
     print(f"  [upload] upload_file MCP returned: {str(upload_result)[:150]}")
 
+    # ── Step 6a: Force-dispatch React events ─────────────────────────────────
+    # MCP's upload_file uses CDP DOM.setFileInputFiles which fires a native
+    # `change` event. React's synthetic-event system sometimes misses
+    # native events on file inputs, especially when the listener is on a
+    # wrapper component. TECU's Section 2 'Upload Front of ID' input
+    # was the smoking gun: file in input.files for 8s straight, but no
+    # React onChange ever ran (no network call, no UI update). Manually
+    # dispatching `input` and `change` events with bubbles=true forces
+    # React's bubbling-phase listener to pick up the change.
+    target_id_for_event = ""
+    if isinstance(expose, dict):
+        target_id_for_event = expose.get("id") or ""
+    if target_id_for_event:
+        force_event_js = (
+            "() => {"
+            f"  const el = document.getElementById({json.dumps(target_id_for_event)});"
+            "  if (!el) return 'NO_INPUT';"
+            "  el.dispatchEvent(new Event('input', {bubbles: true, cancelable: true}));"
+            "  el.dispatchEvent(new Event('change', {bubbles: true, cancelable: true}));"
+            "  return 'DISPATCHED';"
+            "}"
+        )
+        try:
+            ev_result = await _eval(force_event_js)
+            print(f"  [upload] Step 6a: force-dispatched input+change events ({ev_result.strip()[:60]!r})")
+        except Exception as e:
+            print(f"  [upload] Step 6a: force-dispatch raised {type(e).__name__}: {e}")
+
     # ── Step 6b: Click confirm button (modal flows only) ──────────────
     # TECU and similar apps require a final "Submit" / "Upload" / "Verify"
     # click after the file is attached but before OCR kicks off. Caller
