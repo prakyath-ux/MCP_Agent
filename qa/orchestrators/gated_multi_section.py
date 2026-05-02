@@ -127,26 +127,34 @@ class GatedMultiSectionFlow:
 
             # Navigate to this section (skip for first — should already be active)
             if idx > 0:
-                # Debug: pre-click state
+                # Debug: pre-click state — comprehensive
+                _debug_ts(f"pre-tab-click-section-{idx + 1}", "about to probe pre-click state")
                 await _debug_log_heading(adapter, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_tab_state(adapter, tab_label, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_overlays(adapter, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_page_activity(adapter, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_console(adapter, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_network(adapter, f"pre-tab-click-section-{idx + 1}")
                 print(f"  [orch] nav  click tab {tab_label!r}")
+                _debug_ts(f"tab-click-section-{idx + 1}", f"calling click_tab on {tab_label!r}")
                 clicked = await _click_tab(adapter, tab_label)
+                _debug_ts(f"tab-click-section-{idx + 1}", f"click_tab returned {clicked}")
                 if not clicked:
                     raise SectionFailed(
                         f"Could not click tab {tab_label!r} — section {idx + 1} unreachable"
                     )
-                # Settle + check at 1.5s, 3s, 5s to see if navigation
-                # happens later. If heading doesn't change at any of
-                # these checkpoints, the click was genuinely ignored.
                 await asyncio.sleep(1.5)
+                _debug_ts(f"post-tab-click-1.5s-section-{idx + 1}", "")
                 await _debug_log_heading(adapter, f"post-tab-click-1.5s-section-{idx + 1}")
                 await asyncio.sleep(1.5)  # +3s total
+                _debug_ts(f"post-tab-click-3s-section-{idx + 1}", "")
                 await _debug_log_heading(adapter, f"post-tab-click-3s-section-{idx + 1}")
                 await asyncio.sleep(2.0)  # +5s total
+                _debug_ts(f"post-tab-click-5s-section-{idx + 1}", "")
                 await _debug_log_heading(adapter, f"post-tab-click-5s-section-{idx + 1}")
                 await _debug_log_overlays(adapter, f"post-tab-click-5s-section-{idx + 1}")
+                await _debug_log_console(adapter, f"post-tab-click-5s-section-{idx + 1}")
+                await _debug_log_network(adapter, f"post-tab-click-5s-section-{idx + 1}")
 
             try:
                 screen = await _run_single_section(
@@ -396,15 +404,14 @@ async def _run_single_section(
         uploaded_files.append(fname)
         used_files.add(fname)
 
-        # Debug: confirm React received the file. If the input's
-        # .files[0] is empty, the upload didn't stick.
+        # Debug: comprehensive snapshot RIGHT AFTER MCP upload returned.
+        # If TECU is firing a network call ('save section') here, we
+        # catch it. If React is throwing an error, console captures it.
+        _debug_ts(f"post-upload-{upload_idx}", "MCP upload_file returned")
         await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}")
-        # Debug: snapshot what's HAPPENING on the page right after the
-        # MCP upload returned — busy indicators, status text, nav button
-        # labels. Tells us whether TECU is mid-OCR, mid-submit, or just
-        # idle. User reported seeing 'loading' between the two uploads;
-        # this proves what that loading is.
         await _debug_log_page_activity(adapter, f"post-upload-{upload_idx}")
+        await _debug_log_console(adapter, f"post-upload-{upload_idx}")
+        await _debug_log_network(adapter, f"post-upload-{upload_idx}")
 
         # Reverting to the simple inter-upload sleep that worked
         # before — adding poll-based wait helpers caused regressions
@@ -413,11 +420,12 @@ async def _run_single_section(
         await asyncio.sleep(0.8)
 
         # Debug: re-check after the sleep, before the next upload.
-        # If the front file disappeared between iterations, that's
-        # the React-state-reset bug we've been chasing.
         if upload_idx < len(assignments) - 1:
+            _debug_ts(f"pre-next-upload-{upload_idx + 1}", "after 0.8s sleep, about to start next upload")
             await _debug_log_file_inputs(adapter, f"pre-next-upload-{upload_idx + 1}")
             await _debug_log_page_activity(adapter, f"pre-next-upload-{upload_idx + 1}")
+            await _debug_log_console(adapter, f"pre-next-upload-{upload_idx + 1}")
+            await _debug_log_network(adapter, f"pre-next-upload-{upload_idx + 1}")
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
@@ -826,6 +834,76 @@ async def _debug_log_tab_state(adapter, tab_label: str, label: str) -> None:
             print(f"  [debug:{label}] tab probe — could not parse: {raw[:200]!r}")
     except Exception as e:
         print(f"  [debug:{label}] tab probe raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_console(adapter, label: str, last_n: int = 15) -> None:
+    """Diagnostic: dump the last N browser console messages. Errors,
+    warnings, and React's own logs will show up here. If TECU's React
+    is throwing an error during the back upload, this captures it."""
+    server = adapter.get_mcp_server()
+    try:
+        result = await server.call_tool("list_console_messages", {})
+        text = ""
+        if hasattr(result, "content") and result.content:
+            text = result.content[0].text or ""
+        elif isinstance(result, str):
+            text = result
+        if not text:
+            print(f"  [debug:{label}] console: (empty)")
+            return
+        lines = [l for l in text.split("\n") if l.strip()]
+        tail = lines[-last_n:] if len(lines) > last_n else lines
+        print(f"  [debug:{label}] console (last {len(tail)} of {len(lines)}):")
+        for line in tail:
+            print(f"  [debug:{label}]   {line[:200]}")
+    except Exception as e:
+        print(f"  [debug:{label}] console probe raised: {type(e).__name__}: {e}")
+
+
+async def _debug_log_network(adapter, label: str, last_n: int = 12) -> None:
+    """Diagnostic: dump the last N network requests. POST / PUT /
+    PATCH requests would be uploads or form submissions. If TECU is
+    making a 'save section' request between our two uploads, this
+    catches it. If the back upload's POST is failing or 4xx, we see
+    that here."""
+    server = adapter.get_mcp_server()
+    try:
+        result = await server.call_tool("list_network_requests", {})
+        text = ""
+        if hasattr(result, "content") and result.content:
+            text = result.content[0].text or ""
+        elif isinstance(result, str):
+            text = result
+        if not text:
+            print(f"  [debug:{label}] network: (empty)")
+            return
+        lines = [l for l in text.split("\n") if l.strip()]
+        # Prefer POST/PUT/PATCH/DELETE entries — those mutate state.
+        mutating = [
+            l for l in lines
+            if any(m in l.upper() for m in (" POST ", " PUT ", " PATCH ", " DELETE "))
+        ]
+        if mutating:
+            tail = mutating[-last_n:]
+            print(f"  [debug:{label}] network mutating (last {len(tail)} of {len(mutating)}):")
+            for line in tail:
+                print(f"  [debug:{label}]   {line[:240]}")
+        else:
+            tail = lines[-last_n:] if len(lines) > last_n else lines
+            print(f"  [debug:{label}] network (last {len(tail)} of {len(lines)}, no mutating):")
+            for line in tail[-5:]:  # show fewer when no mutating
+                print(f"  [debug:{label}]   {line[:200]}")
+    except Exception as e:
+        print(f"  [debug:{label}] network probe raised: {type(e).__name__}: {e}")
+
+
+def _debug_ts(label: str, msg: str = "") -> None:
+    """Print a wall-clock timestamp + label. Used to measure gaps
+    between agent operations on the timeline."""
+    import time as _time
+    now = _time.strftime("%H:%M:%S", _time.localtime())
+    ms = int((_time.time() % 1) * 1000)
+    print(f"  [debug:{label}] T={now}.{ms:03d} {msg}")
 
 
 async def _debug_log_page_activity(adapter, label: str) -> None:
