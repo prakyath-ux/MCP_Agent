@@ -132,6 +132,7 @@ class GatedMultiSectionFlow:
                 await _debug_log_heading(adapter, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_tab_state(adapter, tab_label, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_overlays(adapter, f"pre-tab-click-section-{idx + 1}")
+                await _debug_log_upload_ui_state(adapter, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_page_activity(adapter, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_console(adapter, f"pre-tab-click-section-{idx + 1}")
                 await _debug_log_network(adapter, f"pre-tab-click-section-{idx + 1}")
@@ -407,6 +408,7 @@ async def _run_single_section(
         # Debug: snapshot at T=0 (right after MCP upload returned)
         _debug_ts(f"post-upload-{upload_idx}", "MCP upload_file returned (T=0)")
         await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}-T0")
+        await _debug_log_upload_ui_state(adapter, f"post-upload-{upload_idx}-T0")
         await _debug_log_page_activity(adapter, f"post-upload-{upload_idx}-T0")
         await _debug_log_console(adapter, f"post-upload-{upload_idx}-T0")
         await _debug_log_network(adapter, f"post-upload-{upload_idx}-T0")
@@ -423,9 +425,11 @@ async def _run_single_section(
                     f"checkpoint after {total[1:]}s of inter-upload wait",
                 )
                 await _debug_log_file_inputs(adapter, f"between-uploads-{total}")
+                await _debug_log_upload_ui_state(adapter, f"between-uploads-{total}")
                 await _debug_log_page_activity(adapter, f"between-uploads-{total}")
                 await _debug_log_network(adapter, f"between-uploads-{total}")
             _debug_ts(f"pre-next-upload-{upload_idx + 1}", "8s inter-upload wait complete, about to start next upload")
+            await _debug_log_upload_ui_state(adapter, f"pre-next-upload-{upload_idx + 1}")
             await _debug_log_console(adapter, f"pre-next-upload-{upload_idx + 1}")
 
     # Primary file for the section report = first uploaded (label-wise
@@ -905,6 +909,74 @@ def _debug_ts(label: str, msg: str = "") -> None:
     now = _time.strftime("%H:%M:%S", _time.localtime())
     ms = int((_time.time() % 1) * 1000)
     print(f"  [debug:{label}] T={now}.{ms:03d} {msg}")
+
+
+async def _debug_log_upload_ui_state(adapter, label: str) -> None:
+    """Diagnostic: did TECU's React register the upload? Look for the
+    UI signals that prove an upload was committed in React state, not
+    just sitting in input.files at the DOM level. Specifically:
+
+    1. Re-upload buttons — TECU swaps 'Upload Front of ID' to 'Re-upload'
+       when the upload registers. If we still see 'Upload Front of ID',
+       React state didn't update.
+    2. Preview <img> / thumbnail elements — TECU renders the uploaded
+       file as a preview thumbnail when registered.
+    3. 'No back side file uploaded yet' / similar empty-state text —
+       presence indicates TECU still considers that slot empty.
+    4. Filename text appearance — sometimes TECU shows 'X.png attached'
+       below the upload slot.
+    """
+    js = (
+        "() => {"
+        "  const visible = el => el && el.offsetParent !== null;"
+        # All visible buttons + their labels — looking for 'Re-upload' / 'Upload Front'
+        "  const btns = [...document.querySelectorAll('button, [role=button]')]"
+        "    .filter(visible)"
+        "    .map(b => (b.textContent || '').trim().slice(0, 60));"
+        # Image elements that could be previews (heuristic: <img> with substantial size)
+        "  const imgs = [...document.querySelectorAll('img')]"
+        "    .filter(visible)"
+        "    .filter(i => i.naturalWidth > 50 || i.width > 50)"
+        "    .map(i => ({"
+        "      src: (i.src || '').slice(0, 60),"
+        "      alt: (i.alt || '').slice(0, 40),"
+        "      w: i.width || i.naturalWidth,"
+        "      h: i.height || i.naturalHeight"
+        "    }));"
+        # Empty-state text indicators
+        "  const txt = (document.body.innerText || '').toLowerCase();"
+        "  const empty_states = "
+        "    ['no front side', 'no back side', 'no file uploaded',"
+        "     'please select', 'choose an option', 'select file'];"
+        "  const empty_hits = empty_states.filter(s => txt.includes(s));"
+        # Re-upload / Upload buttons specifically
+        "  const upload_label_btns = btns.filter(b => "
+        "    /^\\s*(re-?upload|upload\\s+(front|back))/i.test(b)"
+        "  );"
+        "  return JSON.stringify({"
+        "    upload_buttons: upload_label_btns,"
+        "    preview_imgs_count: imgs.length,"
+        "    preview_imgs: imgs.slice(0, 3),"
+        "    empty_state_hits: empty_hits,"
+        "    all_btns_count: btns.length"
+        "  });"
+        "}"
+    )
+    try:
+        from qa.tools.web_tools import _safe_parse
+        raw = await adapter.evaluate_script(js)
+        parsed = _safe_parse(raw)
+        if isinstance(parsed, dict):
+            print(f"  [debug:{label}] upload UI state:")
+            print(f"  [debug:{label}]   upload-related buttons: {parsed.get('upload_buttons')}")
+            print(f"  [debug:{label}]   preview <img> count: {parsed.get('preview_imgs_count')}")
+            for img in parsed.get('preview_imgs') or []:
+                print(f"  [debug:{label}]     img w={img.get('w')} h={img.get('h')} alt={img.get('alt')!r} src={img.get('src')!r}")
+            print(f"  [debug:{label}]   empty-state text hits: {parsed.get('empty_state_hits')}")
+        else:
+            print(f"  [debug:{label}] upload UI probe — could not parse")
+    except Exception as e:
+        print(f"  [debug:{label}] upload UI probe raised: {type(e).__name__}: {e}")
 
 
 async def _debug_log_page_activity(adapter, label: str) -> None:
