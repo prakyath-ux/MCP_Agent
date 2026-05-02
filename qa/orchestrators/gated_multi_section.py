@@ -404,35 +404,29 @@ async def _run_single_section(
         uploaded_files.append(fname)
         used_files.add(fname)
 
-        # Debug: comprehensive snapshot RIGHT AFTER MCP upload returned.
-        # If TECU is firing a network call ('save section') here, we
-        # catch it. If React is throwing an error, console captures it.
-        _debug_ts(f"post-upload-{upload_idx}", "MCP upload_file returned")
-        await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}")
-        await _debug_log_page_activity(adapter, f"post-upload-{upload_idx}")
-        await _debug_log_console(adapter, f"post-upload-{upload_idx}")
-        await _debug_log_network(adapter, f"post-upload-{upload_idx}")
+        # Debug: snapshot at T=0 (right after MCP upload returned)
+        _debug_ts(f"post-upload-{upload_idx}", "MCP upload_file returned (T=0)")
+        await _debug_log_file_inputs(adapter, f"post-upload-{upload_idx}-T0")
+        await _debug_log_page_activity(adapter, f"post-upload-{upload_idx}-T0")
+        await _debug_log_console(adapter, f"post-upload-{upload_idx}-T0")
+        await _debug_log_network(adapter, f"post-upload-{upload_idx}-T0")
 
-        # 5s inter-upload sleep — was 0.8s, but network logs proved
-        # 0.8s isn't enough for TECU's React to commit the front
-        # upload's onChange state before the back upload fires.
-        # Symptom: only ONE OCR call fires after BOTH uploads (instead
-        # of 6: 3 per file), TECU's frontend loses front-upload state,
-        # and Section 3 tab click trips a 'please upload both front
-        # and back' validation toast that blocks navigation.
-        # 5s gives React multiple flush cycles + lets the front's
-        # OCR network round-trip start before we change input state
-        # again. No polling — this is the only safe wait for React's
-        # internal batching.
-        await asyncio.sleep(5.0)
-
-        # Debug: re-check after the sleep, before the next upload.
+        # ── 8-second inter-upload wait with snapshots at 1s/3s/5s/7s
+        # only between front and back in a multi-input section. User
+        # reports front upload "disappears" while back upload happens
+        # — these checkpoints prove WHEN that disappearance occurs.
         if upload_idx < len(assignments) - 1:
-            _debug_ts(f"pre-next-upload-{upload_idx + 1}", "after 0.8s sleep, about to start next upload")
-            await _debug_log_file_inputs(adapter, f"pre-next-upload-{upload_idx + 1}")
-            await _debug_log_page_activity(adapter, f"pre-next-upload-{upload_idx + 1}")
+            for delta, total in [(1.0, "T1"), (2.0, "T3"), (2.0, "T5"), (2.0, "T7")]:
+                await asyncio.sleep(delta)
+                _debug_ts(
+                    f"between-uploads-{total}",
+                    f"checkpoint after {total[1:]}s of inter-upload wait",
+                )
+                await _debug_log_file_inputs(adapter, f"between-uploads-{total}")
+                await _debug_log_page_activity(adapter, f"between-uploads-{total}")
+                await _debug_log_network(adapter, f"between-uploads-{total}")
+            _debug_ts(f"pre-next-upload-{upload_idx + 1}", "8s inter-upload wait complete, about to start next upload")
             await _debug_log_console(adapter, f"pre-next-upload-{upload_idx + 1}")
-            await _debug_log_network(adapter, f"pre-next-upload-{upload_idx + 1}")
 
     # Primary file for the section report = first uploaded (label-wise
     # this is typically the 'front' / main doc).
