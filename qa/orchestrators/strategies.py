@@ -195,11 +195,18 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
                 )
 
     # ── 4. Persist
-    # If a richer capture for this screen already exists in the KB
-    # (typically because gated_step ran first and bowed out via
-    # request_replan, leaving wizard_step to do the final submit), keep
-    # the richer one. Overwriting with a leaner extract would lose the
-    # multi-section data gated_step worked to capture.
+    # If a richer capture for this screen already exists in the KB AND
+    # that capture was made in THIS run (typically because gated_step
+    # ran first and bowed out via request_replan, leaving wizard_step
+    # to do the final submit), keep the richer one. Overwriting with a
+    # leaner extract would lose the multi-section data gated_step
+    # worked to capture.
+    #
+    # The in-run guard is critical: a stale KB entry from a previous
+    # session must NOT trigger this path. The page is fresh and empty,
+    # not pre-filled — skipping fill on a stale-KB hit clicks Save &
+    # Continue on an unfilled form. We only trust "existing is richer"
+    # when it was captured a few iterations ago in the same run.
     #
     # kept_existing: when True, downstream steps that assume "screen.l0
     # describes inputs we just need to fill" must be skipped — the
@@ -208,11 +215,16 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
     store = KnowledgeStore()
     existing = ctx.kb.get_screen(screen.screen_name)
     kept_existing = False
-    if existing and len(existing.l0) > len(screen.l0):
+    if (
+        existing
+        and len(existing.l0) > len(screen.l0)
+        and screen.screen_name in in_run_set
+    ):
         print(
-            f"  [strat:wizard] keeping existing KB capture for "
+            f"  [strat:wizard] keeping in-run KB capture for "
             f"{screen.screen_name!r} ({len(existing.l0)} elements) — "
-            f"current extract found only {len(screen.l0)}; not overwriting"
+            f"current extract found only {len(screen.l0)}; same-run "
+            f"capture, not overwriting"
         )
         screen = existing
         kept_existing = True
