@@ -73,6 +73,15 @@ class StrategyOutcome:
     note: str = ""
     cost: float = 0.0
     error: str = ""
+    # request_replan: when True with advance=False, the runner should
+    # NOT stop. Instead it re-invokes pick_strategy on the (changed)
+    # page state and runs whatever strategy fits next. Used when a
+    # strategy materially changed the page (e.g. dismissed a modal,
+    # revealed a follow-up form) but its own recipe doesn't cover the
+    # new state. The strategist gets to decide the next move with
+    # fresh LLM context. The runner enforces a small per-page cap
+    # (REPLAN_LIMIT) so a buggy strategy can't loop forever.
+    request_replan: bool = False
 
 
 StrategyHandler = Callable[[StrategyContext], Awaitable[StrategyOutcome]]
@@ -186,42 +195,103 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
                 )
 
     # ── 4. Persist
+    # If a richer capture for this screen already exists in the KB
+    # (typically because gated_step ran first and bowed out via
+    # request_replan, leaving wizard_step to do the final submit), keep
+    # the richer one. Overwriting with a leaner extract would lose the
+    # multi-section data gated_step worked to capture.
+    #
+    # kept_existing: when True, downstream steps that assume "screen.l0
+    # describes inputs we just need to fill" must be skipped — the
+    # fields already exist in the KB but the corresponding inputs aren't
+    # on the page anymore (they're thumbnails / read-only values now).
     store = KnowledgeStore()
     existing = ctx.kb.get_screen(screen.screen_name)
-    if existing:
-        ctx.kb.screens = [
-            s for s in ctx.kb.screens if s.screen_name != screen.screen_name
-        ]
-    ctx.kb.screens.append(screen)
-    store.save(ctx.kb)
+    kept_existing = False
+    if existing and len(existing.l0) > len(screen.l0):
+        print(
+            f"  [strat:wizard] keeping existing KB capture for "
+            f"{screen.screen_name!r} ({len(existing.l0)} elements) — "
+            f"current extract found only {len(screen.l0)}; not overwriting"
+        )
+        screen = existing
+        kept_existing = True
+    else:
+        if existing:
+            ctx.kb.screens = [
+                s for s in ctx.kb.screens if s.screen_name != screen.screen_name
+            ]
+        ctx.kb.screens.append(screen)
+        store.save(ctx.kb)
 
     # ── 5. Fill from defaults
-    filled, skipped = await fill_page_from_defaults(
-        adapter, ctx.kb, ctx.defaults, screen,
-    )
-    print(f"  [strat:wizard] filled {len(filled)} field(s), skipped {len(skipped)}")
-
-    # ── 5b. Mid-fill reveal: filling cascade dropdowns / radios may
-    # reveal new fields that weren't in the original L0. Re-extract.
-    # If new fields appeared, fill them too. Bounded to one pass —
-    # avoids runaway loops on pages where every fill reveals more.
-    revealed_screen = await extract_form(
-        adapter=adapter,
-        app_name=ctx.app_name,
-        screen_name=screen.screen_name,
-        budget=ctx.budget,
-        page_url=ctx.page_url,
-        defaults=ctx.defaults,
-    )
-    prior_ids = {el.element_id for el in screen.l0}
-    new_l0 = [el for el in revealed_screen.l0 if el.element_id not in prior_ids]
-    if new_l0:
+    # Skip when a previous strategy already filled this page and we
+    # kept its richer KB capture — the inputs aren't on the page
+    # anymore, only the final submit affordances are.
+    if kept_existing:
         print(
-            f"  [strat:wizard] mid-fill reveal: {len(new_l0)} new field(s) "
-            f"appeared after initial fill — extending"
+            f"  [strat:wizard] skipping fill — operating on a previously "
+            f"filled page (gated_step or earlier wizard pass already "
+            f"populated inputs); going straight to submit"
         )
+        filled: list[tuple[str, str]] = []
+        skipped: list[tuple[str, str]] = []
+    else:
+        filled, skipped = await fill_page_from_defaults(
+            adapter, ctx.kb, ctx.defaults, screen,
+        )
+        print(f"  [strat:wizard] filled {len(filled)} field(s), skipped {len(skipped)}")
+
+    # ── 5b. Mid-fill reveal loop: filling cascade dropdowns / radios may
+    # reveal new fields that weren't in the original L0. Some apps chain
+    # cascades (employment-type → employer-name → employer-address →
+    # tax-jurisdiction), so a single re-extract pass would miss every
+    # level past the first. Loop until no new fields appear (or a hard
+    # cap is hit so a buggy app where every fill spawns more fields
+    # can't trap us forever).
+    #
+    # Caps:
+    #   MAX_REVEAL_PASSES — total iterations before giving up.
+    #   MAX_TOTAL_NEW    — combined new-field count across passes;
+    #                      protects against snowball pages.
+    # On the cap we keep the fields we found rather than rolling back —
+    # they're real DOM elements; partial fill is more useful than none.
+    #
+    # Skip when operating on a previously-filled page (kept_existing):
+    # we didn't fill anything this pass so there's nothing to reveal.
+    MAX_REVEAL_PASSES = 4
+    MAX_TOTAL_NEW = 40
+    total_revealed = 0
+    pass_num = 0
+    while not kept_existing and pass_num < MAX_REVEAL_PASSES:
+        pass_num += 1
+        revealed_screen = await extract_form(
+            adapter=adapter,
+            app_name=ctx.app_name,
+            screen_name=screen.screen_name,
+            budget=ctx.budget,
+            page_url=ctx.page_url,
+            defaults=ctx.defaults,
+        )
+        prior_ids = {el.element_id for el in screen.l0}
+        new_l0 = [el for el in revealed_screen.l0 if el.element_id not in prior_ids]
+        if not new_l0:
+            if pass_num > 1:
+                print(
+                    f"  [strat:wizard] reveal loop settled after pass {pass_num} "
+                    f"(no new fields)"
+                )
+            break
+
+        total_revealed += len(new_l0)
+        print(
+            f"  [strat:wizard] reveal pass {pass_num}/{MAX_REVEAL_PASSES}: "
+            f"{len(new_l0)} new field(s) appeared — extending "
+            f"(total revealed so far: {total_revealed})"
+        )
+
         # Build a synthetic screen containing only the new fields so
-        # fill_page_from_defaults targets only them.
+        # fill_page_from_defaults targets only them this pass.
         from qa.models.knowledge import ScreenKnowledge
         delta = ScreenKnowledge(
             screen_name=screen.screen_name,
@@ -232,10 +302,11 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
                 if l1.element_id not in prior_ids
             ],
         )
-        # Merge new L0/L1 into the persisted screen so KB reflects reality.
+        # Merge new L0/L1 into the persisted screen so KB reflects reality
+        # AND the next pass's prior_ids excludes them (otherwise we'd
+        # re-fill the same delta forever).
         screen.l0 = list(screen.l0) + new_l0
         screen.l1 = list(screen.l1) + delta.l1
-        # Update kb in place (we already saved screen earlier).
         from qa.knowledge.store import KnowledgeStore
         existing = ctx.kb.get_screen(screen.screen_name)
         if existing:
@@ -251,36 +322,57 @@ async def wizard_step(ctx: StrategyContext) -> StrategyOutcome:
         filled.extend(delta_filled)
         skipped.extend(delta_skipped)
         print(
-            f"  [strat:wizard] reveal-fill: +{len(delta_filled)} filled, "
-            f"+{len(delta_skipped)} skipped"
+            f"  [strat:wizard] reveal pass {pass_num} fill: "
+            f"+{len(delta_filled)} filled, +{len(delta_skipped)} skipped"
         )
+
+        if total_revealed >= MAX_TOTAL_NEW:
+            print(
+                f"  [strat:wizard] reveal loop hit MAX_TOTAL_NEW={MAX_TOTAL_NEW}; "
+                f"stopping further passes — page may be a runaway expansion"
+            )
+            break
+    else:
+        # Loop exited via condition only — only fires when MAX_REVEAL_PASSES
+        # is reached without break. Surface that we capped out.
+        if not kept_existing:
+            print(
+                f"  [strat:wizard] reveal loop hit MAX_REVEAL_PASSES="
+                f"{MAX_REVEAL_PASSES}; remaining cascades (if any) will be "
+                f"visible to the next iteration's snapshot"
+            )
 
     # ── 6. Required-field precheck
     # Autofilled / read-only fields are intentionally skipped during fill
     # (see _is_autofilled in wizard_steps), so they shouldn't be flagged
     # as misses here either — the app populates them itself.
+    # Skip the entire precheck when operating on a previously-filled
+    # page (kept_existing): every required field would falsely flag as
+    # missed because we did not refill anything this pass; the inputs
+    # may not even be present on the DOM anymore.
     AUTOFILL_MARKERS_PRECHECK = (
         "auto_filled", "auto-filled", "autofilled",
         "read_only", "read-only", "readonly", "masked",
     )
     filled_names = {n for n, _ in filled}
     required_misses: list[tuple[str, str]] = []
-    for el in screen.l0:
-        if not getattr(el, "required", False):
-            continue
-        if el.name in filled_names:
-            continue
-        # Autofilled-required fields don't count as misses — the app
-        # fills them itself and inspecting them as "missing" leads to
-        # false stops on pages with OCR'd values.
-        behavior = (getattr(el, "behavior", "") or "").lower()
-        if any(m in behavior for m in AUTOFILL_MARKERS_PRECHECK):
-            continue
-        note = next(
-            (n for fname, n in skipped if fname == el.name),
-            "not filled (no fill report)",
-        )
-        required_misses.append((el.name, note))
+    if not kept_existing:
+        for el in screen.l0:
+            if not getattr(el, "required", False):
+                continue
+            if el.name in filled_names:
+                continue
+            # Autofilled-required fields don't count as misses — the app
+            # fills them itself and inspecting them as "missing" leads to
+            # false stops on pages with OCR'd values.
+            behavior = (getattr(el, "behavior", "") or "").lower()
+            if any(m in behavior for m in AUTOFILL_MARKERS_PRECHECK):
+                continue
+            note = next(
+                (n for fname, n in skipped if fname == el.name),
+                "not filled (no fill report)",
+            )
+            required_misses.append((el.name, note))
     if required_misses:
         # ── 6.7. LLM retry with alternate values.
         # Before giving up, give each missed required field ONE retry
@@ -788,28 +880,62 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
         ctx.adapter, before_sig, timeout=15.0,
     )
     if not transitioned:
-        # User-confirmed flow on TECU: click Save & Continue → modal pops
-        # → click Yes → form advances. Yes IS the submit. So we dismiss
-        # ONCE and wait LONG for transition. Do NOT re-click Save &
-        # Continue — re-clicking re-fires the same modal in a loop.
-        #
-        # Generous transition timeout (30s) because gated-page submission
-        # on TECU includes server-side document validation that can take
-        # 10-20s before the next page renders.
+        # No transition after Save & Continue — most likely a confirmation
+        # modal popped. Dismiss it ONCE. After the modal closes, two
+        # things can happen, and it varies by app:
+        #   a) Yes IS the submit → page transitions on its own
+        #   b) Yes was just acknowledgement → Save & Continue must be
+        #      clicked again to actually advance
+        # We don't try to be clever here. We dismiss, give the page a
+        # short window to transition (case a), and if it still hasn't,
+        # we hand control back to the strategist via request_replan.
+        # The next pick_strategy call sees the modal is gone and the
+        # original Save & Continue button is back; it routes to
+        # wizard_step which is the right specialist for "fill-and-submit
+        # page" — wizard_step will click Save & Continue and finish
+        # the transition. This keeps gated_step single-purpose
+        # (multi-section pattern only) and lets app-specific quirks
+        # be handled by the LLM-driven strategist instead of recipe
+        # branches inside gated_step.
         from qa.orchestrators.wizard_steps import dismiss_confirmation_modal
 
         dismissed, modal_label = await dismiss_confirmation_modal(ctx.adapter)
         if dismissed:
             print(
                 f"  [strat:gated] dismissed modal via {modal_label!r} — "
-                f"waiting up to 30s for form to advance (no re-click)"
+                f"waiting up to 5s for case (a) auto-transition"
             )
             await wait_for_inline_validation_settle(ctx.adapter, timeout=4.0)
             transitioned, signal = await wait_for_page_transition(
-                ctx.adapter, before_sig, timeout=30.0,
+                ctx.adapter, before_sig, timeout=5.0,
             )
+            if not transitioned:
+                # Case (b): modal was just acknowledgement. Hand control
+                # back to the strategist; wizard_step will pick up the
+                # still-visible Save & Continue and complete the submit.
+                last_screen = captured[-1] if captured else None
+                print(
+                    f"  [strat:gated] no auto-transition after modal — "
+                    f"requesting replan (strategist will route to next step)"
+                )
+                return StrategyOutcome(
+                    success=True,
+                    advance=False,
+                    captured=last_screen,
+                    note=(
+                        f"gated captured {len(captured)} section(s); "
+                        f"modal dismissed via {modal_label!r} but form "
+                        f"awaits explicit submit — replanning"
+                    ),
+                    cost=ctx.budget.current_cost - cost_at_start,
+                    request_replan=True,
+                )
 
     if not transitioned:
+        # No modal was found AND no transition happened. This is a real
+        # block (validation banner, disabled button, etc.) — surface as
+        # stuck rather than replanning, because the strategist would
+        # likely re-pick gated_step and we'd loop.
         last_screen = captured[-1] if captured else None
         return StrategyOutcome(
             success=True,
@@ -817,8 +943,9 @@ async def gated_step(ctx: StrategyContext) -> StrategyOutcome:
             captured=last_screen,
             note=(
                 f"gated captured {len(captured)} section(s); Save & Continue "
-                f"clicked but no transition detected ({signal}) — likely a "
-                f"validation banner blocked submission"
+                f"clicked but no transition detected ({signal}) and no "
+                f"modal to dismiss — likely a validation banner blocked "
+                f"submission"
             ),
             cost=ctx.budget.current_cost - cost_at_start,
         )

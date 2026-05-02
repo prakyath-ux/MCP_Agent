@@ -839,77 +839,16 @@ async def _upload_file_for_field_impl(
         })
     print(f"  [upload] File input uid: {file_input_uid}")
 
-    # ── Step 5b: Click the VISIBLE upload button via JS dispatchEvent.
-    # User confirmed via network tab that uploading 'Upload Front of ID'
-    # makes ZERO API calls — the entire 'front uploaded' state is
-    # client-side React. Setting input.files via DOM doesn't run the
-    # React state-setter because TECU's component has the state-setter
-    # on the visible button's onClick, not the hidden input's onChange.
-    # A programmatic click via dispatchEvent fires React's onClick
-    # handler WITHOUT opening a file picker (browsers require
-    # isTrusted=true for the picker). After this primes the React
-    # state, the subsequent file injection should be picked up.
-    pre_click_js = (
-        "() => {"
-        f"  const fieldName = {json.dumps(field_name)}.toLowerCase();"
-        "  const buttons = [...document.querySelectorAll("
-        "    'button, [role=button], label[for], div[onclick], "
-        "div[role=button]'"
-        "  )].filter(e => e.offsetParent !== null);"
-        "  const target = buttons.find(b => {"
-        "    const txt = ((b.textContent || '') + '').trim().toLowerCase();"
-        "    return fieldName && txt.includes(fieldName);"
-        "  });"
-        "  if (!target) return JSON.stringify({status: 'BUTTON_NOT_FOUND', "
-        "    candidates: buttons.slice(0, 5).map(b => (b.textContent||'').trim().slice(0, 40))});"
-        "  try {"
-        "    target.dispatchEvent(new MouseEvent('click', "
-        "      {bubbles: true, cancelable: true, view: window}));"
-        "    return JSON.stringify({status: 'CLICKED', label: (target.textContent||'').trim().slice(0, 60)});"
-        "  } catch (e) {"
-        "    return JSON.stringify({status: 'ERROR', error: e.message});"
-        "  }"
-        "}"
-    )
-    try:
-        pre_click_raw = await _eval(pre_click_js)
-        print(f"  [upload] Step 5b: visible-button pre-click → {str(pre_click_raw)[:200]}")
-        await asyncio.sleep(0.4)
-    except Exception as e:
-        print(f"  [upload] Step 5b: pre-click raised {type(e).__name__}: {e}")
-
     # ── Step 6: Upload the file ─────────────────────────────────────────────
+    # CDP DOM.setFileInputFiles via MCP attaches the file directly to the
+    # input element. No DOM click is needed (and no DOM click is wanted —
+    # a synthesized click on the visible upload button can spawn the OS
+    # file picker, which then sits there waiting for human input). The
+    # real-doc Section 2 retest confirmed this pipeline works end-to-end:
+    # expose-input → upload_file → React's onChange picks up the file.
     print(f"  [upload] Step 6: upload_file(uid={file_input_uid}, filePath={file_path})")
     upload_result = await _call_mcp("upload_file", {"uid": file_input_uid, "filePath": file_path})
     print(f"  [upload] upload_file MCP returned: {str(upload_result)[:150]}")
-
-    # ── Step 6a: Force-dispatch React events ─────────────────────────────────
-    # MCP's upload_file uses CDP DOM.setFileInputFiles which fires a native
-    # `change` event. React's synthetic-event system sometimes misses
-    # native events on file inputs, especially when the listener is on a
-    # wrapper component. TECU's Section 2 'Upload Front of ID' input
-    # was the smoking gun: file in input.files for 8s straight, but no
-    # React onChange ever ran (no network call, no UI update). Manually
-    # dispatching `input` and `change` events with bubbles=true forces
-    # React's bubbling-phase listener to pick up the change.
-    target_id_for_event = ""
-    if isinstance(expose, dict):
-        target_id_for_event = expose.get("id") or ""
-    if target_id_for_event:
-        force_event_js = (
-            "() => {"
-            f"  const el = document.getElementById({json.dumps(target_id_for_event)});"
-            "  if (!el) return 'NO_INPUT';"
-            "  el.dispatchEvent(new Event('input', {bubbles: true, cancelable: true}));"
-            "  el.dispatchEvent(new Event('change', {bubbles: true, cancelable: true}));"
-            "  return 'DISPATCHED';"
-            "}"
-        )
-        try:
-            ev_result = await _eval(force_event_js)
-            print(f"  [upload] Step 6a: force-dispatched input+change events ({ev_result.strip()[:60]!r})")
-        except Exception as e:
-            print(f"  [upload] Step 6a: force-dispatch raised {type(e).__name__}: {e}")
 
     # ── Step 6b: Click confirm button (modal flows only) ──────────────
     # TECU and similar apps require a final "Submit" / "Upload" / "Verify"

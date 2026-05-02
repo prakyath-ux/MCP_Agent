@@ -97,17 +97,34 @@ async def pick_strategy(
     adapter,
     budget: BudgetTracker,
     model: str,
+    replan_hint: str = "",
 ) -> tuple[str, str, str]:
     """Run the PICK_STRATEGY LLM call. Returns (name, confidence, reason).
     On any failure (LLM down, parse error), returns ('unknown', 'low',
     '<error>') so the runner stops cleanly rather than acting on stale
-    or hallucinated picks."""
+    or hallucinated picks.
+
+    replan_hint: optional context note from the previous strategy. When
+    a strategy bows out via request_replan it can describe what just
+    changed on the page (modal dismissed, sections complete, etc.) so
+    the strategist doesn't blindly re-pick the same recipe. Empty on
+    the first iteration of a page.
+    """
     try:
         snap = await adapter.raw_snapshot_text()
     except Exception as e:
         return ("unknown", "low", f"snapshot failed: {type(e).__name__}: {e}")
 
     user = f"PAGE_SNAPSHOT:\n{(snap or '')[:8000]}\n"
+    if replan_hint:
+        user += (
+            f"\nCONTEXT_FROM_PREVIOUS_STRATEGY:\n{replan_hint}\n"
+            f"Pick the strategy for the CURRENT page state, not what "
+            f"the page looked like before. If the previous strategy "
+            f"already captured all sections / filled all fields, route "
+            f"to wizard_step to handle the final Save & Continue submit "
+            f"rather than re-running the same recipe.\n"
+        )
     try:
         result = await llm_classify(
             PICK_STRATEGY_PROMPT,
@@ -195,6 +212,18 @@ async def run_agent(
     # the inline-OTP-style loops we already saw on TECU.
     expansion_streak = 0
     EXPANSION_LIMIT = 3
+    # Track consecutive request_replan outcomes (strategy bowed out on
+    # a changed page state and asked the strategist to re-pick). Cap is
+    # small because each replan costs an LLM call and must produce a
+    # different next move; if the same page keeps requesting replans we
+    # are looping rather than progressing.
+    replan_streak = 0
+    REPLAN_LIMIT = 2
+    # Note from the previous strategy that requested a replan. Passed
+    # to pick_strategy so the strategist understands what just happened
+    # on the page and doesn't re-pick the strategy that just bowed out.
+    # Cleared after each non-replan iteration.
+    replan_hint = ""
     exit_code = 0
     # Track screens captured in THIS run (not historical KB) so the
     # wizard's carryover tagger doesn't poison the per-page L0 with
@@ -226,7 +255,13 @@ async def run_agent(
                 )
 
             # ── 1. Pick a strategy
-            name, conf, reason = await pick_strategy(adapter, budget, model)
+            name, conf, reason = await pick_strategy(
+                adapter, budget, model, replan_hint=replan_hint,
+            )
+            # Hint is one-shot: it described the prior strategy's exit,
+            # not a permanent fact about the page. Clear it now; if THIS
+            # iteration also requests a replan, the loop sets a fresh one.
+            replan_hint = ""
             print(f"  [agent] strategy={name} confidence={conf}")
             print(f"  [agent] reason: {reason}")
 
@@ -317,11 +352,39 @@ async def run_agent(
                 break
 
             if not outcome.advance:
+                # Soft handoff: the strategy didn't advance the wizard but
+                # explicitly asked the strategist to re-evaluate (typically
+                # because it changed page state — dismissed a modal,
+                # revealed a new form — and the next move belongs to a
+                # different strategy). Continue the loop instead of
+                # stopping, but cap consecutive replans so a buggy
+                # strategy can't burn the budget in place.
+                if outcome.request_replan and replan_streak < REPLAN_LIMIT:
+                    replan_streak += 1
+                    replan_hint = (
+                        f"Previous strategy '{name}' bowed out without "
+                        f"advancing. Note: {outcome.note}"
+                    )
+                    print(
+                        f"  [agent] strategy requested replan "
+                        f"({replan_streak}/{REPLAN_LIMIT}) — "
+                        f"re-picking on changed page state"
+                    )
+                    continue
+
                 report.final_status = "stuck"
-                report.final_reason = outcome.note
+                if outcome.request_replan:
+                    report.final_reason = (
+                        f"replan limit ({REPLAN_LIMIT}) hit: {outcome.note}"
+                    )
+                else:
+                    report.final_reason = outcome.note
                 _save_audit(audit_path, report)
-                print(f"  [agent] stopping — no advance: {outcome.note}")
+                print(f"  [agent] stopping — no advance: {report.final_reason}")
                 break
+
+            # Strategy advanced — reset the replan counter.
+            replan_streak = 0
 
             # Track inline expansion loops (e.g. OTP shown then hidden
             # repeatedly on a duplicate-user form). Wizard's classifier
