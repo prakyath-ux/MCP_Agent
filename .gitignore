@@ -26,3 +26,7 @@ mobile_version/runs/
 *.mov
 artifacts/test_files/tecu copy/
 .scratch/
+
+# test run outputs (per-run artifacts, not source code)
+artifacts/results/*/
+!artifacts/results/.gitkeep
