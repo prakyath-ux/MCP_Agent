@@ -1053,6 +1053,360 @@ def _detect_upload_success(before_snap: str, after_snap: str, file_path: str) ->
     return ""
 
 
+PAGE_DIAGNOSTIC_JS = r"""
+() => {
+  const findings = {
+    green: { native_inputs: 0, native_selects: 0, native_textareas: 0, native_buttons: 0 },
+    yellow: [],
+    red: [],
+  };
+
+  // Visible-only filter; we don't want hidden chat widgets etc. polluting counts.
+  const visible = (el) => el && el.offsetParent !== null;
+
+  // GREEN — native form controls
+  findings.green.native_inputs = [...document.querySelectorAll('input:not([type="hidden"])')]
+    .filter(visible).length;
+  findings.green.native_selects = [...document.querySelectorAll('select')].filter(visible).length;
+  findings.green.native_textareas = [...document.querySelectorAll('textarea')].filter(visible).length;
+  findings.green.native_buttons = [...document.querySelectorAll('button')].filter(visible).length;
+
+  // YELLOW — custom dropdowns (non-native trigger elements)
+  // Dedupe by visible text: a class*=dropdown match commonly fires on
+  // parent wrapper + trigger + inner div all sharing the same label, which
+  // are one conceptual dropdown, not three.
+  const dropdownRaw = [...document.querySelectorAll(
+    '[class*="dropdown" i]:not(select), [data-testid*="dropdown" i]:not(select), [aria-haspopup="listbox"]'
+  )].filter(el => el.tagName !== 'SELECT' && visible(el));
+  const dropdownByText = new Map();
+  for (const el of dropdownRaw) {
+    const text = (el.textContent || '').trim().slice(0, 80);
+    if (!text) continue;
+    if (!dropdownByText.has(text)) dropdownByText.set(text, el);
+  }
+  const customDropdowns = [...dropdownByText.values()];
+  if (customDropdowns.length) {
+    findings.yellow.push({
+      pattern: 'custom_dropdown',
+      count: customDropdowns.length,
+      detail: 'Non-native dropdowns. Supported via test_dropdown smart fallback.',
+      examples: customDropdowns.slice(0, 3).map(e => (e.textContent || '').trim().slice(0, 60)),
+    });
+  }
+
+  // IFRAMES — same-origin (yellow if forms inside) vs cross-origin (red)
+  const iframes = [...document.querySelectorAll('iframe')].filter(visible);
+  const crossOrigin = [], sameOriginWithForm = [];
+  for (const f of iframes) {
+    let same = false;
+    try { same = !!(f.contentDocument && f.contentDocument.body); } catch (_) { same = false; }
+    if (!same) { crossOrigin.push(f); continue; }
+    try {
+      const formish = f.contentDocument.querySelectorAll('input, select, textarea').length;
+      if (formish > 0) sameOriginWithForm.push(f);
+    } catch (_) {}
+  }
+  if (crossOrigin.length) {
+    findings.red.push({
+      pattern: 'cross_origin_iframe',
+      count: crossOrigin.length,
+      detail: 'Cross-origin iframe content is unreachable due to browser security boundary.',
+      examples: crossOrigin.slice(0, 3).map(f => (f.src || '(no src)').slice(0, 80)),
+    });
+  }
+  if (sameOriginWithForm.length) {
+    findings.yellow.push({
+      pattern: 'same_origin_iframe_with_form',
+      count: sameOriginWithForm.length,
+      detail: 'Form rendered inside a same-origin iframe. Top-level extractor does not recurse.',
+      examples: sameOriginWithForm.slice(0, 3).map(f => (f.src || '(no src)').slice(0, 80)),
+    });
+  }
+
+  // SHADOW DOM — skip framework infrastructure that doesn't host form content.
+  // next-route-announcer (Next.js a11y), iron-* (legacy Polymer), etc. attach
+  // shadow roots but never carry user-facing fields.
+  const SHADOW_INFRASTRUCTURE = new Set([
+    'next-route-announcer',
+    'iron-meta',
+  ]);
+  const shadowHosts = [...document.querySelectorAll('*')].filter(el => {
+    try {
+      if (!el.shadowRoot) return false;
+      return !SHADOW_INFRASTRUCTURE.has(el.tagName.toLowerCase());
+    } catch (_) { return false; }
+  });
+  if (shadowHosts.length) {
+    findings.yellow.push({
+      pattern: 'shadow_dom',
+      count: shadowHosts.length,
+      detail: 'Open shadow roots detected — querying inside requires traversal. Closed shadow roots cannot be reached.',
+      examples: shadowHosts.slice(0, 3).map(e => e.tagName.toLowerCase()),
+    });
+  }
+
+  // FILE UPLOADS — direct vs hidden-behind-trigger
+  const fileInputs = [...document.querySelectorAll('input[type="file"]')];
+  const hiddenFileInputs = fileInputs.filter(f => f.offsetParent === null);
+  if (hiddenFileInputs.length) {
+    findings.yellow.push({
+      pattern: 'hidden_file_input',
+      count: hiddenFileInputs.length,
+      detail: 'File inputs hidden behind a styled trigger (modal flow). Supported via upload_file_for_field.',
+    });
+  }
+
+  // CONSENT / COOKIE OVERLAY
+  const consents = [...document.querySelectorAll(
+    '[class*="cookie" i], [class*="consent" i], [id*="cookie" i], [id*="consent" i]'
+  )].filter(el => visible(el) && getComputedStyle(el).position === 'fixed');
+  if (consents.length) {
+    findings.yellow.push({
+      pattern: 'consent_overlay',
+      count: consents.length,
+      detail: 'Cookie/consent overlay may cover form. Dismiss before testing.',
+    });
+  }
+
+  // CAPTCHA — designed to defeat automation
+  const captchaSel = (
+    'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], '
+    + '[class*="g-recaptcha"], [class*="h-captcha"], '
+    + '[id*="captcha" i]:not(label)'
+  );
+  const captchas = [...document.querySelectorAll(captchaSel)];
+  if (captchas.length) {
+    findings.red.push({
+      pattern: 'captcha',
+      count: captchas.length,
+      detail: 'CAPTCHA present — by design defeats automation.',
+    });
+  }
+
+  // BOT DETECTION — Cloudflare-style challenges
+  const bodyText = (document.body && document.body.innerText || '').slice(0, 5000).toLowerCase();
+  const botPhrases = ['just a moment', 'checking your browser', 'cloudflare ray id'];
+  const botMarkerEl = document.querySelector('#cf-challenge-running, [class*="cf-challenge" i], [id*="challenge-form" i]');
+  if (botMarkerEl || botPhrases.some(p => bodyText.includes(p))) {
+    findings.red.push({
+      pattern: 'bot_detection_challenge',
+      count: 1,
+      detail: 'Bot-detection page (Cloudflare or similar) — page may not load reliably.',
+    });
+  }
+
+  // MULTI-PAGE WIZARD — Save & Continue / Next-step buttons
+  const wizardButtons = [...document.querySelectorAll('button, a, [role="button"]')]
+    .filter(el => visible(el) && /save\s*(&|and)\s*continue|continue|next\s*step|proceed/i.test(
+      (el.textContent || '').trim()
+    ));
+  if (wizardButtons.length) {
+    findings.yellow.push({
+      pattern: 'multi_page_wizard',
+      count: wizardButtons.length,
+      detail: 'Multi-page wizard pattern. Page transitions may not change the URL.',
+      examples: wizardButtons.slice(0, 3).map(b => (b.textContent || '').trim().slice(0, 40)),
+    });
+  }
+
+  // CASCADE — disabled inputs likely depending on a parent
+  const disabledInputs = [...document.querySelectorAll(
+    'input[disabled], select[disabled], textarea[disabled], [aria-disabled="true"]'
+  )].filter(visible);
+  if (disabledInputs.length) {
+    findings.yellow.push({
+      pattern: 'disabled_cascade_inputs',
+      count: disabledInputs.length,
+      detail: 'Disabled fields likely depend on a parent value. Cascade order needs to be declared per app.',
+    });
+  }
+
+  // LAZY / SKELETON — content not yet hydrated
+  const lazy = [...document.querySelectorAll(
+    '[aria-busy="true"], [class*="skeleton" i]'
+  )].filter(visible);
+  if (lazy.length) {
+    findings.yellow.push({
+      pattern: 'lazy_or_skeleton',
+      count: lazy.length,
+      detail: 'Skeleton/loading state still visible. Wait for hydration before testing.',
+    });
+  }
+
+  // PLACEHOLDER-AS-LABEL — input has placeholder but no associated <label>,
+  // no aria-label, and isn't wrapped in a label. Field name in reports will
+  // be the placeholder text instead of a real label.
+  const placeholderOnly = [...document.querySelectorAll(
+    'input[placeholder]:not([type="hidden"]), textarea[placeholder]'
+  )].filter(el => {
+    if (!visible(el)) return false;
+    if (el.getAttribute('aria-label')) return false;
+    if (el.getAttribute('aria-labelledby')) return false;
+    if (el.closest('label')) return false;
+    if (el.id) {
+      const cssEsc = (CSS && CSS.escape) ? CSS.escape(el.id) : el.id;
+      try {
+        if (document.querySelector('label[for="' + cssEsc + '"]')) return false;
+      } catch (_) {}
+    }
+    return Boolean((el.placeholder || '').trim());
+  });
+  if (placeholderOnly.length) {
+    findings.yellow.push({
+      pattern: 'placeholder_as_label',
+      count: placeholderOnly.length,
+      detail: 'Inputs use placeholder text instead of a proper <label>. Field names in reports will be the placeholder, weakening readability.',
+      examples: placeholderOnly.slice(0, 3).map(el => (el.placeholder || '').trim().slice(0, 50)),
+    });
+  }
+
+  // PROGRAMMATIC RADIO NAMES — radio groups whose accessible name is missing
+  // or matches the kebab/snake-case `name` attribute (i.e. testid leaked into
+  // the label). Reports will show 'verify-who-speaks-first' instead of
+  // 'Who Speaks First'.
+  const radioGroups = new Map();
+  for (const r of document.querySelectorAll('input[type="radio"]')) {
+    if (!visible(r)) continue;
+    const groupName = r.name || '';
+    if (!groupName) continue;
+    if (!radioGroups.has(groupName)) {
+      // Pull the group's "label" the same way the extractor does: aria-label,
+      // wrapping label, label[for=id], or fallback to the name attribute.
+      let labelText = r.getAttribute('aria-label') || '';
+      if (!labelText && r.closest('label')) {
+        labelText = (r.closest('label').textContent || '').trim();
+      }
+      if (!labelText && r.id) {
+        const cssEsc = (CSS && CSS.escape) ? CSS.escape(r.id) : r.id;
+        try {
+          const lab = document.querySelector('label[for="' + cssEsc + '"]');
+          if (lab) labelText = (lab.textContent || '').trim();
+        } catch (_) {}
+      }
+      radioGroups.set(groupName, labelText);
+    }
+  }
+  const programmaticRadios = [...radioGroups.entries()].filter(([name, label]) => {
+    if (!label) return true;  // no label at all
+    // Exact match (snake/kebab/camel of name) → leak.
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    return norm(name) === norm(label);
+  });
+  if (programmaticRadios.length) {
+    findings.yellow.push({
+      pattern: 'programmatic_radio_names',
+      count: programmaticRadios.length,
+      detail: 'Radio groups have no human-readable label — agent will see the testid (e.g. "verify-who-speaks-first") in reports.',
+      examples: programmaticRadios.slice(0, 3).map(([name]) => name.slice(0, 50)),
+    });
+  }
+
+  // CHIP / PILL TOGGLE BUTTONS — <button> elements that hold binary state
+  // rather than triggering an action. Easy signals: aria-pressed attribute,
+  // class containing "chip"/"pill"/"tag", or data-state attribute. Need to be
+  // tested with click→verify-toggle, not "verify exists".
+  const chipToggles = [...document.querySelectorAll('button')].filter(b => {
+    if (!visible(b)) return false;
+    if (b.hasAttribute('aria-pressed')) return true;
+    if (b.hasAttribute('data-state')) return true;
+    const cls = (b.className && typeof b.className === 'string')
+      ? b.className.toLowerCase() : '';
+    return /\b(chip|pill|tag|badge|toggle)\b/.test(cls);
+  });
+  if (chipToggles.length) {
+    findings.yellow.push({
+      pattern: 'chip_toggle_buttons',
+      count: chipToggles.length,
+      detail: 'Buttons holding binary state (chip/pill/aria-pressed). Test as "click then verify state changed" rather than treating as action buttons.',
+      examples: chipToggles.slice(0, 3).map(b => (b.textContent || '').trim().slice(0, 40)),
+    });
+  }
+
+  // FULL INTERACTIVE INVENTORY — ground truth of what's on the page
+  // (per-type counts + a few sample names). Useful for comparing against
+  // extract output to spot what the LLM dropped.
+  const sampleText = (el) => {
+    const t = (el.textContent || '').trim();
+    if (t) return t.slice(0, 60);
+    const ph = el.getAttribute && el.getAttribute('placeholder');
+    if (ph) return '[placeholder] ' + ph.slice(0, 60);
+    const al = el.getAttribute && el.getAttribute('aria-label');
+    if (al) return '[aria-label] ' + al.slice(0, 60);
+    const nm = el.getAttribute && el.getAttribute('name');
+    if (nm) return '[name] ' + nm.slice(0, 60);
+    const id = el.getAttribute && el.getAttribute('id');
+    if (id) return '[id] ' + id.slice(0, 60);
+    return '(unlabeled)';
+  };
+
+  const collect = (selector, max_samples = 5) => {
+    const els = [...document.querySelectorAll(selector)].filter(visible);
+    return {
+      count: els.length,
+      samples: els.slice(0, max_samples).map(sampleText),
+    };
+  };
+
+  const inventory = {
+    input_visible:       collect('input:not([type="hidden"])'),
+    textarea:            collect('textarea'),
+    select:              collect('select'),
+    button_native:       collect('button'),
+    div_role_button:     collect('div[role="button"]'),
+    link_with_href:      collect('a[href]'),
+    role_combobox:       collect('[role="combobox"]'),
+    role_radio:          collect('[role="radio"]'),
+    role_checkbox:       collect('[role="checkbox"]'),
+    role_switch:         collect('[role="switch"]'),
+    role_listbox:        collect('[role="listbox"]'),
+    contenteditable:     collect('[contenteditable="true"]'),
+  };
+
+  const inventoryTotal = Object.values(inventory).reduce((s, v) => s + v.count, 0);
+
+  const greenTotal = findings.green.native_inputs + findings.green.native_selects
+    + findings.green.native_textareas;
+  const verdict = findings.red.length > 0 ? 'red'
+    : (findings.yellow.length > 0 ? 'yellow' : 'green');
+
+  return JSON.stringify({
+    page_url: location.href,
+    page_title: document.title,
+    findings,
+    inventory,
+    summary: {
+      green_native_total: greenTotal,
+      yellow_count: findings.yellow.length,
+      red_count: findings.red.length,
+      inventory_total: inventoryTotal,
+      verdict,
+    },
+  });
+}
+"""
+
+
+@function_tool
+async def analyze_page_blockers() -> str:
+    """Scan the current page DOM for known blocker patterns and classify the
+    page as green / yellow / red against the project's tested-and-supported
+    catalog.
+
+    Pure read-only DOM inspection — no clicks, no fills, no network. Free
+    (no LLM cost). Returns JSON with: native form-control counts, list of
+    yellow findings (patterns we support with workarounds), list of red
+    findings (out-of-scope hard blockers), and an overall verdict.
+
+    Use at the START of a session to set expectations on what's testable.
+    """
+    raw = await _eval(PAGE_DIAGNOSTIC_JS)
+    parsed = _safe_parse(raw)
+    if not isinstance(parsed, dict):
+        return json.dumps({"status": "ERROR", "raw": raw[:500]})
+    parsed["status"] = "OK"
+    return json.dumps(parsed)
+
+
 @function_tool
 async def list_test_files() -> str:
     """Return the test files available for the active app.
@@ -1107,6 +1461,7 @@ EXPLORE_TOOLS = [
     # (e.g. "section 2 only unlocks after section 1's document is verified").
     upload_file_for_field,
     list_test_files,
+    analyze_page_blockers,
 ]
 
 TASK_TOOLS = [
@@ -1116,6 +1471,7 @@ TASK_TOOLS = [
     upload_file_for_field,
     verify_elements_exist,
     list_test_files,
+    analyze_page_blockers,
 ]
 
 

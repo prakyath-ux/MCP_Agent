@@ -401,23 +401,63 @@ def page_new_run():
     col1, col2 = st.columns([1.2, 1])
 
     with col1:
-        pipeline = st.selectbox("Pipeline", ["explore", "plan", "execute", "full"])
+        pipeline = st.selectbox("Pipeline", ["explore", "plan", "execute", "full", "diagnostic"])
         platform = st.selectbox("Platform", ["mobile", "web"])
-        target = st.text_input("Target", value="net.impacto.B2U", help="Package name (mobile) or URL (web)")
-        app_name = st.text_input("App Name", value="Bank App (B2U)")
-        screens = st.text_input("Screens", value="", placeholder="e.g., iTELLER,LOAN,MORE")
-        model = st.selectbox("Model", ["gpt-5.1", "gpt-5", "openai/gpt-oss-120b"])
+        # Default target depends on platform — package name for mobile, URL for web.
+        default_target = "net.impacto.B2U" if platform == "mobile" else "https://qa-tq-awp.impactodigifin.xyz/newapplication"
+        target_help = "Package name (mobile) or URL (web — must start with http:// or https://)"
+        target = st.text_input("Target", value=default_target, help=target_help, key=f"target_{platform}")
+        app_name = st.text_input("App Name", value="Bank App (B2U)" if platform == "mobile" else "TECU")
+        screens_placeholder = "e.g., iTELLER,LOAN,MORE" if platform == "mobile" \
+            else "e.g., New Member Application - Personal Information"
+
+        # Diagnostic doesn't use screens/model/plan-model — keep the form simple.
+        if pipeline != "diagnostic":
+            screens = st.text_input("Screens", value="", placeholder=screens_placeholder)
+            model = st.selectbox(
+                "Model",
+                [
+                    "gpt-5.4-mini",
+                    "gpt-5.1",
+                    "gpt-5",
+                    "gpt-5.2",
+                    "gpt-5.4",
+                    "gpt-5.4-nano",
+                    "gpt-5.5",
+                    "openai/gpt-oss-120b",
+                ],
+                help="gpt-5.4-mini is cheapest for execute; pair with --plan-model for two-tier strategy.",
+            )
+            plan_model = ""
+            if pipeline in ("execute", "full"):
+                plan_model = st.selectbox(
+                    "Plan Model (optional)",
+                    ["", "gpt-5.4", "gpt-5.2", "gpt-5.1", "gpt-5"],
+                    index=0,
+                    help="Use a stronger model just for plan generation while a cheaper one drives execute. Empty = same as Model.",
+                )
+        else:
+            screens = ""
+            model = ""
+            plan_model = ""
+
         device_id = ""
-        if platform == "mobile":
+        if platform == "mobile" and pipeline != "diagnostic":
             device_id = st.text_input("Device ID", value="RZCXA21GV9P")
 
-        cmd = f"python -m qa.cli {pipeline} {target} -p {platform} -a \"{app_name}\" -m {model}"
-        if screens:
-            cmd += f" -s {screens}"
-        if device_id:
-            cmd += f" -d {device_id}"
-        if pipeline == "execute":
-            cmd += " --auto-explore"
+        if pipeline == "diagnostic":
+            # Pre-flight DOM scan — read-only, no LLM. Only meaningful for web.
+            cmd = f"python -m qa.orchestrators.page_diagnostic {target} --app-name \"{app_name}\""
+        else:
+            cmd = f"python -m qa.cli {pipeline} {target} -p {platform} -a \"{app_name}\" -m {model}"
+            if screens:
+                cmd += f" -s \"{screens}\""
+            if device_id:
+                cmd += f" -d {device_id}"
+            if pipeline == "execute":
+                cmd += " --auto-explore"
+            if plan_model and pipeline in ("execute", "full"):
+                cmd += f" --plan-model {plan_model}"
 
     with col2:
         info = {
@@ -425,6 +465,7 @@ def page_new_run():
             "plan": ("Test Planning", "Generates test cases from knowledge. Pure AI reasoning — no device needed. Fastest pipeline."),
             "execute": ("Test Execution", "Executes test cases on the app. Auto-explores if no knowledge exists. Multi-screen support."),
             "full": ("Full Suite", "Runs all 3 pipelines in sequence: Explore, Plan, Execute. End-to-end automation."),
+            "diagnostic": ("Page Diagnostic", "Pre-flight DOM scan. Classifies the page as green / yellow / red against known testability blockers (custom dropdowns, iframes, CAPTCHA, multi-page wizards, etc). Read-only, free, no LLM."),
         }
         title, desc = info.get(pipeline, ("", ""))
         st.markdown(f"""
@@ -442,11 +483,18 @@ def page_new_run():
     st.markdown("---")
 
     if st.button("Run Test", type="primary", use_container_width=True):
-        st.session_state.running = True
-        st.session_state.run_cmd = cmd
-        st.session_state.run_cwd = str(ROOT)
-        st.session_state.run_platform = platform
-        st.rerun()
+        # Guard: diagnostic only works on real http(s) URLs.
+        if pipeline == "diagnostic" and not target.lower().startswith(("http://", "https://")):
+            st.error(
+                f"Diagnostic needs a web URL starting with http:// or https://. "
+                f"Got: '{target}'. Update the Target field."
+            )
+        else:
+            st.session_state.running = True
+            st.session_state.run_cmd = cmd
+            st.session_state.run_cwd = str(ROOT)
+            st.session_state.run_platform = platform
+            st.rerun()
 
     if st.session_state.get("running"):
         _run_active()
@@ -856,13 +904,15 @@ def page_chat():
             kb = store.load_by_name(ctx_target, ctx_platform) or store.load_by_name(ctx_app_name, ctx_platform)
             if kb and kb.screens:
                 screens_str = ", ".join(kb.screen_names())
+                first_screen = kb.screen_names()[0]
+                second_screen = kb.screen_names()[1] if len(kb.screen_names()) > 1 else first_screen
                 greeting = (
                     f"Hi! I'm ready to test **{ctx_app_name}** on **{ctx_platform}**.\n\n"
                     f"I have knowledge of these screens: **{screens_str}**.\n\n"
                     f"You can ask me things like:\n"
-                    f"- *Test all dropdowns on iTELLER*\n"
-                    f"- *Run tests on the Date of Birth field*\n"
-                    f"- *Test the LOAN screen*\n\n"
+                    f"- *Test all dropdowns on {first_screen}*\n"
+                    f"- *Run tests on the Email Address field*\n"
+                    f"- *Test the {second_screen} screen*\n\n"
                     f"What would you like me to do?"
                 )
             else:
