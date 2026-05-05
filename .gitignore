@@ -25,3 +25,4 @@ mobile_version/runs/
 *.txt
 *.mov
 artifacts/test_files/tecu copy/
+.scratch/
