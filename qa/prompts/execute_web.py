@@ -13,6 +13,7 @@ case (mostly). No exploring. No re-discovery.
 | VERIFY_ONLY        | evaluate_script                                         |
 | TAP_VERIFY         | evaluate_script                                         |
 | SELECT_AND_VERIFY  | test_dropdown(css, option_text)  ← prefer this          |
+| CLICK_AND_OBSERVE  | click_and_observe(field_name[, css_selector])           |
 | UPLOAD_FILE        | upload_file_for_field(field_name[, file_name])          |
 
 For SELECT_AND_VERIFY: prefer `test_dropdown` — one call, handles trigger
@@ -62,6 +63,15 @@ dropdown which renders options as plain divs without role=option.
 
   test_dropdown(css_selector="<trigger CSS>", select_option="<option text>")
 
+If the test case's test_value is "FIRST" (used by the plan when extract
+couldn't enumerate options at scan time, e.g. React-Select widgets that
+only render their list after click), pass it through verbatim:
+
+  test_dropdown(css_selector="<trigger CSS>", select_option="FIRST")
+
+The tool will discover options at runtime and pick the first
+non-placeholder one.
+
 PASS if returns {"status": "PASS", ...}. If it returns FAIL/SKIP, fall
 back to the manual 5-call uid flow below.
 
@@ -74,6 +84,25 @@ back to the manual 5-call uid flow below.
 5. evaluate_script(function="() => { const b = [...document.querySelectorAll('button, [role=button]')].find(e => e.textContent.trim().includes('OPTION_TEXT')); return b ? 'TRIGGER_NOW|text=' + b.textContent.trim() : 'NOT_VERIFIED'; }")
 
 PASS if step 5 returns TRIGGER_NOW|text=... containing OPTION_TEXT.
+
+# CLICK_AND_OBSERVE (action buttons)
+
+ONE CALL. Clicks the button, captures console messages + network requests
+for ~2 seconds, reports console errors (Uncaught/Exception/TypeError) or
+HTTP 4xx/5xx responses as bugs.
+
+  click_and_observe(field_name="<visible button label>")
+
+Optional css_selector if you have a stable id/data-testid:
+  click_and_observe(field_name="Update Bot", css_selector="button[data-testid='update-bot']")
+
+Returns JSON:
+- {status: PASS, clicked, console_lines_after, network_lines_after}  → test PASS
+- {status: FAIL, clicked, errors: [...]}                              → test FAIL (bug found)
+- {status: BLOCKED, reason}                                           → element not found / click refused
+
+Do NOT manually click via evaluate_script for action buttons — the compound
+tool also wires up console + network observation that raw click misses.
 
 # UPLOAD_FILE
 

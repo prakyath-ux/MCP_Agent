@@ -468,6 +468,9 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
     # ── Custom combobox path ──
     # Same null-check + text-match fallback as detect step, otherwise a
     # space-containing label like "Select Branch" yields null silently.
+    # React-Select needs focus + ArrowDown to reliably open its menu when
+    # the click target is the inner <input role=combobox> rather than the
+    # control wrapper, so we send that as a follow-up nudge.
     open_js = f"""
       (function() {{
         let el = null;
@@ -482,7 +485,12 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
             .find(e => e.textContent.trim().toLowerCase().includes(txt));
         }}
         if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND'}});
+        el.scrollIntoView({{block: 'center', behavior: 'instant'}});
         el.click();
+        // Nudge React-Select / Headless UI: focus the trigger then ArrowDown.
+        try {{ el.focus({{preventScroll: true}}); }} catch (_) {{}}
+        const evtInit = {{key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true}};
+        el.dispatchEvent(new KeyboardEvent('keydown', evtInit));
         return JSON.stringify({{status: 'OPENED'}});
       }})()
     """
@@ -494,7 +502,7 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
     options_js = """
       (function() {
         const opts = [...document.querySelectorAll(
-          '[role=option], [role=menuitem], li[role=listitem], .MuiMenuItem-root, .dropdown-item'
+          '[role=option], [role=menuitem], li[role=listitem], .MuiMenuItem-root, .dropdown-item, [class*="select__option"], [class*="dropdown__option"], [class*="combobox__option"], [data-option-index], [class*="-Option"]'
         )].filter(el => el.offsetParent !== null);
         return JSON.stringify(opts.map(o => o.textContent.trim()).filter(t => t));
       })()
@@ -559,11 +567,33 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
             "count": len(options),
         })
 
+    # FIRST/* sentinels: pick the first non-placeholder option discovered at
+    # runtime. Used by plan when extract didn't capture options[] (React-Select
+    # and similar custom comboboxes whose list only renders after click).
+    if select_option.upper() in ("FIRST", "*", "__FIRST_OPTION__"):
+        placeholder_phrases = (
+            "select", "choose", "please select", "-- select --", "select...",
+            "select an option", "choose an option", "open this select menu",
+        )
+        first_real = next(
+            (o for o in options if o.strip().lower() not in placeholder_phrases),
+            options[0] if options else "",
+        )
+        if not first_real:
+            return json.dumps({
+                "status": "FAIL",
+                "kind": "custom",
+                "error": "FIRST requested but no non-placeholder option available",
+                "options": options,
+            })
+        select_option = first_real
+        opt = _js_string(select_option)
+
     # Click the matching option
     click_js = f"""
       (function() {{
         const match = [...document.querySelectorAll(
-          '[role=option], [role=menuitem], li[role=listitem], .MuiMenuItem-root, .dropdown-item'
+          '[role=option], [role=menuitem], li[role=listitem], .MuiMenuItem-root, .dropdown-item, [class*="select__option"], [class*="dropdown__option"], [class*="combobox__option"], [data-option-index], [class*="-Option"]'
         )].filter(el => el.offsetParent !== null)
          .find(el => el.textContent.trim().toLowerCase().includes('{opt}'.toLowerCase()));
         if (!match) return JSON.stringify({{status: 'OPTION_NOT_FOUND'}});
@@ -1094,16 +1124,28 @@ PAGE_DIAGNOSTIC_JS = r"""
     });
   }
 
-  // IFRAMES — same-origin (yellow if forms inside) vs cross-origin (red)
+  // IFRAMES — same-origin (yellow if forms or rich-text inside) vs
+  // cross-origin (red). Rich-text editor iframes (TinyMCE, CKEditor, Quill)
+  // host a contenteditable body and are just as hard to drive as a form;
+  // we flag them under the same yellow bucket so coverage expectations
+  // are honest.
   const iframes = [...document.querySelectorAll('iframe')].filter(visible);
-  const crossOrigin = [], sameOriginWithForm = [];
+  const crossOrigin = [], sameOriginWithForm = [], sameOriginRichText = [];
   for (const f of iframes) {
     let same = false;
     try { same = !!(f.contentDocument && f.contentDocument.body); } catch (_) { same = false; }
     if (!same) { crossOrigin.push(f); continue; }
     try {
       const formish = f.contentDocument.querySelectorAll('input, select, textarea').length;
-      if (formish > 0) sameOriginWithForm.push(f);
+      if (formish > 0) {
+        sameOriginWithForm.push(f);
+        continue;
+      }
+      const body = f.contentDocument.body;
+      const ce = body && (body.getAttribute('contenteditable') || '').toLowerCase();
+      if (ce === 'true' || f.contentDocument.querySelector('[contenteditable="true"]')) {
+        sameOriginRichText.push(f);
+      }
     } catch (_) {}
   }
   if (crossOrigin.length) {
@@ -1120,6 +1162,14 @@ PAGE_DIAGNOSTIC_JS = r"""
       count: sameOriginWithForm.length,
       detail: 'Form rendered inside a same-origin iframe. Top-level extractor does not recurse.',
       examples: sameOriginWithForm.slice(0, 3).map(f => (f.src || '(no src)').slice(0, 80)),
+    });
+  }
+  if (sameOriginRichText.length) {
+    findings.yellow.push({
+      pattern: 'rich_text_editor_iframe',
+      count: sameOriginRichText.length,
+      detail: 'Rich-text editor iframe (TinyMCE / CKEditor / Quill etc). The contenteditable surface inside requires editor-specific drive logic — fill_check on the iframe wrapper does not work.',
+      examples: sameOriginRichText.slice(0, 3).map(f => (f.src || f.id || '(unlabeled)').slice(0, 80)),
     });
   }
 
@@ -1209,11 +1259,19 @@ PAGE_DIAGNOSTIC_JS = r"""
     });
   }
 
-  // CASCADE — disabled inputs likely depending on a parent
+  // CASCADE — disabled inputs likely depending on a parent.
+  // Suppress noise: skip elements inside iframes/dialogs/closed-form-chrome,
+  // and only flag when the count is small (≤ 5). High counts almost always
+  // mean framework infrastructure (TinyMCE controls, hidden form scaffolding,
+  // CAPTCHA inner-form fields), not real parent→child cascades.
   const disabledInputs = [...document.querySelectorAll(
     'input[disabled], select[disabled], textarea[disabled], [aria-disabled="true"]'
-  )].filter(visible);
-  if (disabledInputs.length) {
+  )].filter(el => {
+    if (!visible(el)) return false;
+    if (el.closest('iframe, dialog, [role="dialog"]')) return false;
+    return true;
+  });
+  if (disabledInputs.length > 0 && disabledInputs.length <= 5) {
     findings.yellow.push({
       pattern: 'disabled_cascade_inputs',
       count: disabledInputs.length,
@@ -1386,6 +1444,350 @@ PAGE_DIAGNOSTIC_JS = r"""
 """
 
 
+EXHAUSTIVE_SCAN_JS = r"""
+() => {
+  const visible = (el) => el && el.offsetParent !== null;
+  const text = (el) => (el.textContent || '').replace(/\s+/g, ' ').trim();
+  const cssEsc = (v) => {
+    if (v == null) return '';
+    if (CSS && CSS.escape) return CSS.escape(String(v));
+    return String(v).replace(/(["\\])/g, '\\$1');
+  };
+  const xpathLit = (v) => {
+    const s = String(v == null ? '' : v);
+    if (!s.includes("'")) return "'" + s + "'";
+    if (!s.includes('"')) return '"' + s + '"';
+    return "concat('" + s.split("'").join("', \"'\", '") + "')";
+  };
+
+  // Best-effort accessible name. Mirrors the priority WAI-ARIA defines:
+  // aria-labelledby > aria-label > <label for=id> > wrapping <label> >
+  // container heuristic > placeholder/name/text fallback.
+  const labelFor = (el) => {
+    const lb = el.getAttribute && el.getAttribute('aria-labelledby');
+    if (lb) {
+      const joined = lb.split(/\s+/).map(id => {
+        const node = document.getElementById(id);
+        return node ? text(node) : '';
+      }).filter(Boolean).join(' ');
+      if (joined) return joined;
+    }
+    const al = el.getAttribute && el.getAttribute('aria-label');
+    if (al) return al.trim();
+    if (el.id) {
+      try {
+        const lab = document.querySelector('label[for="' + cssEsc(el.id) + '"]');
+        if (lab) return text(lab);
+      } catch (_) {}
+    }
+    const wrap = el.closest && el.closest('label');
+    if (wrap) {
+      const wt = text(wrap);
+      const et = text(el);
+      const stripped = (wt && et) ? wt.replace(et, '').trim() : '';
+      if (stripped) return stripped;
+      if (wt) return wt;
+    }
+    const container = el.closest && el.closest(
+      '.MuiFormControl-root, .ant-form-item, .form-group, .form-field, '
+      + '.field-group, [class*="field"]'
+    );
+    if (container) {
+      const lab = container.querySelector('label, [role="label"], .label, .form-label');
+      if (lab) return text(lab);
+    }
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'button' || tag === 'a' || el.getAttribute('role') === 'button') {
+      const t = text(el);
+      if (t) return t;
+    }
+    if (el.placeholder) return el.placeholder;
+    if (el.name) return el.name;
+    if (el.id) return el.id;
+    const t = text(el);
+    return t ? t.slice(0, 80) : '';
+  };
+
+  // Section heading nearest above this element. Used so plan can group
+  // related fields ("Lead Configuration", "Agent Configuration", etc.).
+  const sectionFor = (el) => {
+    const headings = [...document.querySelectorAll(
+      'h1,h2,h3,h4,h5,h6,legend,[role="heading"]'
+    )].filter(h => visible(h) && text(h).length > 0 && text(h).length < 120);
+    let best = '';
+    for (const h of headings) {
+      if (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        best = text(h);
+      }
+    }
+    return best;
+  };
+
+  // Build prioritized locator candidates for one element. Caller picks the
+  // first that uniquely matches at extract time (tested via matchCount).
+  const matchCount = (sel) => {
+    try { return document.querySelectorAll(sel).length; } catch (_) { return 0; }
+  };
+  const xpathCount = (xp) => {
+    try {
+      return document.evaluate(xp, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength;
+    } catch (_) { return 0; }
+  };
+
+  const locatorsFor = (el) => {
+    const tag = el.tagName.toLowerCase();
+    const id = el.getAttribute('id') || '';
+    const name = el.getAttribute('name') || '';
+    const testid = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    const aria = el.getAttribute('aria-label') || '';
+    const role = el.getAttribute('role') || '';
+    const type = (el.getAttribute('type') || el.type || '').toLowerCase();
+    const value = el.getAttribute('value') || '';
+
+    const css = [];
+    const xpath = [];
+
+    // Priority 1: data-testid (devs intend it for automation)
+    if (testid) {
+      css.push(tag + '[data-testid="' + cssEsc(testid) + '"]');
+      xpath.push('//' + tag + '[@data-testid=' + xpathLit(testid) + ']');
+    }
+    // Priority 2: id
+    if (id) {
+      css.push(tag + '[id="' + cssEsc(id) + '"]');
+      xpath.push('//' + tag + '[@id=' + xpathLit(id) + ']');
+    }
+    // Priority 3: name (with type-and-value pinning for radios/checkboxes)
+    if (name) {
+      if (['radio', 'checkbox'].includes(type) && value) {
+        css.push(tag + '[name="' + cssEsc(name) + '"][value="' + cssEsc(value) + '"]');
+      } else {
+        css.push(tag + '[name="' + cssEsc(name) + '"]');
+      }
+    }
+    // Priority 4: aria-label
+    if (aria) {
+      css.push(tag + '[aria-label="' + cssEsc(aria) + '"]');
+    }
+    // Priority 5: role
+    if (role) {
+      css.push(tag + '[role="' + cssEsc(role) + '"]');
+    }
+    // Priority 6: text-anchored xpath for buttons/links
+    if (tag === 'button' || tag === 'a' || role === 'button') {
+      const t = text(el);
+      if (t) {
+        xpath.push('//' + tag + '[normalize-space()=' + xpathLit(t) + ']');
+      }
+    }
+
+    // Pick the first uniquely-matching CSS, otherwise first non-empty
+    let best_css = '';
+    for (const sel of css) {
+      if (matchCount(sel) === 1) { best_css = sel; break; }
+    }
+    if (!best_css) best_css = css[0] || '';
+
+    let best_xpath = '';
+    for (const xp of xpath) {
+      if (xpathCount(xp) === 1) { best_xpath = xp; break; }
+    }
+    if (!best_xpath) best_xpath = xpath[0] || '';
+
+    return {
+      css: best_css,
+      css_fallbacks: css.filter(s => s && s !== best_css),
+      xpath: best_xpath,
+      xpath_fallbacks: xpath.filter(x => x && x !== best_xpath),
+    };
+  };
+
+  // Semantic type — maps DOM shape to our ElementType enum values.
+  // Role checks come BEFORE tag checks so that <input role="combobox">
+  // (the React-Select / Headless UI pattern) classifies as dropdown
+  // rather than as a plain text input.
+  const classify = (el) => {
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || el.type || '').toLowerCase();
+    const role = (el.getAttribute('role') || '').toLowerCase();
+
+    // Role-first: lets accessible custom widgets win over their underlying tag.
+    if (role === 'combobox') return 'dropdown';
+    if (role === 'listbox') return 'dropdown';
+    if (role === 'radio') return 'radio';
+    if (role === 'checkbox') return 'checkbox';
+    if (role === 'switch') return 'checkbox';
+    if (role === 'tab') return 'nav_tab';
+    if (role === 'button') return 'button';
+
+    if (tag === 'select') return 'dropdown';
+    if (tag === 'textarea') return 'text_input';
+    if (tag === 'a') return 'link';
+    if (tag === 'input') {
+      if (['date','datetime-local','month','time','week'].includes(type)) return 'date_picker';
+      if (type === 'file') return 'file_upload';
+      if (type === 'checkbox') return 'checkbox';
+      if (type === 'radio') return 'radio';
+      if (['button','submit','reset'].includes(type)) return 'button';
+      return 'text_input';
+    }
+    if (tag === 'button') return 'button';
+    if ((el.getAttribute('contenteditable') || '').toLowerCase() === 'true') return 'text_input';
+    return 'other';
+  };
+
+  const isRequired = (el, label) => Boolean(
+    el.required
+    || el.getAttribute('aria-required') === 'true'
+    || (label && /\*/.test(label))
+  );
+
+  const validationRules = (el) => {
+    const rules = [];
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || el.type || tag).toLowerCase();
+    if (type) rules.push('input_type=' + type);
+    for (const a of ['min','max','minlength','maxlength','pattern','step','accept']) {
+      const v = el.getAttribute(a);
+      if (v) rules.push(a + '=' + v);
+    }
+    if (el.required || el.getAttribute('aria-required') === 'true') rules.push('required');
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') rules.push('disabled');
+    if (el.readOnly || el.getAttribute('readonly') !== null) rules.push('readonly');
+    return rules.join('; ');
+  };
+
+  // ── Enumerate every interactable. Radio groups are deduped to one entry
+  //    per group (input[type=radio] by name; [role=radio] by closest
+  //    [role=radiogroup] or shared parent container).
+  const elements = [];
+  const seenNativeRadioGroup = new Set();
+  const seenAriaRadioGroup = new Set();
+
+  const SELECTOR = (
+    'input:not([type="hidden"]), select, textarea, button, a[href], '
+    + '[role="combobox"]:not(input):not(select), '
+    + '[role="listbox"], '
+    + '[role="radio"], '
+    + '[role="checkbox"]:not(input), '
+    + '[role="switch"]:not(input), '
+    + '[role="tab"], '
+    + '[role="button"]:not(button), '
+    + '[contenteditable="true"]'
+  );
+
+  const allCandidates = [...document.querySelectorAll(SELECTOR)];
+
+  for (let i = 0; i < allCandidates.length; i++) {
+    const el = allCandidates[i];
+    if (!visible(el)) continue;
+
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || el.type || '').toLowerCase();
+    const role = (el.getAttribute('role') || '').toLowerCase();
+
+    // Native radio groups: collapse by name attribute.
+    if (tag === 'input' && type === 'radio') {
+      const groupKey = el.name || el.id || '';
+      if (groupKey && seenNativeRadioGroup.has(groupKey)) continue;
+      if (groupKey) seenNativeRadioGroup.add(groupKey);
+      const peers = groupKey
+        ? [...document.querySelectorAll('input[type="radio"][name="' + cssEsc(groupKey) + '"]')]
+        : [el];
+      const visiblePeers = peers.filter(visible);
+      const optionLabels = visiblePeers.map(p => labelFor(p) || p.value).filter(Boolean);
+      const checked = visiblePeers.find(p => p.checked);
+      const lab = labelFor(el) || groupKey || 'radio group';
+      const loc = locatorsFor(el);
+      elements.push({
+        kind: 'radio',
+        tag,
+        input_type: type,
+        name: lab,
+        section: sectionFor(el),
+        required: isRequired(el, lab),
+        disabled: visiblePeers.every(p => p.disabled || p.getAttribute('aria-disabled') === 'true'),
+        readonly: false,
+        value: checked ? (checked.value || '') : '',
+        options: optionLabels,
+        validation_rules: validationRules(el),
+        accept: '',
+        css: loc.css, css_fallbacks: loc.css_fallbacks,
+        xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+      });
+      continue;
+    }
+
+    // ARIA radio groups: collapse by closest [role=radiogroup] or shared parent.
+    if (role === 'radio' && tag !== 'input') {
+      const groupRoot = el.closest('[role="radiogroup"]') || el.parentElement;
+      if (!groupRoot) continue;
+      const key = groupRoot.id || groupRoot.getAttribute('aria-label')
+        || groupRoot.tagName + ':' + (groupRoot.className || '').slice(0, 30);
+      if (seenAriaRadioGroup.has(key)) continue;
+      seenAriaRadioGroup.add(key);
+      const peers = [...groupRoot.querySelectorAll('[role="radio"]')].filter(visible);
+      const optionLabels = peers.map(labelFor).filter(Boolean);
+      const checked = peers.find(p => p.getAttribute('aria-checked') === 'true');
+      const lab = labelFor(groupRoot) || labelFor(el) || 'radio group';
+      const loc = locatorsFor(el);
+      elements.push({
+        kind: 'radio',
+        tag,
+        input_type: 'aria-radio',
+        name: lab,
+        section: sectionFor(el),
+        required: isRequired(el, lab),
+        disabled: peers.every(p => p.getAttribute('aria-disabled') === 'true'),
+        readonly: false,
+        value: checked ? labelFor(checked) || '' : '',
+        options: optionLabels,
+        validation_rules: validationRules(el),
+        accept: '',
+        css: loc.css, css_fallbacks: loc.css_fallbacks,
+        xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+      });
+      continue;
+    }
+
+    // Default: emit one element per visible candidate.
+    const lab = labelFor(el) || '(unlabeled)';
+    const kind = classify(el);
+    const loc = locatorsFor(el);
+    let options = [];
+    if (kind === 'dropdown' && tag === 'select') {
+      options = [...el.options].map(o => text(o) || o.value).filter(Boolean);
+    }
+
+    elements.push({
+      kind,
+      tag,
+      input_type: type || role || tag,
+      name: lab,
+      section: sectionFor(el),
+      required: isRequired(el, lab),
+      disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+      readonly: el.readOnly || el.getAttribute('readonly') !== null,
+      value: el.value || '',
+      options,
+      validation_rules: validationRules(el),
+      accept: kind === 'file_upload' ? (el.accept || '') : '',
+      css: loc.css, css_fallbacks: loc.css_fallbacks,
+      xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+    });
+  }
+
+  return JSON.stringify({
+    page_url: location.href,
+    page_title: document.title || '',
+    extracted_at: new Date().toISOString(),
+    element_count: elements.length,
+    elements,
+  });
+}
+"""
+
+
 @function_tool
 async def analyze_page_blockers() -> str:
     """Scan the current page DOM for known blocker patterns and classify the
@@ -1405,6 +1807,145 @@ async def analyze_page_blockers() -> str:
         return json.dumps({"status": "ERROR", "raw": raw[:500]})
     parsed["status"] = "OK"
     return json.dumps(parsed)
+
+
+@function_tool
+async def click_and_observe(field_name: str = "", css_selector: str = "") -> str:
+    """Click an action button and watch console + network for errors.
+
+    Use this for action buttons that perform an in-page operation (Save,
+    Submit, Apply, Update Bot, Find Member, etc) — NOT navigation buttons
+    that change pages.
+
+    Captures all console messages + network requests, clicks the target,
+    waits 2 seconds for async errors to surface, then reports anything
+    new that looks like an error (Uncaught/Exception/TypeError/etc on the
+    console; HTTP 4xx/5xx on the network).
+
+    Args:
+        field_name: Visible label of the button (e.g. "Update Bot"). Used
+                    as a text-content fallback if no css_selector matches.
+        css_selector: Optional CSS selector. Preferred when the button has
+                    a stable id/data-testid.
+
+    Returns: JSON
+        {status: PASS, clicked: "...", console_lines: N, network_lines: N}
+        {status: FAIL, clicked: "...", errors: [{kind, detail}, ...]}
+        {status: BLOCKED, reason: "could not click | element_not_found"}
+    """
+    import asyncio
+    import re as _re
+
+    # ── Step 1: Baseline console + network state ─────────────────────────
+    async def _safe_call(name: str) -> str:
+        try:
+            out = await _call_mcp(name, {})
+            return out if isinstance(out, str) else str(out)
+        except Exception as e:
+            return f"__ERROR__:{type(e).__name__}:{e}"
+
+    before_console = await _safe_call("list_console_messages")
+    before_network = await _safe_call("list_network_requests")
+
+    # ── Step 2: Locate + click the target ────────────────────────────────
+    sel = _normalize_selector(css_selector or field_name)
+    sel_js = _js_string(sel)
+    name_js = _js_string(field_name)
+    click_js = f"""
+      (function() {{
+        let el = null;
+        try {{ el = document.querySelector('{sel_js}'); }} catch(e) {{}}
+        if (!el && '{name_js}'.length > 0) {{
+          const txt = '{name_js}'.toLowerCase().trim();
+          el = [...document.querySelectorAll(
+            'button, a, [role="button"]'
+          )].filter(e => e.offsetParent !== null)
+            .find(e => (e.textContent || '').trim().toLowerCase().includes(txt));
+        }}
+        if (!el) return JSON.stringify({{
+          status: 'ELEMENT_NOT_FOUND',
+          tried_selector: '{sel_js}',
+          tried_text: '{name_js}'
+        }});
+        el.scrollIntoView({{block: 'center', behavior: 'instant'}});
+        el.click();
+        return JSON.stringify({{
+          status: 'CLICKED',
+          text: ((el.textContent || '').trim() || el.value || el.tagName).slice(0, 80)
+        }});
+      }})()
+    """
+    click_raw = await _eval(click_js)
+    click_parsed = _safe_parse(click_raw)
+    if not isinstance(click_parsed, dict):
+        return json.dumps({"status": "BLOCKED", "reason": "click_unparseable", "raw": click_raw[:200]})
+    if click_parsed.get("status") != "CLICKED":
+        return json.dumps({
+            "status": "BLOCKED",
+            "reason": click_parsed.get("status", "click_failed"),
+            "tried_selector": click_parsed.get("tried_selector", ""),
+            "tried_text": click_parsed.get("tried_text", ""),
+        })
+
+    clicked_text = click_parsed.get("text", "")
+
+    # ── Step 3: Wait for async errors / requests to settle ───────────────
+    await asyncio.sleep(2.0)
+
+    # ── Step 4: Capture post-state ───────────────────────────────────────
+    after_console = await _safe_call("list_console_messages")
+    after_network = await _safe_call("list_network_requests")
+
+    # ── Step 5: Compute deltas (defensive: text-prefix subtraction) ──────
+    def _delta(before: str, after: str) -> str:
+        if not isinstance(before, str) or not isinstance(after, str):
+            return after if isinstance(after, str) else ""
+        if after.startswith(before):
+            return after[len(before):]
+        return after  # mismatched format — examine all of after
+
+    console_delta = _delta(before_console, after_console)
+    network_delta = _delta(before_network, after_network)
+
+    # ── Step 6: Detect errors ────────────────────────────────────────────
+    errors: list[dict] = []
+    console_error_patterns = (
+        "error:", "uncaught", "exception", "typeerror", "syntaxerror",
+        "referenceerror", "rangeerror", "failed to fetch",
+    )
+    for line in (console_delta or "").split("\n"):
+        low = line.lower()
+        if any(p in low for p in console_error_patterns):
+            stripped = line.strip()
+            if stripped:
+                errors.append({"kind": "console", "detail": stripped[:200]})
+
+    # Network: line containing HTTP 4xx/5xx status code, but not 200/2xx
+    for line in (network_delta or "").split("\n"):
+        m = _re.search(r"\b([45]\d{2})\b", line)
+        if m and not _re.search(r"\b2\d{2}\b", line):
+            stripped = line.strip()
+            if stripped:
+                errors.append({
+                    "kind": "network",
+                    "status": m.group(1),
+                    "detail": stripped[:200],
+                })
+
+    if errors:
+        return json.dumps({
+            "status": "FAIL",
+            "clicked": clicked_text,
+            "error_count": len(errors),
+            "errors": errors[:5],
+        })
+
+    return json.dumps({
+        "status": "PASS",
+        "clicked": clicked_text,
+        "console_lines_after": len((console_delta or "").split("\n")),
+        "network_lines_after": len((network_delta or "").split("\n")),
+    })
 
 
 @function_tool
@@ -1472,6 +2013,7 @@ TASK_TOOLS = [
     verify_elements_exist,
     list_test_files,
     analyze_page_blockers,
+    click_and_observe,
 ]
 
 

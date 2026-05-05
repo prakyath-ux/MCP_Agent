@@ -476,10 +476,17 @@ def _parse_test_plan(raw: str) -> list[TestCase]:
             if not field_name or _looks_like_screen_name(field_name):
                 field_name = _humanize_element_id(element_id)
 
-        # Map approach
+        # Map approach. Order matters — most-specific phrases first so a string
+        # like "CLICK_AND_OBSERVE" doesn't fall into the more generic "VERIFY"
+        # branch (it contains "OBSERVE" which doesn't, but contains nothing
+        # else that earlier checks would catch — keeping CLICK first anyway).
         approach_text = parts[3].strip().upper() if len(parts) > 3 else ""
         approach = TestApproach.FILL_CHECK
-        if "TAP" in approach_text or "VERIFY" in approach_text:
+        if "CLICK" in approach_text and "OBSERVE" in approach_text:
+            approach = TestApproach.CLICK_AND_OBSERVE
+        elif "CLICK_OBSERVE" in approach_text or "CLICK-OBSERVE" in approach_text:
+            approach = TestApproach.CLICK_AND_OBSERVE
+        elif "TAP" in approach_text or ("VERIFY" in approach_text and "ONLY" not in approach_text):
             approach = TestApproach.TAP_VERIFY
         if "ONLY" in approach_text:
             approach = TestApproach.VERIFY_ONLY

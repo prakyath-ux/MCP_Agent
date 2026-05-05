@@ -24,6 +24,7 @@ Where Approach is one of:
 - FILL_CHECK: Set value on text input, verify acceptance/error
 - SELECT_AND_VERIFY: Open a dropdown, click an option, verify selection actually changed
 - UPLOAD_FILE: Upload a file via the hidden input[type=file]
+- CLICK_AND_OBSERVE: Click an action button, watch console + network for errors (preferred for action buttons)
 - TAP_VERIFY: Tap element, verify response (date pickers, generic taps)
 - VERIFY_ONLY: Check existence/state only (buttons that should NOT be clicked)
 
@@ -116,7 +117,12 @@ still include one clearly-valid baseline so the FAIL signal is clean.
   ellipsis/truncation in the UI.
 - Expected result: "selection_updated" (the dropdown label changes to the chosen option)
 - One SELECT_AND_VERIFY test case per dropdown is sufficient
-- If a dropdown has empty options[] in the knowledge, use VERIFY_ONLY instead (don't guess)
+- If a dropdown has empty options[] in the knowledge (typical of React-Select,
+  Headless UI and other custom comboboxes whose options only render after
+  click), use SELECT_AND_VERIFY with test_value="FIRST". The execute layer's
+  test_dropdown tool will open the trigger, discover available options at
+  runtime, and pick the first non-placeholder one. Use the literal sentinel
+  "FIRST" — do not guess option text.
 - DO NOT generate test cases for "Search" or "Filter" inputs that appear inside
   a dropdown popup — those are UI helpers, not testable fields. The
   SELECT_AND_VERIFY case for the parent dropdown covers their purpose.
@@ -125,19 +131,47 @@ still include one clearly-valid baseline so the FAIL signal is clean.
 - Open and confirm a date — HIGH
 - One test case per date picker
 
-## Buttons (TAP_VERIFY for action buttons):
+## Buttons (CLICK_AND_OBSERVE for action buttons):
 - For action buttons that perform an in-page operation (e.g. "Find Member",
-  "Add Another", "Calculate", "Generate", "Refresh", "Apply"), generate ONE
-  TAP_VERIFY test that clicks the button and observes the response.
-- Expected result: "response_visible" (a modal opens, a result appears, a
-  section updates) — the classifier will judge whether the post-snapshot
-  shows a meaningful change.
-- DO NOT generate test cases for navigation buttons whose label includes
-  any of: save, continue, next, back, previous, submit, cancel, close,
-  skip, exit, finish, log out, sign out, discard, clear all. These advance
-  the page or submit the form — clicking them breaks form state. The
-  upstream filter strips them, but if one leaks through, emit no test.
+  "Add Another", "Calculate", "Generate", "Refresh", "Apply", "Update Bot"),
+  generate ONE CLICK_AND_OBSERVE test. The execute layer will click the
+  button, capture console messages and network requests for ~2 seconds,
+  and report any new console errors (Uncaught/Exception/TypeError) or HTTP
+  4xx/5xx responses as bugs.
+- Expected result: "no_errors" (no console exceptions, no failing requests).
+- For card-style selectors (3+ sibling buttons in the same section that
+  look like radio options — e.g. "Chat Bot / Voice Bot / Both", persona
+  cards, channel cards), prefer ONE CLICK_AND_OBSERVE per card. Picking
+  one of the cards is a real interaction; verifying no errors fire is a
+  real test. (A future ITERATE_OPTIONS approach will replace this with a
+  single-test-per-group; for now, one per card is fine.)
+- DO NOT generate test cases for buttons whose label includes ANY of these
+  words. These either submit the form, change page state, send a request to
+  external systems, or perform destructive actions — clicking them during a
+  test run corrupts the page or triggers real side effects:
+
+    Form submit / state change:
+      save, update, apply, confirm, send, publish, post
+
+    Navigation:
+      continue, next, back, previous, submit, cancel, close, skip, exit,
+      finish, return, log out, sign out, discard, clear all, reset
+
+    Destructive:
+      delete, remove, destroy, deactivate, disable, archive, drop
+
+    Financial / external:
+      pay, purchase, buy, checkout, charge, refund
+
+  For these, emit VERIFY_ONLY at most (confirm the button exists). Never
+  CLICK_AND_OBSERVE on them. The upstream filter strips many, but if one
+  leaks through, you must still skip the click test.
+- DO NOT generate test cases for collapsible-section header buttons whose
+  text matches the section heading itself (e.g. "Agent Configuration"
+  header that toggles expand/collapse) — emit VERIFY_ONLY at most.
 - Do NOT include nav tabs (handled separately).
+- TAP_VERIFY remains valid for date-picker spinner buttons and similar
+  generic taps where console/network observation is not the goal.
 
 ## File uploads (UPLOAD_FILE):
 - Generate ONE UPLOAD_FILE test case per file_upload element
