@@ -281,14 +281,15 @@ def _save_results(inp: ExecuteInput, output: str, cost: float, turns: int, durat
     from datetime import datetime
     from pathlib import Path
 
-    results_dir = Path("artifacts/results")
-    results_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now()
+    day_dir = Path("artifacts/results") / now.strftime("%Y-%m-%d")
+    day_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
     safe_name = inp.app.app_name.lower().replace(" ", "_")[:30]
     model_short = inp.model.split("/")[-1].replace("-", "")[:12]
 
-    path = results_dir / f"result_{safe_name}_{model_short}_{timestamp}.txt"
+    path = day_dir / f"result_{safe_name}_{model_short}_{timestamp}.txt"
     with open(path, "w") as f:
         f.write(f"EXECUTION REPORT\n{'='*60}\n")
         f.write(f"App: {inp.app.app_name}\n")

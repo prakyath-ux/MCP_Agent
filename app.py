@@ -1245,12 +1245,13 @@ def _handle_chat_message(user_input: str, ctx: dict) -> str:
             # Filter by mtime so we never surface pre-existing files from
             # an unrelated prior run. Prefer JSON when available — its
             # summary counts are authoritative (structured, not parsed).
+            # rglob to pick up date-bucketed subfolders (artifacts/results/YYYY-MM-DD/*).
             fresh_json = [
-                p for p in results_dir.glob("*_flow_*.json")
+                p for p in results_dir.rglob("*_flow_*.json")
                 if p.stat().st_mtime >= run_start_time
             ]
             fresh_txt = [
-                p for p in results_dir.glob("result_*.txt")
+                p for p in results_dir.rglob("result_*.txt")
                 if p.stat().st_mtime >= run_start_time
             ]
             latest_json = max(fresh_json, key=lambda p: p.stat().st_mtime, default=None)

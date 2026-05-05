@@ -123,9 +123,11 @@ def _atomic_write_text(path: Path, content: str) -> None:
 
 
 def _default_results_path(app_name: str) -> Path:
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    return RESULTS_DIR / f"{_safe_app_name(app_name)}_flow_{ts}.json"
+    now = datetime.now()
+    day_dir = RESULTS_DIR / now.strftime("%Y-%m-%d")
+    day_dir.mkdir(parents=True, exist_ok=True)
+    ts = now.strftime("%Y%m%d_%H%M%S")
+    return day_dir / f"{_safe_app_name(app_name)}_flow_{ts}.json"
 
 
 def _save_results_checkpoint(
