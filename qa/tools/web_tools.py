@@ -386,14 +386,22 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
     sel = _js_string(css_selector)
     opt = _js_string(select_option)
 
-    # Step 1: Detect type and capture options
+    # Step 1: Detect type and capture options. Note: querySelector with a
+    # space-containing string like "Select Branch" returns null (treats
+    # space as a CSS descendant combinator — valid syntax, no match) rather
+    # than throwing, so the text-content fallback runs whenever el is null,
+    # not just on exceptions.
     detect_js = f"""
       (function() {{
         let el = null;
-        try {{ el = document.querySelector('{sel}'); }} catch(e) {{
-          // Selector failed — try as text-content match on buttons/comboboxes
-          const txt = '{sel}'.toLowerCase();
-          el = [...document.querySelectorAll('button, [role=combobox], [role=button]')]
+        try {{ el = document.querySelector('{sel}'); }} catch(e) {{}}
+        if (!el) {{
+          const txt = '{sel}'.toLowerCase().trim();
+          el = [...document.querySelectorAll(
+            'button, [role=combobox], [role=button], [aria-haspopup], '
+            + '[data-testid*="dropdown" i], [data-testid*="select" i]'
+          )]
+            .filter(e => e.offsetParent !== null)
             .find(e => e.textContent.trim().toLowerCase().includes(txt));
         }}
         if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND', selector_tried: '{sel}'}});
@@ -458,9 +466,21 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
         })
 
     # ── Custom combobox path ──
+    # Same null-check + text-match fallback as detect step, otherwise a
+    # space-containing label like "Select Branch" yields null silently.
     open_js = f"""
       (function() {{
-        const el = document.querySelector('{sel}');
+        let el = null;
+        try {{ el = document.querySelector('{sel}'); }} catch(e) {{}}
+        if (!el) {{
+          const txt = '{sel}'.toLowerCase().trim();
+          el = [...document.querySelectorAll(
+            'button, [role=combobox], [role=button], [aria-haspopup], '
+            + '[data-testid*="dropdown" i], [data-testid*="select" i]'
+          )]
+            .filter(e => e.offsetParent !== null)
+            .find(e => e.textContent.trim().toLowerCase().includes(txt));
+        }}
         if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND'}});
         el.click();
         return JSON.stringify({{status: 'OPENED'}});
@@ -484,6 +504,44 @@ async def test_dropdown(css_selector: str, select_option: str = "") -> str:
     options = parsed_opts if isinstance(parsed_opts, list) else []
 
     if not options:
+        # Smart fallback: standard role/menuitem selectors found nothing
+        # (TECU-style apps render options as plain divs without ARIA roles).
+        # If a target option text was given, try matching by visible textContent.
+        if select_option:
+            smart_js = f"""
+              (function() {{
+                const target = '{opt}'.toLowerCase().trim();
+                const trigger = document.querySelector('{sel}');
+                const all = [...document.querySelectorAll('*')];
+                const matches = all.filter(el => {{
+                  if (el === trigger) return false;
+                  if (el.offsetParent === null) return false;
+                  const t = (el.textContent || '').trim();
+                  if (!t || t.length > 200) return false;
+                  if (!t.toLowerCase().includes(target)) return false;
+                  // leaf-ish: no element child whose own text contains target
+                  for (const c of el.children) {{
+                    const ct = (c.textContent || '').trim().toLowerCase();
+                    if (ct.includes(target)) return false;
+                  }}
+                  return true;
+                }});
+                if (!matches.length) return JSON.stringify({{status: 'OPTION_NOT_FOUND'}});
+                const pick = matches[0];
+                const text = pick.textContent.trim().slice(0, 200);
+                pick.click();
+                return JSON.stringify({{status: 'SELECTED', text, kind: 'smart_fallback'}});
+              }})()
+            """
+            smart_raw = await _eval(smart_js)
+            smart_result = _safe_parse(smart_raw)
+            if isinstance(smart_result, dict) and smart_result.get("status") == "SELECTED":
+                return json.dumps({
+                    "status": "PASS",
+                    "kind": "custom_smart_fallback",
+                    "selected": smart_result.get("text"),
+                    "note": "Matched option by visible text content (no standard option markup found).",
+                })
         return json.dumps({
             "status": "FAIL",
             "kind": "custom",
@@ -995,6 +1053,49 @@ def _detect_upload_success(before_snap: str, after_snap: str, file_path: str) ->
     return ""
 
 
+@function_tool
+async def list_test_files() -> str:
+    """Return the test files available for the active app.
+
+    Reads `artifacts/test_files/{app_name}/` and `artifacts/test_files/global/`
+    and returns the files the agent can pass to upload tools.
+
+    The agent picks the right file by matching the element name/semantic
+    to the filename (e.g. "Add profile picture" → "profile_picture.png",
+    "Upload National ID front" → "national_id_front.png").
+
+    Returns: JSON with status + file list. Pass just the filename (not
+    a full path) to `upload_file_for_field`; the file_resolver handles
+    the path lookup.
+    """
+    from pathlib import Path
+    from qa.knowledge.file_resolver import _safe_app_dir
+
+    root = Path("artifacts/test_files").resolve()
+    app_dir = root / _safe_app_dir(_app_name) if _app_name else None
+    global_dir = root / "global"
+
+    def _list(path: Path) -> list[str]:
+        if not path.exists():
+            return []
+        return sorted(
+            f.name for f in path.iterdir()
+            if f.is_file() and f.suffix.lower() not in (".json", ".md", ".tmp")
+        )
+
+    app_files = _list(app_dir) if app_dir else []
+    global_files = _list(global_dir)
+
+    return json.dumps({
+        "status": "OK",
+        "app_name": _app_name,
+        "app_folder": str(app_dir) if app_dir else "",
+        "app_files": app_files,
+        "global_files": global_files,
+        "hint": "Pass just the filename to upload tools; resolver picks the right path.",
+    })
+
+
 # ── Tool lists ───────────────────────────────────────────────────────────────
 
 EXPLORE_TOOLS = [
@@ -1005,6 +1106,7 @@ EXPLORE_TOOLS = [
     # Upload available during explore so gated multi-step pages can be advanced
     # (e.g. "section 2 only unlocks after section 1's document is verified").
     upload_file_for_field,
+    list_test_files,
 ]
 
 TASK_TOOLS = [
@@ -1013,6 +1115,7 @@ TASK_TOOLS = [
     test_dropdown,
     upload_file_for_field,
     verify_elements_exist,
+    list_test_files,
 ]
 
 

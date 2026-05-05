@@ -51,7 +51,7 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
             element_filter=inp.element_filter,
             test_values_hint=inp.test_values_hint,
             avoid_recent_values=inp.avoid_recent_values,
-            model=inp.model,
+            model=inp.plan_model or inp.model,
             provider=inp.provider,
         ))
         test_cases = plan_result.test_cases

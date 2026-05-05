@@ -12,12 +12,14 @@ case (mostly). No exploring. No re-discovery.
 | FILL_CHECK         | evaluate_script                                         |
 | VERIFY_ONLY        | evaluate_script                                         |
 | TAP_VERIFY         | evaluate_script                                         |
-| SELECT_AND_VERIFY  | take_snapshot + click(uid) flow (5 calls, NEVER JS)     |
+| SELECT_AND_VERIFY  | test_dropdown(css, option_text)  ← prefer this          |
 | UPLOAD_FILE        | upload_file_for_field(field_name[, file_name])          |
 
-For SELECT_AND_VERIFY: JS `.click()` on framework dropdowns appears to work
-but React/MUI ignore synthetic events — verification then returns NOT_VERIFIED.
-You MUST use native MCP click(uid). Details below.
+For SELECT_AND_VERIFY: prefer `test_dropdown` — one call, handles trigger
+click + option pick + verify deterministically. Smart fallback already
+handles TECU-style dropdowns whose options aren't tagged with role=option.
+Only if `test_dropdown` returns FAIL/SKIP, fall back to the 5-call
+take_snapshot + click(uid) flow described below.
 
 # SEQUENTIAL, NO RELOADS
 
@@ -51,10 +53,19 @@ Replace SELECTOR and TEST_VALUE.
 
 evaluate_script(function="() => { const el = document.querySelector('SELECTOR'); if(!el) return 'ELEMENT_NOT_FOUND'; return 'EXISTS|text=' + el.textContent.trim(); }")
 
-# SELECT_AND_VERIFY (custom dropdowns) — MANDATORY 5-call uid flow
+# SELECT_AND_VERIFY — preferred path: test_dropdown
 
-Use the native MCP click(uid) flow. JS click() silently fails on
-React/MUI/custom widgets.
+ONE CALL. Auto-detects native <select> vs custom combobox. For custom
+dropdowns it clicks the trigger, waits, picks the option (by role= or
+by visible text fallback), and verifies. Works for TECU's Branch
+dropdown which renders options as plain divs without role=option.
+
+  test_dropdown(css_selector="<trigger CSS>", select_option="<option text>")
+
+PASS if returns {"status": "PASS", ...}. If it returns FAIL/SKIP, fall
+back to the manual 5-call uid flow below.
+
+# SELECT_AND_VERIFY — manual fallback (only if test_dropdown failed)
 
 1. take_snapshot — find the trigger by visible text, note uid
 2. click(uid="<trigger_uid>") — opens popup
@@ -63,10 +74,6 @@ React/MUI/custom widgets.
 5. evaluate_script(function="() => { const b = [...document.querySelectorAll('button, [role=button]')].find(e => e.textContent.trim().includes('OPTION_TEXT')); return b ? 'TRIGGER_NOW|text=' + b.textContent.trim() : 'NOT_VERIFIED'; }")
 
 PASS if step 5 returns TRIGGER_NOW|text=... containing OPTION_TEXT.
-If you catch yourself writing JS .click() for a dropdown — STOP, switch to this flow.
-
-For NATIVE <select>: single evaluate_script suffices:
-evaluate_script(function="() => { const el=document.querySelector('SELECTOR'); if(!el) return 'ELEMENT_NOT_FOUND'; const t=[...el.options].find(o => o.textContent.trim()==='OPTION_TEXT'); if(!t) return 'OPTION_NOT_FOUND'; el.value=t.value; el.dispatchEvent(new Event('change',{bubbles:true})); return 'SELECTED|' + t.textContent.trim(); }")
 
 # UPLOAD_FILE
 
@@ -87,6 +94,20 @@ Returns JSON: {status, file_uploaded, success_signal, ...}
 - FAIL   → test FAIL (no success signal)
 - BLOCKED → drag-drop or unsupported pattern
 - ERROR  → KB metadata missing
+
+# DISCOVERING WHICH FILE TO UPLOAD
+
+Call `list_test_files()` once at the start of any run that has upload
+fields. It returns the filenames available for this app (and shared
+global files). Match files to elements by semantic — examples:
+
+  "Add profile picture"     → profile_picture.png  / profile_*.jpg
+  "Upload National ID"      → national_id_front.png / national_id_back.png
+  "Driver Permit"           → drivers_permit_front.jpg / drivers_permit_back.jpg
+  "Proof of Address"        → address_proof_*.png  / utility_bill.pdf
+
+Pass just the filename to `upload_file_for_field` — the resolver
+locates the path under `artifacts/test_files/{app}/` or `global/`.
 
 # GUARDRAILS
 

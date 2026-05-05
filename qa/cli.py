@@ -58,6 +58,7 @@ def main() -> None:
     p_exec.add_argument("--avoid-recent", action="store_true", help="Avoid values used in recent runs")
     p_exec.add_argument("--auto-explore", action="store_true", help="Run explore first if no knowledge")
     p_exec.add_argument("--model", "-m", default="gpt-5.1")
+    p_exec.add_argument("--plan-model", default="", help="Use a different (typically stronger) model for the auto-invoked Plan pipeline")
     p_exec.add_argument("--provider", default="")
     p_exec.add_argument("--budget", type=float, default=2.0)
     p_exec.add_argument("--max-turns", type=int, default=15)
@@ -158,6 +159,7 @@ async def _cmd_execute(args) -> None:
         test_values_hint=test_values,
         avoid_recent_values=getattr(args, "avoid_recent", False),
         model=args.model,
+        plan_model=getattr(args, "plan_model", ""),
         provider=args.provider,
         max_turns_per_screen=args.max_turns,
         budget=args.budget,

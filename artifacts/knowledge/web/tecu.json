@@ -6093,13 +6093,28 @@
       "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
       "l0": [
         {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "Optional profile photo upload via modal flow",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "profile_picture.png",
+          "validation_rules": "",
+          "screen_name": "New Member Application - Personal Information",
+          "accept": "image/*",
+          "semantic_hint": "profile_picture",
+          "depends_on": []
+        },
+        {
           "element_id": "new_member_application_personal_information:first_name:text_input",
           "name": "First Name",
           "type": "text_input",
           "required": true,
           "behavior": "",
           "options": [],
-          "interaction_order": 0,
+          "interaction_order": 1,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6114,7 +6129,7 @@
           "required": false,
           "behavior": "",
           "options": [],
-          "interaction_order": 0,
+          "interaction_order": 2,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6129,7 +6144,7 @@
           "required": false,
           "behavior": "",
           "options": [],
-          "interaction_order": 0,
+          "interaction_order": 3,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6144,7 +6159,7 @@
           "required": true,
           "behavior": "",
           "options": [],
-          "interaction_order": 0,
+          "interaction_order": 4,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6159,7 +6174,7 @@
           "required": true,
           "behavior": "",
           "options": [],
-          "interaction_order": 0,
+          "interaction_order": 5,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6181,7 +6196,7 @@
             "600 - TISL",
             "601 - TISL Branch 1"
           ],
-          "interaction_order": 0,
+          "interaction_order": 6,
           "default_value": "",
           "validation_rules": "",
           "screen_name": "New Member Application - Personal Information",
@@ -6191,6 +6206,15 @@
         }
       ],
       "l1": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "locators": [],
+          "retry_strategy": "standard",
+          "last_known_coordinates": null,
+          "widget_type": "",
+          "identifier": "",
+          "screen_name": "New Member Application - Personal Information"
+        },
         {
           "element_id": "new_member_application_personal_information:first_name:text_input",
           "locators": [
@@ -6312,10 +6336,21 @@
           "screen_name": "New Member Application - Personal Information"
         }
       ],
-      "l2": []
+      "l2": [
+        {
+          "element_id": "new_member_application_personal_information:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-05-05: added manually for profile-pic upload testing"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-05T11:12:04.409830",
+          "last_seen": "2026-05-05T11:12:04.409830"
+        }
+      ]
     }
   ],
   "created_at": "2026-04-15T10:31:23.510742",
-  "updated_at": "2026-04-27T10:22:33.906793",
+  "updated_at": "2026-05-05T11:12:04.409830",
   "version": 8
 }

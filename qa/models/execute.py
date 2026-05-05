@@ -56,6 +56,7 @@ class ExecuteInput(BaseModel):
     test_values_hint: list[str] = Field(default_factory=list)  # Specific values to test with
     avoid_recent_values: bool = False                          # Use values not seen in recent L2 history
     model: str = "gpt-5.1"
+    plan_model: str = ""  # If set, use this model for the auto-invoked Plan pipeline; falls back to model.
     provider: str = "openai_chat"
     max_turns_per_screen: int = 15
     budget: float = 2.0
