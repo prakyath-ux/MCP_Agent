@@ -43,6 +43,9 @@ Forms that omit `<label>` tags and rely on placeholder text leave the agent with
 ## 13. React-Select v5 (Emotion CSS-in-JS) custom dropdowns
 Widely used React component library that renders dropdown options with build-time-generated class names like `css-1abc-Option`. The agent's standard option selectors and click-to-open patterns don't reliably open the menu or enumerate options, even with ArrowDown keyboard nudges. Testable in principle but requires a dedicated per-app recipe; basic role-and-class heuristics aren't enough.
 
+## 14. Dropdowns whose options aren't captured at extract time
+Extract is single-pass and never clicks anything, so dropdowns whose options only render after their trigger is clicked land in the KB with empty `options[]`. Plan emits `select_option="FIRST"` as a sentinel; `test_dropdown` then opens the popup and discovers options at runtime. When the popup uses standard markup (`role=option`, `.dropdown-item`, etc.) the runtime fallback works. When it doesn't (TECU's Branch list renders options as plain divs without ARIA), the smart fallback can grab the wrong on-page text — producing a misleading PASS. **Fix:** two-pass extract that opens each detected dropdown trigger, captures the popup's options, and restores state. Until that ships, any "dropdown captured with `options: []`" should be treated as low-confidence in the report.
+
 ---
 
 ## Scope summary

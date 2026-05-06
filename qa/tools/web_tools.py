@@ -74,6 +74,66 @@ def _is_xpath(value: str) -> bool:
     return s.startswith("/") or s.startswith("(/") or s.startswith("(//")
 
 
+# ── Signal observation (console + network) ──────────────────────────────────
+#
+# Used by action tools (fill_field_and_verify, click_and_observe, …) to
+# bracket a tool action with before/after captures of the browser's
+# console and network state. Errors that surfaced during the action are
+# extracted and attached to the tool's result so the LLM can flag the
+# matching test case as a real bug — not a guess.
+
+async def _capture_signals_safe() -> tuple[str, str]:
+    """Snapshot current console + network state. Returns ("", "") on error."""
+    async def _safe(name: str) -> str:
+        try:
+            out = await _call_mcp(name, {})
+            return out if isinstance(out, str) else str(out)
+        except Exception as e:
+            return f"__ERROR__:{type(e).__name__}:{e}"
+
+    return (
+        await _safe("list_console_messages"),
+        await _safe("list_network_requests"),
+    )
+
+
+def _signal_delta(before: str, after: str) -> str:
+    """Text-prefix subtraction. Returns the new portion of `after` not in `before`."""
+    if not isinstance(before, str) or not isinstance(after, str):
+        return after if isinstance(after, str) else ""
+    if after.startswith(before):
+        return after[len(before):]
+    return after
+
+
+def _extract_signal_errors(console_delta: str, network_delta: str) -> list[dict]:
+    """Filter delta lines down to actual errors. Console: lines matching common
+    error keywords. Network: lines containing 4xx/5xx without a paired 2xx."""
+    import re as _re
+    errors: list[dict] = []
+    console_error_patterns = (
+        "error:", "uncaught", "exception", "typeerror", "syntaxerror",
+        "referenceerror", "rangeerror", "failed to fetch",
+    )
+    for line in (console_delta or "").split("\n"):
+        low = line.lower()
+        if any(p in low for p in console_error_patterns):
+            stripped = line.strip()
+            if stripped:
+                errors.append({"kind": "console", "detail": stripped[:200]})
+    for line in (network_delta or "").split("\n"):
+        m = _re.search(r"\b([45]\d{2})\b", line)
+        if m and not _re.search(r"\b2\d{2}\b", line):
+            stripped = line.strip()
+            if stripped:
+                errors.append({
+                    "kind": "network",
+                    "status": m.group(1),
+                    "detail": stripped[:200],
+                })
+    return errors
+
+
 # ── Internal helpers (not exposed to LLM) ────────────────────────────────────
 
 async def _call_mcp(tool_name: str, args: dict) -> str:
@@ -353,8 +413,43 @@ async def fill_field_and_verify(
         }});
       }})()
     """
+
+    # ── Bracket the fill with signal capture ──────────────────────────────
+    # Async validation handlers (debounced API calls, console warnings)
+    # often fire 100-300ms after a fill. We snapshot before, fill, wait
+    # briefly, snapshot after — then attach any new errors to the result
+    # so the LLM can flag bugs with evidence rather than guess.
+    import asyncio as _asyncio
+    before_console, before_network = await _capture_signals_safe()
     raw = await _eval(js)
-    return raw
+    await _asyncio.sleep(0.3)
+    after_console, after_network = await _capture_signals_safe()
+
+    console_delta = _signal_delta(before_console, after_console)
+    network_delta = _signal_delta(before_network, after_network)
+    signal_errors = _extract_signal_errors(console_delta, network_delta)
+
+    if not signal_errors:
+        return raw  # No evidence of trouble — return the JS result as-is.
+
+    # Errors observed: parse the JS result, attach the signal evidence,
+    # and re-serialize so the LLM sees a single coherent JSON.
+    parsed = _safe_parse(raw)
+    if not isinstance(parsed, dict):
+        # JS result wasn't parseable; return raw with signals appended as
+        # a separate JSON object so we don't lose the data.
+        return json.dumps({
+            "raw_action_result": str(raw)[:300],
+            "signals": {
+                "error_count": len(signal_errors),
+                "errors": signal_errors[:5],
+            },
+        })
+    parsed["signals"] = {
+        "error_count": len(signal_errors),
+        "errors": signal_errors[:5],
+    }
+    return json.dumps(parsed)
 
 
 @function_tool
@@ -451,15 +546,66 @@ async def test_text_field(css_selector: str, test_values: str) -> str:
 
 
 @function_tool
-async def test_dropdown(css_selector: str, select_option: str = "") -> str:
+async def test_dropdown(
+    css_selector: str = "",
+    select_option: str = "",
+    element_id: str = "",
+) -> str:
     """Test a dropdown. Auto-detects native <select> vs custom combobox.
     Captures ALL options. Optionally selects one and verifies.
 
+    Resolution order (same as fill_field_and_verify / click_and_observe):
+      1. element_id  → look up the KB's verified-unique locator
+      2. css_selector → CSS or XPath fallback
+
     Args:
-        css_selector: CSS selector for the dropdown trigger.
+        css_selector: CSS or XPath for the dropdown trigger. Used only if no
+                      element_id is given.
         select_option: Option text to select (substring match, case-insensitive).
                        Leave empty to just capture options.
+        element_id: Preferred. KB element id; tool resolves the verified locator.
     """
+    # element_id resolution — if the KB has an XPath, tag the element with a
+    # marker attribute so the rest of this tool's JS (which expects a CSS
+    # selector) can keep working unchanged. Older code path stays intact.
+    if element_id and not css_selector:
+        strategy, locator = _resolve_kb_locator(element_id)
+        if not locator:
+            return json.dumps({"status": "ELEMENT_NOT_FOUND",
+                               "element_id": element_id,
+                               "reason": "not in KB"})
+        if strategy == "xpath":
+            tag_js = f"""
+              (function() {{
+                [...document.querySelectorAll('[data-qa-dropdown-target]')]
+                  .forEach(e => e.removeAttribute('data-qa-dropdown-target'));
+                try {{
+                  const r = document.evaluate('{_js_string(locator)}', document, null,
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                  const el = r.singleNodeValue;
+                  if (!el) return JSON.stringify({{status: 'NOT_FOUND'}});
+                  el.setAttribute('data-qa-dropdown-target', '1');
+                  return JSON.stringify({{status: 'TAGGED'}});
+                }} catch (e) {{
+                  return JSON.stringify({{status: 'BAD_XPATH', error: String(e).slice(0,120)}});
+                }}
+              }})()
+            """
+            tag_result = _safe_parse(await _eval(tag_js))
+            if not isinstance(tag_result, dict) or tag_result.get("status") != "TAGGED":
+                return json.dumps({
+                    "status": "ELEMENT_NOT_FOUND",
+                    "element_id": element_id,
+                    "reason": (tag_result or {}).get("status", "tag_failed"),
+                })
+            css_selector = '[data-qa-dropdown-target="1"]'
+        else:  # css
+            css_selector = locator
+
+    if not css_selector:
+        return json.dumps({"status": "ELEMENT_NOT_FOUND",
+                           "reason": "no element_id and no css_selector"})
+
     # Sanitize: LLMs love hallucinating jQuery/Playwright selectors that
     # don't work in querySelector. Strip them to a plain text-match fallback.
     css_selector = _normalize_selector(css_selector)
@@ -1946,7 +2092,21 @@ EXHAUSTIVE_SCAN_JS = r"""
       if (['button','submit','reset'].includes(type)) return 'button';
       return 'text_input';
     }
-    if (tag === 'button') return 'button';
+    if (tag === 'button') {
+      // <button> is too coarse — TECU's "Select Branch" is a dropdown trigger,
+      // "Add profile picture" opens a file picker. Use attributes we already
+      // capture (data-testid, aria-haspopup, label) to reclassify when the
+      // semantic intent is unambiguous; default to plain button otherwise.
+      const testid = (el.getAttribute('data-testid') || '').toLowerCase();
+      const haspopup = (el.getAttribute('aria-haspopup') || '').toLowerCase();
+      const label = (labelFor(el) || '').toLowerCase();
+      if (haspopup === 'listbox' || haspopup === 'menu' || haspopup === 'true'
+          || /dropdown|combobox/.test(testid)) return 'dropdown';
+      if (/file|upload|attach|picker/.test(testid)
+          || /(upload|attach|add|choose).*(picture|photo|image|file|document)/.test(label)
+          || /(profile.{0,5}pic|profile.{0,5}photo)/.test(label)) return 'file_upload';
+      return 'button';
+    }
     if ((el.getAttribute('contenteditable') || '').toLowerCase() === 'true') return 'text_input';
     return 'other';
   };

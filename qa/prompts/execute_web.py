@@ -12,7 +12,7 @@ case (mostly). No exploring. No re-discovery.
 | FILL_CHECK         | fill_field_and_verify(value, element_id)                |
 | VERIFY_ONLY        | verify_elements_exist(css_selectors)                    |
 | TAP_VERIFY         | evaluate_script (date-picker spinners only — see below) |
-| SELECT_AND_VERIFY  | test_dropdown(css, option_text)  ← prefer this          |
+| SELECT_AND_VERIFY  | test_dropdown(element_id, select_option)                |
 | CLICK_AND_OBSERVE  | click_and_observe(element_id)                           |
 | UPLOAD_FILE        | upload_file_for_field(field_name[, file_name])          |
 
@@ -70,7 +70,7 @@ bot_name:email:text_input`). The tool looks up the verified-unique locator
 from the active KB — no guessing, no fuzzy matching. Only fall back to
 `css_selector="<CSS or XPath>"` if element_id is missing for some reason.
 
-Returns JSON: {status, actual, error}
+Returns JSON: {status, actual, error, signals?}
   - status="FILLED", error="NO_ERROR"        → test PASS for "no_error" expected
   - status="FILLED", error="<message>"       → test PASS for "error_shown" expected,
                                                 FAIL if message present when not expected
@@ -79,6 +79,13 @@ Returns JSON: {status, actual, error}
                                                 if locator matches >1 visible
                                                 element — protects you from
                                                 wrong-sibling fills)
+
+The optional `signals` field is present only when the fill triggered new
+console errors or HTTP 4xx/5xx responses. Treat it as authoritative
+evidence: if `signals.error_count > 0`, the test case is a FAIL even when
+`status="FILLED"` looked clean — the validation just happened in the
+console / network layer instead of as a visible inline error. Cite the
+signals[] entries directly in the bug evidence column.
 
 # VERIFY_ONLY (buttons that should NOT be clicked, read-only fields)
 
@@ -96,13 +103,17 @@ dropdowns it clicks the trigger, waits, picks the option (by role= or
 by visible text fallback), and verifies. Works for TECU's Branch
 dropdown which renders options as plain divs without role=option.
 
-  test_dropdown(css_selector="<trigger CSS>", select_option="<option text>")
+  test_dropdown(element_id="<from test case>", select_option="<option text>")
+
+PASS element_id from the test plan — same rule as fill_field_and_verify
+and click_and_observe. The tool resolves the unique KB locator, no CSS
+guessing. Only fall back to css_selector if element_id is missing.
 
 If the test case's test_value is "FIRST" (used by the plan when extract
 couldn't enumerate options at scan time, e.g. React-Select widgets that
 only render their list after click), pass it through verbatim:
 
-  test_dropdown(css_selector="<trigger CSS>", select_option="FIRST")
+  test_dropdown(element_id="<from test case>", select_option="FIRST")
 
 The tool will discover options at runtime and pick the first
 non-placeholder one.
