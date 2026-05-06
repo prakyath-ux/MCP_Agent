@@ -1722,34 +1722,52 @@ EXHAUSTIVE_SCAN_JS = r"""
     let scope_used = '';
 
     // Tier 4 — section scope. Apply when nothing in tiers 1-3 was unique.
+    //
+    // Idiom: walk UP from the section heading to the smallest ancestor that
+    // also contains the target element. Structure-agnostic — works whether
+    // the heading is a direct child, grandchild, or several levels nested
+    // inside the section card. The previous direct-child idiom
+    // (`//*[h2[='X']]`) silently failed on Forgenite because its h2 sits
+    // inside `<span>` and `<div class="title">` wrappers.
+    //
+    //   (//h1[='Bot Name'] | //h2[='Bot Name'] | ...)
+    //     /ancestor::*[descendant::INNER][1]
+    //     /descendant::INNER
+    //
+    // Step 1: every heading-with-the-text on the page.
+    // Step 2: closest ancestor whose subtree contains the target.
+    // Step 3: target descendants inside that scope.
     if (!bestXpath) {
       const section = findSectionAnchor(el);
       if (section) {
         scope_used = section.heading;
-        // *[has direct heading child with this text] -> //inner
-        // Direct-child anchoring (`*[h1[...]]`) is tighter than descendant
-        // (`*[.//h1[...]]`), avoiding cases where a top-level wrapper "owns"
-        // every heading on the page.
         const headTags = ['h1','h2','h3','h4','h5','h6','legend'];
-        const headPred = headTags
-          .map(t => t + '[normalize-space()=' + xpathLit(section.heading) + ']')
-          .join(' or ') + ' or *[@role="heading"][normalize-space()=' + xpathLit(section.heading) + ']';
-        const scopePrefix = '//*[' + headPred + ']';
+        const headingPaths = headTags
+          .map(t => '//' + t + '[normalize-space()=' + xpathLit(section.heading) + ']');
+        headingPaths.push('//*[@role="heading"][normalize-space()=' + xpathLit(section.heading) + ']');
+        const headingUnion = '(' + headingPaths.join(' | ') + ')';
 
+        // Inner predicates — fragments that go after `descendant::`.
         const innerCandidates = [];
-        if (aria) innerCandidates.push('.//' + tag + '[@aria-label=' + xpathLit(aria) + ']');
-        if (placeholder) innerCandidates.push('.//' + tag + '[@placeholder=' + xpathLit(placeholder) + ']');
+        if (aria) innerCandidates.push(tag + '[@aria-label=' + xpathLit(aria) + ']');
+        if (placeholder) innerCandidates.push(tag + '[@placeholder=' + xpathLit(placeholder) + ']');
         if (role && elText) {
-          innerCandidates.push('.//' + tag + '[@role=' + xpathLit(role)
+          innerCandidates.push(tag + '[@role=' + xpathLit(role)
                                + ' and normalize-space()=' + xpathLit(elText) + ']');
         }
         if (isButtonLike && elText) {
-          innerCandidates.push('.//' + tag + '[normalize-space()=' + xpathLit(elText) + ']');
+          innerCandidates.push(tag + '[normalize-space()=' + xpathLit(elText) + ']');
         }
-        if (role) innerCandidates.push('.//' + tag + '[@role=' + xpathLit(role) + ']');
+        if (role) innerCandidates.push(tag + '[@role=' + xpathLit(role) + ']');
+        // Last-ditch: just the tag. Ensures a truly attribute-less input or
+        // checkbox still gets a Tier-5 positional path within its section
+        // rather than skipping to a Tier-6 absolute path from /html.
+        innerCandidates.push(tag);
 
         for (const inner of innerCandidates) {
-          const candidate = scopePrefix + inner.substring(1); // strip leading "."
+          const candidate = headingUnion
+            + '/ancestor::*[descendant::' + inner + '][1]'
+            + '/descendant::' + inner;
           if (xpathCount(candidate) === 1) {
             bestXpath = candidate;
             bestTier = 4;
@@ -1757,18 +1775,17 @@ EXHAUSTIVE_SCAN_JS = r"""
           }
         }
 
-        // Tier 5 — positional within scope. Pick the strongest non-unique
-        // scoped candidate, find this element's index among the matches,
-        // and pin to that position.
-        if (!bestXpath && innerCandidates.length > 0) {
+        // Tier 5 — positional within the same scope.
+        if (!bestXpath) {
           for (const inner of innerCandidates) {
-            const baseScoped = scopePrefix + inner.substring(1);
+            const baseScoped = headingUnion
+              + '/ancestor::*[descendant::' + inner + '][1]'
+              + '/descendant::' + inner;
             const matches = xpathNodes(baseScoped);
             if (matches.length === 0) continue;
             const idx = matches.indexOf(el);
             if (idx < 0) continue;
-            const positional = '(' + baseScoped + ')[' + (idx + 1) + ']';
-            bestXpath = positional;
+            bestXpath = '(' + baseScoped + ')[' + (idx + 1) + ']';
             bestTier = 5;
             disambiguation_failed = true;
             break;
