@@ -80,6 +80,13 @@ def _build_kb(app: TargetApp, payload: dict, screen_name: str) -> KnowledgeBase:
             behavior_bits.append("readonly")
         if section:
             behavior_bits.append(f"section={section}")
+        tier = int(raw.get("locator_tier") or 0)
+        if tier:
+            behavior_bits.append(f"locator_tier={tier}")
+        if raw.get("disambiguation_failed"):
+            behavior_bits.append("disambiguation_failed=true")
+        if raw.get("scope_used"):
+            behavior_bits.append(f"scope={raw['scope_used']}")
 
         l0.append(L0Element(
             element_id=eid,
@@ -97,28 +104,42 @@ def _build_kb(app: TargetApp, payload: dict, screen_name: str) -> KnowledgeBase:
             depends_on=[],
         ))
 
+        # Locators: XPath is primary now (tier-aware confidence), CSS
+        # secondary, label as a last-ditch fallback for legacy callers.
+        # Confidence maps from the JS-side tier (1 = uniquely matched on a
+        # single strong attribute, 6 = absolute DOM path).
+        tier_confidence = {1: 0.99, 2: 0.95, 3: 0.90, 4: 0.80, 5: 0.50, 6: 0.30}
+
         locators: list[Locator] = []
-        css = str(raw.get("css") or "")
-        if css:
-            locators.append(Locator(strategy="css", value=css, confidence=0.95))
-        for fb in raw.get("css_fallbacks") or []:
-            if fb and fb != css:
-                locators.append(Locator(strategy="css", value=str(fb), confidence=0.75))
         xpath = str(raw.get("xpath") or "")
         if xpath:
-            locators.append(Locator(strategy="xpath", value=xpath, confidence=0.9))
+            locators.append(Locator(
+                strategy="xpath",
+                value=xpath,
+                confidence=tier_confidence.get(tier, 0.7),
+            ))
         for fb in raw.get("xpath_fallbacks") or []:
             if fb and fb != xpath:
-                locators.append(Locator(strategy="xpath", value=str(fb), confidence=0.7))
+                locators.append(Locator(strategy="xpath", value=str(fb), confidence=0.6))
+        css = str(raw.get("css") or "")
+        if css:
+            locators.append(Locator(strategy="css", value=css, confidence=0.85))
+        for fb in raw.get("css_fallbacks") or []:
+            if fb and fb != css:
+                locators.append(Locator(strategy="css", value=str(fb), confidence=0.65))
         if name:
-            locators.append(Locator(strategy="label", value=name, confidence=0.55))
+            locators.append(Locator(strategy="label", value=name, confidence=0.40))
+
+        retry_strategy = "exhaustive_dom"
+        if raw.get("disambiguation_failed"):
+            retry_strategy = "exhaustive_dom_disambiguation_failed"
 
         l1.append(L1Element(
             element_id=eid,
             locators=locators,
-            retry_strategy="exhaustive_dom",
+            retry_strategy=retry_strategy,
             widget_type=str(raw.get("tag") or raw.get("kind") or ""),
-            identifier=css or xpath,
+            identifier=xpath or css,
             screen_name=screen_name,
         ))
 

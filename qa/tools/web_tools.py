@@ -1523,8 +1523,34 @@ EXHAUSTIVE_SCAN_JS = r"""
     return best;
   };
 
-  // Build prioritized locator candidates for one element. Caller picks the
-  // first that uniquely matches at extract time (tested via matchCount).
+  // ── Locator builder ───────────────────────────────────────────────────────
+  //
+  // XPath is the primary strategy because it can express text(),
+  // normalize-space(), parent-scope, and positional indices — none of
+  // which CSS supports. CSS is kept as a same-page fallback for tools
+  // that prefer it.
+  //
+  // Each element walks an escalation ladder. The first XPath that
+  // resolves to exactly one node (verified inline via document.evaluate)
+  // wins. Tiers in increasing fragility:
+  //
+  //   1. Single high-trust attribute  (id, data-testid, name, aria-label,
+  //                                    placeholder, exact button text)
+  //   2. Two attributes               (role + label, role + text,
+  //                                    type + name, etc.)
+  //   3. Three attributes             (class-substring added as third axis)
+  //   4. Section scope                (ancestor with a heading text anchors
+  //                                    the inner predicate)
+  //   5. Positional within scope      (when section + attrs still match
+  //                                    multiple — e.g., 3 "More information"
+  //                                    buttons all in "Lead Capture")
+  //   6. Absolute DOM path            (last resort; brittle if the layout
+  //                                    changes by even one node)
+  //
+  // Tiers 5 and 6 set disambiguation_failed = true so the validator can
+  // surface them as YELLOW rather than silently shipping wrong-element
+  // locators.
+
   const matchCount = (sel) => {
     try { return document.querySelectorAll(sel).length; } catch (_) { return 0; }
   };
@@ -1533,72 +1559,264 @@ EXHAUSTIVE_SCAN_JS = r"""
       return document.evaluate(xp, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength;
     } catch (_) { return 0; }
   };
+  const xpathNodes = (xp) => {
+    const out = [];
+    try {
+      const r = document.evaluate(xp, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+      for (let i = 0; i < r.snapshotLength; i++) out.push(r.snapshotItem(i));
+    } catch (_) {}
+    return out;
+  };
+
+  // Heading-bearing ancestor closest to the element. Returns the heading's
+  // visible text plus whether it's reached via a *direct* child relationship
+  // (tighter scope) or descendant relationship (broader scope).
+  const findSectionAnchor = (el) => {
+    let cur = el.parentElement;
+    while (cur && cur !== document.body) {
+      const headings = [...cur.querySelectorAll(
+        'h1,h2,h3,h4,h5,h6,legend,[role="heading"]'
+      )];
+      const useful = headings.find(h => {
+        if (h === el || h.contains(el)) return false;
+        const t = text(h);
+        return t.length > 0 && t.length < 120;
+      });
+      if (useful) return { anchor: cur, heading: text(useful) };
+      cur = cur.parentElement;
+    }
+    return null;
+  };
+
+  // Class names we trust enough to use in XPath predicates. Skip Emotion
+  // hashes (`css-1abc-`), CSS Modules hashes, and tiny tokens that don't
+  // narrow the search.
+  const usefulClasses = (el) => {
+    if (!el.className || typeof el.className !== 'string') return [];
+    return el.className
+      .split(/\s+/)
+      .filter(c => c
+        && c.length >= 4
+        && !/^css-/i.test(c)
+        && !/^[a-z]+-[a-z0-9]{4,}$/i.test(c)  // CSS-Modules-style hashes
+        && !/^_[A-Z]/.test(c));
+  };
+
+  // Absolute path of the form /html/body/div[1]/main/.../button[2].
+  // Last-resort locator only — breaks on any DOM reshuffle.
+  const absolutePath = (el) => {
+    const parts = [];
+    let cur = el;
+    while (cur && cur.nodeType === 1 && cur !== document.documentElement) {
+      const tag = cur.tagName.toLowerCase();
+      const siblings = cur.parentElement
+        ? [...cur.parentElement.children].filter(c => c.tagName === cur.tagName)
+        : [cur];
+      const idx = siblings.indexOf(cur) + 1;
+      parts.unshift(tag + '[' + idx + ']');
+      cur = cur.parentElement;
+    }
+    return '/html/' + parts.join('/');
+  };
 
   const locatorsFor = (el) => {
     const tag = el.tagName.toLowerCase();
     const id = el.getAttribute('id') || '';
     const name = el.getAttribute('name') || '';
-    const testid = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    const testid = el.getAttribute('data-testid')
+      || el.getAttribute('data-test-id')
+      || el.getAttribute('data-test')
+      || el.getAttribute('data-cy')
+      || el.getAttribute('data-qa')
+      || '';
     const aria = el.getAttribute('aria-label') || '';
     const role = el.getAttribute('role') || '';
     const type = (el.getAttribute('type') || el.type || '').toLowerCase();
     const value = el.getAttribute('value') || '';
+    const placeholder = el.getAttribute('placeholder') || '';
+    const elText = text(el);
+    const isButtonLike = (tag === 'button' || tag === 'a' || role === 'button');
 
-    const css = [];
-    const xpath = [];
+    // Tier 1 — single discriminating attribute.
+    const tier1 = [];
+    if (testid)      tier1.push('//' + tag + '[@data-testid=' + xpathLit(testid) + ']');
+    if (id)          tier1.push('//' + tag + '[@id=' + xpathLit(id) + ']');
+    if (name)        tier1.push('//' + tag + '[@name=' + xpathLit(name) + ']');
+    if (aria)        tier1.push('//' + tag + '[@aria-label=' + xpathLit(aria) + ']');
+    if (placeholder) tier1.push('//' + tag + '[@placeholder=' + xpathLit(placeholder) + ']');
+    if (isButtonLike && elText) {
+      tier1.push('//' + tag + '[normalize-space()=' + xpathLit(elText) + ']');
+    }
 
-    // Priority 1: data-testid (devs intend it for automation)
-    if (testid) {
-      css.push(tag + '[data-testid="' + cssEsc(testid) + '"]');
-      xpath.push('//' + tag + '[@data-testid=' + xpathLit(testid) + ']');
+    // Tier 2 — two attributes combined. Radio/checkbox inputs almost always
+    // need name + value to be unique.
+    const tier2 = [];
+    if (['radio','checkbox'].includes(type) && name && value) {
+      tier2.push('//' + tag + '[@type=' + xpathLit(type)
+                 + ' and @name=' + xpathLit(name)
+                 + ' and @value=' + xpathLit(value) + ']');
     }
-    // Priority 2: id
-    if (id) {
-      css.push(tag + '[id="' + cssEsc(id) + '"]');
-      xpath.push('//' + tag + '[@id=' + xpathLit(id) + ']');
+    if (role && aria) {
+      tier2.push('//' + tag + '[@role=' + xpathLit(role)
+                 + ' and @aria-label=' + xpathLit(aria) + ']');
     }
-    // Priority 3: name (with type-and-value pinning for radios/checkboxes)
+    if (role && elText) {
+      tier2.push('//' + tag + '[@role=' + xpathLit(role)
+                 + ' and normalize-space()=' + xpathLit(elText) + ']');
+    }
+    if (role && placeholder) {
+      tier2.push('//' + tag + '[@role=' + xpathLit(role)
+                 + ' and @placeholder=' + xpathLit(placeholder) + ']');
+    }
+    if (type && name && !['radio','checkbox'].includes(type)) {
+      tier2.push('//' + tag + '[@type=' + xpathLit(type)
+                 + ' and @name=' + xpathLit(name) + ']');
+    }
+    if (type && placeholder) {
+      tier2.push('//' + tag + '[@type=' + xpathLit(type)
+                 + ' and @placeholder=' + xpathLit(placeholder) + ']');
+    }
+    if (aria && elText && aria !== elText) {
+      tier2.push('//' + tag + '[@aria-label=' + xpathLit(aria)
+                 + ' and normalize-space()=' + xpathLit(elText) + ']');
+    }
+
+    // Tier 3 — three attributes. Class-substring is the additional axis.
+    const tier3 = [];
+    const classes = usefulClasses(el);
+    if (classes.length > 0) {
+      const cls = classes[0];
+      const classPred = 'contains(concat(" ",normalize-space(@class)," ")," ' + cls + ' ")';
+      if (role && elText) {
+        tier3.push('//' + tag + '[@role=' + xpathLit(role)
+                   + ' and ' + classPred
+                   + ' and normalize-space()=' + xpathLit(elText) + ']');
+      }
+      if (role && aria) {
+        tier3.push('//' + tag + '[@role=' + xpathLit(role)
+                   + ' and ' + classPred
+                   + ' and @aria-label=' + xpathLit(aria) + ']');
+      }
+      if (aria && elText) {
+        tier3.push('//' + tag + '[' + classPred
+                   + ' and @aria-label=' + xpathLit(aria)
+                   + ' and normalize-space()=' + xpathLit(elText) + ']');
+      }
+    }
+
+    // Pick first unique candidate from tiers 1-3.
+    let bestXpath = '';
+    let bestTier = 0;
+    const allCandidates = [...tier1, ...tier2, ...tier3];
+    const tierOf = (xp) =>
+      tier1.includes(xp) ? 1 : tier2.includes(xp) ? 2 : 3;
+    for (const xp of allCandidates) {
+      if (xpathCount(xp) === 1) {
+        bestXpath = xp;
+        bestTier = tierOf(xp);
+        break;
+      }
+    }
+
+    let disambiguation_failed = false;
+    let scope_used = '';
+
+    // Tier 4 — section scope. Apply when nothing in tiers 1-3 was unique.
+    if (!bestXpath) {
+      const section = findSectionAnchor(el);
+      if (section) {
+        scope_used = section.heading;
+        // *[has direct heading child with this text] -> //inner
+        // Direct-child anchoring (`*[h1[...]]`) is tighter than descendant
+        // (`*[.//h1[...]]`), avoiding cases where a top-level wrapper "owns"
+        // every heading on the page.
+        const headTags = ['h1','h2','h3','h4','h5','h6','legend'];
+        const headPred = headTags
+          .map(t => t + '[normalize-space()=' + xpathLit(section.heading) + ']')
+          .join(' or ') + ' or *[@role="heading"][normalize-space()=' + xpathLit(section.heading) + ']';
+        const scopePrefix = '//*[' + headPred + ']';
+
+        const innerCandidates = [];
+        if (aria) innerCandidates.push('.//' + tag + '[@aria-label=' + xpathLit(aria) + ']');
+        if (placeholder) innerCandidates.push('.//' + tag + '[@placeholder=' + xpathLit(placeholder) + ']');
+        if (role && elText) {
+          innerCandidates.push('.//' + tag + '[@role=' + xpathLit(role)
+                               + ' and normalize-space()=' + xpathLit(elText) + ']');
+        }
+        if (isButtonLike && elText) {
+          innerCandidates.push('.//' + tag + '[normalize-space()=' + xpathLit(elText) + ']');
+        }
+        if (role) innerCandidates.push('.//' + tag + '[@role=' + xpathLit(role) + ']');
+
+        for (const inner of innerCandidates) {
+          const candidate = scopePrefix + inner.substring(1); // strip leading "."
+          if (xpathCount(candidate) === 1) {
+            bestXpath = candidate;
+            bestTier = 4;
+            break;
+          }
+        }
+
+        // Tier 5 — positional within scope. Pick the strongest non-unique
+        // scoped candidate, find this element's index among the matches,
+        // and pin to that position.
+        if (!bestXpath && innerCandidates.length > 0) {
+          for (const inner of innerCandidates) {
+            const baseScoped = scopePrefix + inner.substring(1);
+            const matches = xpathNodes(baseScoped);
+            if (matches.length === 0) continue;
+            const idx = matches.indexOf(el);
+            if (idx < 0) continue;
+            const positional = '(' + baseScoped + ')[' + (idx + 1) + ']';
+            bestXpath = positional;
+            bestTier = 5;
+            disambiguation_failed = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Tier 6 — absolute path. Always works (uniquely), always brittle.
+    if (!bestXpath) {
+      bestXpath = absolutePath(el);
+      bestTier = 6;
+      disambiguation_failed = true;
+    }
+
+    // ── CSS (secondary) ─────────────────────────────────────────────────
+    // Same priorities as before, plus placeholder for inputs/textareas
+    // (closes the gap for label-less fields).
+    const cssCandidates = [];
+    if (testid)      cssCandidates.push(tag + '[data-testid="' + cssEsc(testid) + '"]');
+    if (id)          cssCandidates.push(tag + '[id="' + cssEsc(id) + '"]');
     if (name) {
-      if (['radio', 'checkbox'].includes(type) && value) {
-        css.push(tag + '[name="' + cssEsc(name) + '"][value="' + cssEsc(value) + '"]');
+      if (['radio','checkbox'].includes(type) && value) {
+        cssCandidates.push(tag + '[name="' + cssEsc(name) + '"][value="' + cssEsc(value) + '"]');
       } else {
-        css.push(tag + '[name="' + cssEsc(name) + '"]');
+        cssCandidates.push(tag + '[name="' + cssEsc(name) + '"]');
       }
     }
-    // Priority 4: aria-label
-    if (aria) {
-      css.push(tag + '[aria-label="' + cssEsc(aria) + '"]');
+    if (aria)        cssCandidates.push(tag + '[aria-label="' + cssEsc(aria) + '"]');
+    if (placeholder && (tag === 'input' || tag === 'textarea')) {
+      cssCandidates.push(tag + '[placeholder="' + cssEsc(placeholder) + '"]');
     }
-    // Priority 5: role
-    if (role) {
-      css.push(tag + '[role="' + cssEsc(role) + '"]');
-    }
-    // Priority 6: text-anchored xpath for buttons/links
-    if (tag === 'button' || tag === 'a' || role === 'button') {
-      const t = text(el);
-      if (t) {
-        xpath.push('//' + tag + '[normalize-space()=' + xpathLit(t) + ']');
-      }
-    }
+    if (role)        cssCandidates.push(tag + '[role="' + cssEsc(role) + '"]');
 
-    // Pick the first uniquely-matching CSS, otherwise first non-empty
-    let best_css = '';
-    for (const sel of css) {
-      if (matchCount(sel) === 1) { best_css = sel; break; }
+    let bestCss = '';
+    for (const sel of cssCandidates) {
+      if (matchCount(sel) === 1) { bestCss = sel; break; }
     }
-    if (!best_css) best_css = css[0] || '';
-
-    let best_xpath = '';
-    for (const xp of xpath) {
-      if (xpathCount(xp) === 1) { best_xpath = xp; break; }
-    }
-    if (!best_xpath) best_xpath = xpath[0] || '';
+    if (!bestCss && cssCandidates.length > 0) bestCss = cssCandidates[0];
 
     return {
-      css: best_css,
-      css_fallbacks: css.filter(s => s && s !== best_css),
-      xpath: best_xpath,
-      xpath_fallbacks: xpath.filter(x => x && x !== best_xpath),
+      css: bestCss,
+      css_fallbacks: cssCandidates.filter(s => s && s !== bestCss),
+      xpath: bestXpath,
+      xpath_fallbacks: allCandidates.filter(xp => xp && xp !== bestXpath),
+      locator_tier: bestTier,
+      disambiguation_failed,
+      scope_used,
     };
   };
 
@@ -1714,6 +1932,9 @@ EXHAUSTIVE_SCAN_JS = r"""
         accept: '',
         css: loc.css, css_fallbacks: loc.css_fallbacks,
         xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+        locator_tier: loc.locator_tier,
+        disambiguation_failed: loc.disambiguation_failed,
+        scope_used: loc.scope_used,
       });
       continue;
     }
@@ -1746,6 +1967,9 @@ EXHAUSTIVE_SCAN_JS = r"""
         accept: '',
         css: loc.css, css_fallbacks: loc.css_fallbacks,
         xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+        locator_tier: loc.locator_tier,
+        disambiguation_failed: loc.disambiguation_failed,
+        scope_used: loc.scope_used,
       });
       continue;
     }
@@ -1774,6 +1998,9 @@ EXHAUSTIVE_SCAN_JS = r"""
       accept: kind === 'file_upload' ? (el.accept || '') : '',
       css: loc.css, css_fallbacks: loc.css_fallbacks,
       xpath: loc.xpath, xpath_fallbacks: loc.xpath_fallbacks,
+      locator_tier: loc.locator_tier,
+      disambiguation_failed: loc.disambiguation_failed,
+      scope_used: loc.scope_used,
     });
   }
 
