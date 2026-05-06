@@ -61,6 +61,7 @@ class ExecuteInput(BaseModel):
     max_turns_per_screen: int = 15
     budget: float = 2.0
     wait_for_user: bool = False  # pause after browser launch for manual setup
+    max_cases: int = 0  # Cap for the auto-invoked Plan pipeline. 0 → use Plan's default (30).
 
 
 class ExecuteOutput(BaseModel):

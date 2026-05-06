@@ -45,6 +45,35 @@ def clear_caches() -> None:
     pass  # No coordinate caches on web — DOM handles it
 
 
+def _resolve_kb_locator(element_id: str) -> tuple[str, str]:
+    """Look up the primary locator for an element from the injected KB.
+
+    Returns (strategy, value). strategy ∈ {"xpath", "css", ""}.
+    Empty strings if the KB isn't set, the element isn't found, or the
+    L1 entry has no locators. Used by compound tools so the LLM can pass
+    just the element_id rather than re-deriving the selector.
+    """
+    if _kb is None or not element_id:
+        return ("", "")
+    l1 = _kb.get_l1_for_element(element_id)
+    if l1 is None or not l1.locators:
+        return ("", "")
+    # Pick the first locator that's CSS or XPath. Locators are saved in
+    # confidence order, so the first usable one is the most trusted.
+    for loc in l1.locators:
+        if loc.strategy in ("xpath", "css") and loc.value:
+            return (loc.strategy, loc.value)
+    return ("", "")
+
+
+def _is_xpath(value: str) -> bool:
+    """Heuristic: leading `/` or `(/` marks an XPath; everything else is CSS."""
+    if not value:
+        return False
+    s = value.lstrip()
+    return s.startswith("/") or s.startswith("(/") or s.startswith("(//")
+
+
 # ── Internal helpers (not exposed to LLM) ────────────────────────────────────
 
 async def _call_mcp(tool_name: str, args: dict) -> str:
@@ -233,20 +262,71 @@ async def scan_page_summary(include_buttons: str = "yes") -> str:
 
 
 @function_tool
-async def fill_field_and_verify(css_selector: str, value: str) -> str:
+async def fill_field_and_verify(
+    value: str,
+    element_id: str = "",
+    css_selector: str = "",
+) -> str:
     """Fill a text field, dispatch input/change/blur events, then read back the
     actual value AND any validation error. One MCP call, no LLM turns wasted.
 
+    Resolution order:
+      1. element_id  → look up the verified-unique locator from the active KB
+      2. css_selector → CSS or XPath (auto-detected by leading "/" or "(/")
+    Refuses with status="AMBIGUOUS" if the chosen locator matches more than
+    one visible element (prevents wrong-sibling fills).
+
     Args:
-        css_selector: CSS selector (e.g. input[name="firstName"]).
-        value: Text to enter. Use empty string to clear and test required validation.
+        value: Text to enter. Empty string tests required-field validation.
+        element_id: Preferred. KB element id (e.g.
+                    "create_next_app:bot_name:email:text_input"). The tool
+                    pulls the L1 locator from the KB.
+        css_selector: Fallback if no element_id. CSS or XPath are both fine.
     """
-    sel = _js_string(css_selector)
+    strategy, locator = _resolve_kb_locator(element_id) if element_id else ("", "")
+    if not locator:
+        locator = css_selector
+        strategy = "xpath" if _is_xpath(css_selector) else "css"
+    if not locator:
+        return json.dumps({
+            "status": "ELEMENT_NOT_FOUND",
+            "reason": "no element_id and no css_selector",
+        })
+
+    loc_js = _js_string(locator)
     val = _js_string(value)
+    is_xpath = "true" if strategy == "xpath" else "false"
     js = f"""
       (function() {{
-        const el = document.querySelector('{sel}');
-        if (!el) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND', selector: '{sel}'}});
+        const isXpath = {is_xpath};
+        let candidates = [];
+        if (isXpath) {{
+          try {{
+            const r = document.evaluate('{loc_js}', document, null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            for (let i = 0; i < r.snapshotLength; i++) candidates.push(r.snapshotItem(i));
+          }} catch (e) {{
+            return JSON.stringify({{status: 'INVALID_LOCATOR', strategy: 'xpath',
+                                    locator: '{loc_js}', error: String(e).slice(0, 120)}});
+          }}
+        }} else {{
+          try {{ candidates = [...document.querySelectorAll('{loc_js}')]; }}
+          catch (e) {{
+            return JSON.stringify({{status: 'INVALID_LOCATOR', strategy: 'css',
+                                    locator: '{loc_js}', error: String(e).slice(0, 120)}});
+          }}
+        }}
+        const visible = candidates.filter(e => e.offsetParent !== null
+          || (window.getComputedStyle(e).display !== 'none'
+              && window.getComputedStyle(e).visibility !== 'hidden'));
+        if (visible.length === 0) return JSON.stringify({{status: 'ELEMENT_NOT_FOUND', locator: '{loc_js}'}});
+        if (visible.length > 1) return JSON.stringify({{
+          status: 'AMBIGUOUS',
+          locator: '{loc_js}',
+          match_count: visible.length,
+          hint: 'Pass element_id from the KB so the tool uses the unique locator.'
+        }});
+        const el = visible[0];
         el.focus();
         // React-safe setter: bypasses React's synthetic-event reconciliation
         // so the value actually sticks in controlled inputs.
@@ -261,7 +341,7 @@ async def fill_field_and_verify(css_selector: str, value: str) -> str:
         const parent = el.closest('.MuiFormControl-root') ||
                        el.closest('.field-group') ||
                        el.closest('[class*=field]') ||
-                       el.parentElement && el.parentElement.parentElement;
+                       (el.parentElement && el.parentElement.parentElement);
         const err = parent ? parent.querySelector(
           '.MuiFormHelperText-root.Mui-error, .error, .helper-text, ' +
           '[class*=error], [class*=Error], [role=alert]'
@@ -2054,28 +2134,34 @@ async def analyze_page_blockers() -> str:
 
 
 @function_tool
-async def click_and_observe(field_name: str = "", css_selector: str = "") -> str:
+async def click_and_observe(
+    field_name: str = "",
+    css_selector: str = "",
+    element_id: str = "",
+) -> str:
     """Click an action button and watch console + network for errors.
 
-    Use this for action buttons that perform an in-page operation (Save,
-    Submit, Apply, Update Bot, Find Member, etc) — NOT navigation buttons
-    that change pages.
+    Use this for action buttons that perform an in-page operation (e.g.
+    "Update Bot", "Find Member", a chip-toggle, a card-pick) — NOT
+    navigation buttons that change pages (those are blocklisted by Plan).
 
-    Captures all console messages + network requests, clicks the target,
-    waits 2 seconds for async errors to surface, then reports anything
-    new that looks like an error (Uncaught/Exception/TypeError/etc on the
-    console; HTTP 4xx/5xx on the network).
-
-    Args:
-        field_name: Visible label of the button (e.g. "Update Bot"). Used
-                    as a text-content fallback if no css_selector matches.
-        css_selector: Optional CSS selector. Preferred when the button has
-                    a stable id/data-testid.
+    Resolution order:
+      1. element_id  → KB's verified-unique locator (preferred — zero guesswork)
+      2. css_selector → CSS or XPath (auto-detected by leading "/" or "(/")
+      3. field_name  → exact-match button text fallback (refuses if >1 hit)
 
     Returns: JSON
-        {status: PASS, clicked: "...", console_lines: N, network_lines: N}
+        {status: PASS, clicked: "...", console_lines_after: N, network_lines_after: N}
         {status: FAIL, clicked: "...", errors: [{kind, detail}, ...]}
-        {status: BLOCKED, reason: "could not click | element_not_found"}
+        {status: BLOCKED, reason: "ambiguous|element_not_found|invalid_locator"}
+
+    Args:
+        field_name: Visible button label (e.g. "Update Bot"). Used only as
+                    last-resort exact-match text fallback. Must match a
+                    SINGLE visible button.
+        css_selector: Optional CSS or XPath. Used if no element_id passed.
+        element_id: Preferred. KB element id; tool resolves the verified
+                    locator from the active KB.
     """
     import asyncio
     import re as _re
@@ -2092,25 +2178,61 @@ async def click_and_observe(field_name: str = "", css_selector: str = "") -> str
     before_network = await _safe_call("list_network_requests")
 
     # ── Step 2: Locate + click the target ────────────────────────────────
-    sel = _normalize_selector(css_selector or field_name)
-    sel_js = _js_string(sel)
+    strategy, locator = _resolve_kb_locator(element_id) if element_id else ("", "")
+    if not locator and css_selector:
+        locator = _normalize_selector(css_selector)
+        strategy = "xpath" if _is_xpath(locator) else "css"
+    loc_js = _js_string(locator)
     name_js = _js_string(field_name)
+    is_xpath = "true" if strategy == "xpath" else "false"
     click_js = f"""
       (function() {{
-        let el = null;
-        try {{ el = document.querySelector('{sel_js}'); }} catch(e) {{}}
-        if (!el && '{name_js}'.length > 0) {{
+        let candidates = [];
+        const usingLocator = '{loc_js}'.length > 0;
+        if (usingLocator) {{
+          if ({is_xpath}) {{
+            try {{
+              const r = document.evaluate('{loc_js}', document, null,
+                XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+              for (let i = 0; i < r.snapshotLength; i++) candidates.push(r.snapshotItem(i));
+            }} catch (e) {{
+              return JSON.stringify({{status: 'INVALID_LOCATOR', strategy: 'xpath',
+                                      locator: '{loc_js}', error: String(e).slice(0, 120)}});
+            }}
+          }} else {{
+            try {{ candidates = [...document.querySelectorAll('{loc_js}')]; }}
+            catch (e) {{
+              return JSON.stringify({{status: 'INVALID_LOCATOR', strategy: 'css',
+                                      locator: '{loc_js}', error: String(e).slice(0, 120)}});
+            }}
+          }}
+        }} else if ('{name_js}'.length > 0) {{
+          // Exact-text fallback (case-insensitive). NO partial-match — that
+          // was the wrong-sibling bug ("Update" matching multiple buttons).
           const txt = '{name_js}'.toLowerCase().trim();
-          el = [...document.querySelectorAll(
+          candidates = [...document.querySelectorAll(
             'button, a, [role="button"]'
-          )].filter(e => e.offsetParent !== null)
-            .find(e => (e.textContent || '').trim().toLowerCase().includes(txt));
+          )].filter(e => (e.textContent || '').trim().toLowerCase() === txt);
+        }} else {{
+          return JSON.stringify({{status: 'ELEMENT_NOT_FOUND',
+                                  reason: 'no element_id, css_selector, or field_name'}});
         }}
-        if (!el) return JSON.stringify({{
+        const visible = candidates.filter(e => e.offsetParent !== null
+          || (window.getComputedStyle(e).display !== 'none'
+              && window.getComputedStyle(e).visibility !== 'hidden'));
+        if (visible.length === 0) return JSON.stringify({{
           status: 'ELEMENT_NOT_FOUND',
-          tried_selector: '{sel_js}',
+          tried_locator: '{loc_js}',
           tried_text: '{name_js}'
         }});
+        if (visible.length > 1) return JSON.stringify({{
+          status: 'AMBIGUOUS',
+          tried_locator: '{loc_js}',
+          tried_text: '{name_js}',
+          match_count: visible.length,
+          hint: 'Pass element_id from the test case so the tool uses the unique KB locator.'
+        }});
+        const el = visible[0];
         el.scrollIntoView({{block: 'center', behavior: 'instant'}});
         el.click();
         return JSON.stringify({{
@@ -2127,8 +2249,10 @@ async def click_and_observe(field_name: str = "", css_selector: str = "") -> str
         return json.dumps({
             "status": "BLOCKED",
             "reason": click_parsed.get("status", "click_failed"),
-            "tried_selector": click_parsed.get("tried_selector", ""),
+            "tried_locator": click_parsed.get("tried_locator", ""),
             "tried_text": click_parsed.get("tried_text", ""),
+            "match_count": click_parsed.get("match_count", 0),
+            "hint": click_parsed.get("hint", ""),
         })
 
     clicked_text = click_parsed.get("text", "")

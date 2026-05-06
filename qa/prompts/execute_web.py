@@ -9,12 +9,20 @@ case (mostly). No exploring. No re-discovery.
 
 | Approach           | Tool                                                    |
 |--------------------|---------------------------------------------------------|
-| FILL_CHECK         | fill_field_and_verify(css, value)                       |
+| FILL_CHECK         | fill_field_and_verify(value, element_id)                |
 | VERIFY_ONLY        | verify_elements_exist(css_selectors)                    |
 | TAP_VERIFY         | evaluate_script (date-picker spinners only — see below) |
 | SELECT_AND_VERIFY  | test_dropdown(css, option_text)  ← prefer this          |
-| CLICK_AND_OBSERVE  | click_and_observe(field_name[, css_selector])           |
+| CLICK_AND_OBSERVE  | click_and_observe(element_id)                           |
 | UPLOAD_FILE        | upload_file_for_field(field_name[, file_name])          |
+
+**ALWAYS pass `element_id` from the test plan line** (e.g., the test case
+reads `TC4 | element_id=create_next_app:bot_name:email:text_input | ...`).
+The tool resolves the verified-unique locator from the active KB, so no
+guessing about CSS selectors. If the locator matches more than one visible
+element on the page, the tool refuses with `BLOCKED: AMBIGUOUS` rather
+than clicking/filling the wrong sibling — record the test as BLOCKED and
+move on.
 
 **RULE:** Never hand-write JS for fills, verify, dropdowns, uploads, or
 clicks. The compound tools above handle escaping, event dispatch, error
@@ -55,13 +63,22 @@ ONE CALL. Python handles React-safe value setting, event dispatch, and
 inline-error readback. Never write the JS yourself — bad escaping on a
 single value crashes the whole run.
 
-  fill_field_and_verify(css_selector="<input CSS>", value="<test value>")
+  fill_field_and_verify(element_id="<from test case>", value="<test value>")
+
+PASS element_id from the test plan line (e.g. `element_id=create_next_app:
+bot_name:email:text_input`). The tool looks up the verified-unique locator
+from the active KB — no guessing, no fuzzy matching. Only fall back to
+`css_selector="<CSS or XPath>"` if element_id is missing for some reason.
 
 Returns JSON: {status, actual, error}
   - status="FILLED", error="NO_ERROR"        → test PASS for "no_error" expected
   - status="FILLED", error="<message>"       → test PASS for "error_shown" expected,
                                                 FAIL if message present when not expected
   - status="ELEMENT_NOT_FOUND"               → BLOCKED
+  - status="AMBIGUOUS"                       → BLOCKED (tool refuses to fill
+                                                if locator matches >1 visible
+                                                element — protects you from
+                                                wrong-sibling fills)
 
 # VERIFY_ONLY (buttons that should NOT be clicked, read-only fields)
 
@@ -109,15 +126,24 @@ ONE CALL. Clicks the button, captures console messages + network requests
 for ~2 seconds, reports console errors (Uncaught/Exception/TypeError) or
 HTTP 4xx/5xx responses as bugs.
 
-  click_and_observe(field_name="<visible button label>")
+  click_and_observe(element_id="<from test case>")
 
-Optional css_selector if you have a stable id/data-testid:
-  click_and_observe(field_name="Update Bot", css_selector="button[data-testid='update-bot']")
+PASS element_id from the test plan. The tool resolves the unique KB locator
+and refuses to click if it would match more than one visible element. This
+prevents the wrong-sibling bug (e.g., clicking "Cancel" instead of the
+nearby "Update Bot").
+
+Only as fallback if element_id is missing:
+  click_and_observe(field_name="Update Bot")  # exact-match text only, refuses if >1 hit
+  click_and_observe(css_selector="button[data-testid='update-bot']")
 
 Returns JSON:
 - {status: PASS, clicked, console_lines_after, network_lines_after}  → test PASS
 - {status: FAIL, clicked, errors: [...]}                              → test FAIL (bug found)
-- {status: BLOCKED, reason}                                           → element not found / click refused
+- {status: BLOCKED, reason: "AMBIGUOUS"}                              → tool refused; locator
+                                                                         matched multiple
+                                                                         visible elements
+- {status: BLOCKED, reason: "ELEMENT_NOT_FOUND"}                      → not on page now
 
 Do NOT manually click via evaluate_script for action buttons — the compound
 tool also wires up console + network observation that raw click misses.

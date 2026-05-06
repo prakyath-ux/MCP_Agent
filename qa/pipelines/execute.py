@@ -45,7 +45,7 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
     if not inp.test_cases:
         print("  No test cases provided — running Plan pipeline first...")
         from qa.pipelines.plan import run_plan
-        plan_result = await run_plan(PlanInput(
+        plan_kwargs = dict(
             knowledge=knowledge,
             screen_names=inp.screens,
             element_filter=inp.element_filter,
@@ -53,12 +53,22 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
             avoid_recent_values=inp.avoid_recent_values,
             model=inp.plan_model or inp.model,
             provider=inp.provider,
-        ))
+        )
+        if inp.max_cases:
+            plan_kwargs["max_total_cases"] = inp.max_cases
+        plan_result = await run_plan(PlanInput(**plan_kwargs))
         test_cases = plan_result.test_cases
-        plan_text = plan_result.raw_plan_text
     else:
         test_cases = inp.test_cases
-        plan_text = "\n".join(f"{tc.tc_id} | {tc.field_name} | {tc.approach.value} | {tc.test_value}" for tc in test_cases)
+
+    # Always rebuild plan_text from the parsed test_cases — guarantees the
+    # LLM sees element_id (which the tools resolve to the verified-unique
+    # locator). The raw plan-LLM output omits element_id by design.
+    plan_text = "\n".join(
+        f"{tc.tc_id} | element_id={tc.element_id} | {tc.field_name} | "
+        f"{tc.approach.value} | {tc.test_value}"
+        for tc in test_cases
+    )
 
     if not test_cases:
         print("  ERROR: No test cases generated")
