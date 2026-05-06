@@ -2007,6 +2007,7 @@ EXPLORE_TOOLS = [
 
 TASK_TOOLS = [
     scan_page_summary,
+    fill_field_and_verify,
     test_text_field,
     test_dropdown,
     upload_file_for_field,

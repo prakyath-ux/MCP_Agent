@@ -9,12 +9,19 @@ case (mostly). No exploring. No re-discovery.
 
 | Approach           | Tool                                                    |
 |--------------------|---------------------------------------------------------|
-| FILL_CHECK         | evaluate_script                                         |
-| VERIFY_ONLY        | evaluate_script                                         |
-| TAP_VERIFY         | evaluate_script                                         |
+| FILL_CHECK         | fill_field_and_verify(css, value)                       |
+| VERIFY_ONLY        | verify_elements_exist(css_selectors)                    |
+| TAP_VERIFY         | evaluate_script (date-picker spinners only — see below) |
 | SELECT_AND_VERIFY  | test_dropdown(css, option_text)  ← prefer this          |
 | CLICK_AND_OBSERVE  | click_and_observe(field_name[, css_selector])           |
 | UPLOAD_FILE        | upload_file_for_field(field_name[, file_name])          |
+
+**RULE:** Never hand-write JS for fills, verify, dropdowns, uploads, or
+clicks. The compound tools above handle escaping, event dispatch, error
+read-back, and React-safe value setting. Inline `evaluate_script` is only
+acceptable for genuinely unique cases (date-picker spinner taps, page-state
+inspection that no compound tool covers). When you reach for evaluate_script
+for a routine fill or verify, stop — use the compound tool instead.
 
 For SELECT_AND_VERIFY: prefer `test_dropdown` — one call, handles trigger
 click + option pick + verify deterministically. Smart fallback already
@@ -44,15 +51,26 @@ WRONG:   evaluate_script(expression="...")             # wrong param name
 
 # FILL_CHECK (text inputs)
 
-React-safe native-setter pattern — bypasses virtual DOM reconciliation:
+ONE CALL. Python handles React-safe value setting, event dispatch, and
+inline-error readback. Never write the JS yourself — bad escaping on a
+single value crashes the whole run.
 
-evaluate_script(function="() => { const el=document.querySelector('SELECTOR'); if(!el) return 'ELEMENT_NOT_FOUND'; const proto = el.tagName==='TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; const s = Object.getOwnPropertyDescriptor(proto,'value').set; el.focus(); s.call(el, 'TEST_VALUE'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); el.blur(); const parent = el.closest('.MuiFormControl-root') || el.closest('.field-group') || el.parentElement?.parentElement; const err = parent?.querySelector('.MuiFormHelperText-root.Mui-error, .error, .helper-text, [class*=error], [class*=Error], [role=alert]'); return err ? err.textContent.trim() : 'NO_ERROR'; }")
+  fill_field_and_verify(css_selector="<input CSS>", value="<test value>")
 
-Replace SELECTOR and TEST_VALUE.
+Returns JSON: {status, actual, error}
+  - status="FILLED", error="NO_ERROR"        → test PASS for "no_error" expected
+  - status="FILLED", error="<message>"       → test PASS for "error_shown" expected,
+                                                FAIL if message present when not expected
+  - status="ELEMENT_NOT_FOUND"               → BLOCKED
 
-# VERIFY_ONLY (buttons — don't click)
+# VERIFY_ONLY (buttons that should NOT be clicked, read-only fields)
 
-evaluate_script(function="() => { const el = document.querySelector('SELECTOR'); if(!el) return 'ELEMENT_NOT_FOUND'; return 'EXISTS|text=' + el.textContent.trim(); }")
+ONE CALL. Confirms the element exists without clicking it.
+
+  verify_elements_exist(css_selectors="<comma-separated CSS list>")
+
+Returns JSON with per-selector existence + visible text.
+For a single selector, pass it as a one-item string.
 
 # SELECT_AND_VERIFY — preferred path: test_dropdown
 

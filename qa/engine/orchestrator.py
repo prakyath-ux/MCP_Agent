@@ -235,7 +235,8 @@ async def run_agent_loop(
                 "test_text_field", "test_dropdown", "test_date_picker",
                 "fill_field_and_verify", "verify_elements_exist",
                 "scan_page_summary", "scan_screen_summary",
-                "upload_file_for_field",
+                "upload_file_for_field", "click_and_observe",
+                "list_test_files", "analyze_page_blockers",
             }
             # Check if last 4 calls were the same tool (excluding action tools)
             if (len(recent_tools) >= 4

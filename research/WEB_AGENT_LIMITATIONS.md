@@ -40,6 +40,9 @@ Services like Cloudflare Bot Management, Akamai, and Datadome detect automated b
 ## 12. Apps with placeholder-only labels
 Forms that omit `<label>` tags and rely on placeholder text leave the agent without a stable name for each field, which weakens both extraction and reporting.
 
+## 13. React-Select v5 (Emotion CSS-in-JS) custom dropdowns
+Widely used React component library that renders dropdown options with build-time-generated class names like `css-1abc-Option`. The agent's standard option selectors and click-to-open patterns don't reliably open the menu or enumerate options, even with ArrowDown keyboard nudges. Testable in principle but requires a dedicated per-app recipe; basic role-and-class heuristics aren't enough.
+
 ---
 
 ## Scope summary
