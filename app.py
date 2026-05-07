@@ -227,7 +227,13 @@ def count_statuses(df: pd.DataFrame) -> dict:
 def friendly_name(path: Path) -> str:
     name = path.stem
     # Detect type
-    if "report_multi" in name:
+    if "_pipeline_" in name:
+        run_type = "Extract Pipeline"
+    elif "_diagnostic_" in name:
+        run_type = "Diagnostic"
+    elif "_kb_validation_" in name:
+        run_type = "KB Validation"
+    elif "report_multi" in name:
         run_type = "Multi-Screen"
     elif "result_" in name:
         run_type = "Pipeline Run"
@@ -258,6 +264,132 @@ def friendly_name(path: Path) -> str:
     return name
 
 
+# ── Extract-pipeline synthesis (Step 4) ────────────────────────────────────
+#
+# Two data paths into render_pipeline_synthesis():
+#   1. Live: parse STAGE_DONE markers out of the streamed output lines
+#      while the run is still in memory.
+#   2. Past Runs: read the .json sidecar saved next to the .txt synthesis
+#      report.
+# Both paths produce the same `stages` dict shape, so the renderer is
+# unified.
+
+def parse_stage_markers(output_lines: list[str]) -> dict:
+    """Pull STAGE_DONE: <stage>: <json> markers out of a stream of stdout
+    lines. Returns {stage_name: parsed_json_dict}. Tolerant of malformed
+    JSON — any unparseable marker is silently skipped (the run still
+    succeeded; we just lose a UI card)."""
+    stages: dict = {}
+    for line in output_lines:
+        if "STAGE_DONE:" not in line:
+            continue
+        try:
+            _, rest = line.split("STAGE_DONE:", 1)
+            stage_name, payload = rest.split(":", 1)
+            stages[stage_name.strip()] = json.loads(payload.strip())
+        except (ValueError, json.JSONDecodeError):
+            continue
+    return stages
+
+
+def render_pipeline_synthesis(stages: dict, kb_path: str | Path | None = None) -> None:
+    """Render the 4-card synthesis panel for an extract pipeline run.
+    Tolerates missing stages — each card renders independently."""
+    if not stages:
+        st.info("No pipeline stage data available.")
+        return
+
+    diag = stages.get("diagnostic") or {}
+    ext = stages.get("extract") or {}
+    val = stages.get("validate") or {}
+
+    st.markdown("### Extract Pipeline Synthesis")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    # ── Diagnostic card ────────────────────────────────────────────────
+    with c1:
+        verdict = (diag.get("verdict") or "unknown").upper()
+        marker = {"GREEN": "✓", "YELLOW": "⚠", "RED": "✗"}.get(verdict, "?")
+        st.markdown(f"**{marker} Diagnostic**")
+        st.metric("Verdict", verdict)
+        yc = diag.get("yellow_count", 0)
+        rc = diag.get("red_count", 0)
+        st.caption(f"{yc} yellow • {rc} red pattern(s)")
+        if diag.get("txt_path"):
+            with st.expander("Full report"):
+                try:
+                    st.code(Path(diag["txt_path"]).read_text(), language="text")
+                except OSError as e:
+                    st.warning(f"Couldn't read: {e}")
+
+    # ── Extract card ───────────────────────────────────────────────────
+    with c2:
+        st.markdown("**📦 Extract**")
+        st.metric("Elements captured", ext.get("element_count", 0))
+        screen = ext.get("screen", "?")
+        st.caption(f"screen: {screen[:30]}")
+        # by_type may be present in synthesis JSON but not in the live STAGE_DONE
+        # marker (we keep markers flat). When present, surface it.
+        by_type = ext.get("by_type") or {}
+        if by_type:
+            with st.expander("Breakdown by type"):
+                for t, n in sorted(by_type.items(), key=lambda x: -x[1]):
+                    st.text(f"  {t:<14} {n}")
+        kb = ext.get("kb_path") or kb_path
+        if kb:
+            st.caption(f"KB: `{Path(str(kb)).name}`")
+
+    # ── Validate card ──────────────────────────────────────────────────
+    with c3:
+        st.markdown("**🎯 Validate**")
+        if val.get("skipped"):
+            st.metric("Status", "Skipped")
+            st.caption("KB had no L1 entries")
+        elif val.get("error"):
+            st.metric("Status", "Error")
+            st.caption(str(val["error"])[:80])
+        else:
+            # Live marker shape vs synthesis-JSON shape — synthesis nests a
+            # `summary` dict; live markers expose flat fields.
+            summary = val.get("summary") or val
+            total = summary.get("total", 0)
+            reachable = summary.get("reachable", 0)
+            pct = summary.get("reachable_pct", 0)
+            st.metric("Reachable", f"{reachable}/{total}", delta=f"{pct}%")
+            broken = summary.get("broken", 0)
+            duplicate = summary.get("duplicate", 0)
+            no_loc = summary.get("no_locators", 0)
+            problems = broken + duplicate + no_loc
+            if problems:
+                st.caption(f"⚠ {broken} broken • {duplicate} duplicate • {no_loc} no-locators")
+            else:
+                st.caption("All locators clean")
+            if val.get("txt_path"):
+                with st.expander("Full report"):
+                    try:
+                        st.code(Path(val["txt_path"]).read_text(), language="text")
+                    except OSError as e:
+                        st.warning(f"Couldn't read: {e}")
+
+    # ── Dataset summary card ───────────────────────────────────────────
+    with c4:
+        st.markdown("**📊 Dataset**")
+        present = ext.get("element_count", 0)
+        v_summary = val.get("summary") or val
+        reachable = v_summary.get("reachable", 0) if not val.get("skipped") else "—"
+        hard = (
+            v_summary.get("broken", 0)
+            + v_summary.get("duplicate", 0)
+            + v_summary.get("no_locators", 0)
+            + v_summary.get("label_only", 0)
+            + v_summary.get("hidden", 0)
+        ) if not (val.get("skipped") or val.get("error")) else "—"
+        st.metric("Present", present)
+        st.metric("Reachable", reachable)
+        st.metric("Hard", hard, help="broken + duplicate + no-locator + label-only + hidden")
+
+
 def _take_adb_screenshot() -> bytes | None:
     try:
         result = subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True, timeout=5)
@@ -268,13 +400,16 @@ def _take_adb_screenshot() -> bytes | None:
     return None
 
 
-def _run_agent_subprocess(cmd: str, cwd: str) -> subprocess.Popen:
+def _run_agent_subprocess(cmd: str, cwd: str, with_stdin: bool = False) -> subprocess.Popen:
     venv_python = str(ROOT / "venv" / "bin" / "python")
     full_cmd = cmd.replace("python ", f"{venv_python} ", 1)
-    # start_new_session so we can kill the whole process tree (including npx MCP children)
+    # start_new_session so we can kill the whole process tree (including npx MCP children).
+    # with_stdin=True opens a pipe so we can resume orchestrators that pause
+    # on input() (the --wait flag pattern). The pipe is line-buffered.
+    stdin = subprocess.PIPE if with_stdin else None
     return subprocess.Popen(
         full_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        cwd=cwd, text=True, bufsize=1, start_new_session=True,
+        stdin=stdin, cwd=cwd, text=True, bufsize=1, start_new_session=True,
     )
 
 
@@ -401,7 +536,10 @@ def page_new_run():
     col1, col2 = st.columns([1.2, 1])
 
     with col1:
-        pipeline = st.selectbox("Pipeline", ["explore", "plan", "execute", "full", "diagnostic"])
+        pipeline = st.selectbox(
+            "Pipeline",
+            ["explore", "plan", "execute", "full", "diagnostic", "extract_pipeline"],
+        )
         platform = st.selectbox("Platform", ["mobile", "web"])
         # Default target depends on platform — package name for mobile, URL for web.
         default_target = "net.impacto.B2U" if platform == "mobile" else "https://qa-tq-awp.impactodigifin.xyz/newapplication"
@@ -411,8 +549,9 @@ def page_new_run():
         screens_placeholder = "e.g., iTELLER,LOAN,MORE" if platform == "mobile" \
             else "e.g., New Member Application - Personal Information"
 
-        # Diagnostic doesn't use screens/model/plan-model — keep the form simple.
-        if pipeline != "diagnostic":
+        # Diagnostic and extract_pipeline don't use screens/model/plan-model.
+        # Both are deterministic (no LLM) and inherently single-page web.
+        if pipeline not in ("diagnostic", "extract_pipeline"):
             screens = st.text_input("Screens", value="", placeholder=screens_placeholder)
             model = st.selectbox(
                 "Model",
@@ -442,12 +581,33 @@ def page_new_run():
             plan_model = ""
 
         device_id = ""
-        if platform == "mobile" and pipeline != "diagnostic":
+        if platform == "mobile" and pipeline not in ("diagnostic", "extract_pipeline"):
             device_id = st.text_input("Device ID", value="RZCXA21GV9P")
+
+        # --wait checkbox: pauses after Chrome launches so the user can log in
+        # / navigate manually before the run proceeds. Surfaces a Resume button
+        # in the run view. Only meaningful for the orchestrators that support it.
+        wait_for_login = False
+        if pipeline in ("extract_pipeline", "execute") and platform == "web":
+            wait_for_login = st.checkbox(
+                "Wait for manual login / navigation",
+                value=False,
+                help=(
+                    "Pause after Chrome opens. Log in or navigate to the page you "
+                    "want to test, then click Resume in the run view. Required for "
+                    "Forgenite and other auth-gated apps."
+                ),
+            )
 
         if pipeline == "diagnostic":
             # Pre-flight DOM scan — read-only, no LLM. Only meaningful for web.
             cmd = f"python -m qa.orchestrators.page_diagnostic {target} --app-name \"{app_name}\""
+        elif pipeline == "extract_pipeline":
+            # Unified web extract: diagnostic → exhaustive_extract → validate_kb
+            # in one Chrome session. Web-only, no LLM, deterministic.
+            cmd = f"python -m qa.orchestrators.extract_pipeline {target} --app-name \"{app_name}\""
+            if wait_for_login:
+                cmd += " --wait"
         else:
             cmd = f"python -m qa.cli {pipeline} {target} -p {platform} -a \"{app_name}\" -m {model}"
             if screens:
@@ -458,6 +618,8 @@ def page_new_run():
                 cmd += " --auto-explore"
             if plan_model and pipeline in ("execute", "full"):
                 cmd += f" --plan-model {plan_model}"
+            if wait_for_login and pipeline == "execute":
+                cmd += " --wait"
 
     with col2:
         info = {
@@ -466,6 +628,7 @@ def page_new_run():
             "execute": ("Test Execution", "Executes test cases on the app. Auto-explores if no knowledge exists. Multi-screen support."),
             "full": ("Full Suite", "Runs all 3 pipelines in sequence: Explore, Plan, Execute. End-to-end automation."),
             "diagnostic": ("Page Diagnostic", "Pre-flight DOM scan. Classifies the page as green / yellow / red against known testability blockers (custom dropdowns, iframes, CAPTCHA, multi-page wizards, etc). Read-only, free, no LLM."),
+            "extract_pipeline": ("Extract Pipeline (web)", "Diagnostic + Extract + Validate in one Chrome session. Captures dropdown options (Phase 1) and radio-conditional fields (Phase 2). Saves a synthesis report alongside the per-stage artifacts. Web-only, deterministic, no LLM."),
         }
         title, desc = info.get(pipeline, ("", ""))
         st.markdown(f"""
@@ -482,18 +645,49 @@ def page_new_run():
 
     st.markdown("---")
 
-    if st.button("Run Test", type="primary", use_container_width=True):
-        # Guard: diagnostic only works on real http(s) URLs.
-        if pipeline == "diagnostic" and not target.lower().startswith(("http://", "https://")):
-            st.error(
-                f"Diagnostic needs a web URL starting with http:// or https://. "
-                f"Got: '{target}'. Update the Target field."
-            )
+    # Disable Run Test while a run is in progress — clicking it again
+    # would clear `_run_process` from session state and spawn a fresh
+    # subprocess (new Chrome window), which is never what the user wants.
+    run_in_progress = bool(st.session_state.get("running"))
+    if st.button(
+        "Run Test",
+        type="primary",
+        use_container_width=True,
+        disabled=run_in_progress,
+        help=("Run is currently active. Use Kill Run to cancel."
+              if run_in_progress else None),
+    ):
+        # Guards:
+        #   - diagnostic + extract_pipeline both need a real http(s) URL
+        #   - extract_pipeline is web-only (mobile flows go through explore/full)
+        guard_error = None
+        if pipeline in ("diagnostic", "extract_pipeline"):
+            if not target.lower().startswith(("http://", "https://")):
+                guard_error = (
+                    f"{pipeline} needs a web URL starting with http:// or https://. "
+                    f"Got: '{target}'. Update the Target field."
+                )
+            elif pipeline == "extract_pipeline" and platform != "web":
+                guard_error = (
+                    "Extract Pipeline is web-only. Switch Platform to 'web', "
+                    "or pick a different pipeline for mobile."
+                )
+
+        if guard_error:
+            st.error(guard_error)
         else:
             st.session_state.running = True
             st.session_state.run_cmd = cmd
             st.session_state.run_cwd = str(ROOT)
             st.session_state.run_platform = platform
+            # If the orchestrator supports --wait and the user opted in, the
+            # subprocess needs a stdin pipe so the Resume button can write
+            # \n into it. Reset Resume-related session keys for a clean run.
+            st.session_state.run_needs_stdin = bool(wait_for_login)
+            st.session_state.awaiting_resume = False
+            st.session_state.pop("_run_process", None)
+            st.session_state.pop("_run_output_lines", None)
+            st.session_state.pop("_run_queue", None)
             st.rerun()
 
     if st.session_state.get("running"):
@@ -507,8 +701,34 @@ def _run_active():
     cmd = st.session_state.run_cmd
     cwd = st.session_state.run_cwd
     platform = st.session_state.get("run_platform", "mobile")
+    needs_stdin = st.session_state.get("run_needs_stdin", False)
 
     st.markdown('<div class="section-header">Running Agent</div>', unsafe_allow_html=True)
+
+    # Resume button — only visible when the subprocess paused on input().
+    # Writes a single newline to the kept-open stdin pipe, which unblocks
+    # the orchestrator's `input("  >>> Press Enter...")` call. Streamlit's
+    # rerun lifecycle would normally fight a long polling loop, so we keep
+    # the subprocess + reader thread alive across reruns via session state.
+    if st.session_state.get("awaiting_resume"):
+        proc = st.session_state.get("_run_process")
+        st.warning(
+            "**Browser is open.** Log in or navigate to the page you want to test. "
+            "When the page is fully visible, click **Resume** to start the scan."
+        )
+        if st.button("▶ Resume", type="primary", key="resume_btn"):
+            if proc and proc.stdin and not proc.stdin.closed:
+                try:
+                    proc.stdin.write("\n")
+                    proc.stdin.flush()
+                except (BrokenPipeError, OSError) as e:
+                    st.error(f"Couldn't resume — pipe issue: {e}")
+                else:
+                    st.session_state.awaiting_resume = False
+                    st.rerun()
+            else:
+                st.error("Subprocess has no open stdin — cannot resume.")
+                st.session_state.awaiting_resume = False
 
     # Kill button at the top — always accessible
     if st.button("⛔ Kill Run", key="kill_btn", type="secondary"):
@@ -516,7 +736,10 @@ def _run_active():
         if proc and proc.poll() is None:
             _kill_process_tree(proc)
         st.session_state.running = False
+        st.session_state.awaiting_resume = False
         st.session_state.pop("_run_process", None)
+        st.session_state.pop("_run_output_lines", None)
+        st.session_state.pop("_run_queue", None)
         st.warning("Run killed.")
         st.rerun()
 
@@ -540,41 +763,71 @@ def _run_active():
                 screenshot_placeholder.image(img, width=380)
 
     status_text.markdown(f"**Running...**")
-    process = _run_agent_subprocess(cmd, cwd)
-    st.session_state["_run_process"] = process
 
-    # Background thread reads stdout into a queue — non-blocking
-    output_queue: Queue = Queue()
-
-    def _reader():
-        try:
-            while True:
-                line = process.stdout.readline()
-                if not line and process.poll() is not None:
-                    break
-                if line:
-                    output_queue.put(line)
-            remaining = process.stdout.read()
-            if remaining:
-                for rem in remaining.splitlines():
-                    output_queue.put(rem)
-            output_queue.put(None)  # sentinel
-        except Exception as exc:
-            output_queue.put(f"[reader error: {exc}]")
+    # Re-attach to existing subprocess + reader on rerun, otherwise start fresh.
+    # Streamlit reruns the whole script when buttons are clicked; without
+    # re-attachment, every Resume click would spawn a new subprocess.
+    existing = st.session_state.get("_run_process")
+    if existing and existing.poll() is None:
+        process = existing
+        output_lines = st.session_state.get("_run_output_lines") or []
+        output_queue = st.session_state.get("_run_queue")
+        # The reader thread for an existing process is still running.
+        if output_queue is None:
+            # Defensive: if queue was lost (shouldn't happen in normal flow),
+            # we can't re-stream stdout cleanly. Treat the subprocess as a
+            # background black-box and just wait for it to finish.
+            output_queue = Queue()
             output_queue.put(None)
+    else:
+        process = _run_agent_subprocess(cmd, cwd, with_stdin=needs_stdin)
+        st.session_state["_run_process"] = process
+        output_lines = []
+        st.session_state["_run_output_lines"] = output_lines
+        output_queue = Queue()
+        st.session_state["_run_queue"] = output_queue
 
-    thread = threading.Thread(target=_reader, daemon=True)
-    thread.start()
+        def _reader(proc=process, q=output_queue):
+            try:
+                while True:
+                    line = proc.stdout.readline()
+                    if not line and proc.poll() is not None:
+                        break
+                    if line:
+                        q.put(line)
+                remaining = proc.stdout.read()
+                if remaining:
+                    for rem in remaining.splitlines():
+                        q.put(rem)
+                q.put(None)  # sentinel
+            except Exception as exc:
+                q.put(f"[reader error: {exc}]")
+                q.put(None)
 
-    output_lines: list[str] = []
+        thread = threading.Thread(target=_reader, daemon=True)
+        thread.start()
+
     last_screenshot_time = time.time()
     skip_keywords = ["USAGE SUMMARY", "Real cost", "No-cache cost", "Savings:", "Cost:", "cost:", "Budget:"]
     done = False
+
+    # While we're paused waiting for the user to click Resume, skip the
+    # polling loop entirely. Streamlit can't process button clicks while
+    # this function is mid-loop (synchronous Python blocks the rerun
+    # mechanism), so we render the last-known output + the Resume button
+    # at the top, then return. Resume click → state flips → script reruns
+    # → polling resumes naturally.
+    if st.session_state.get("awaiting_resume"):
+        if output_lines:
+            terminal_output.code("\n".join(output_lines[-25:]), language="text")
+        status_text.markdown("**Paused — click Resume above when ready.**")
+        return
 
     try:
         while not done:
             # Drain queue — non-blocking
             got_new = False
+            saw_prompt = False
             while True:
                 try:
                     line = output_queue.get_nowait()
@@ -588,10 +841,20 @@ def _run_active():
                     continue
                 output_lines.append(stripped)
                 got_new = True
+                # Press-Enter prompt: orchestrator paused for manual login.
+                # Set flag and break so we rerun and surface the Resume button.
+                if ">>> Press Enter" in stripped:
+                    saw_prompt = True
 
             if got_new:
                 progress_bar.progress(min(len(output_lines) / 100, 0.95))
                 terminal_output.code("\n".join(output_lines[-25:]), language="text")
+
+            if saw_prompt and not st.session_state.get("awaiting_resume"):
+                st.session_state.awaiting_resume = True
+                # Rerun so the Resume button (rendered at the top of
+                # _run_active) becomes visible. Polling resumes after click.
+                st.rerun()
 
             # Update screenshot
             if screenshot_placeholder and platform == "mobile":
@@ -625,6 +888,15 @@ def _run_active():
     else:
         status_text.markdown(f"**Run finished with exit code {process.returncode}.**")
 
+    # Synthesis panel — only for extract_pipeline runs (the only orchestrator
+    # that emits STAGE_DONE markers today). Mobile + execute-style runs
+    # don't have markers, so the panel renders nothing for them.
+    if "extract_pipeline" in cmd and process.returncode == 0:
+        stages = parse_stage_markers(output_lines)
+        if stages:
+            st.markdown("---")
+            render_pipeline_synthesis(stages)
+
     if screenshot_placeholder and platform == "mobile":
         img = _take_adb_screenshot()
         if img:
@@ -632,6 +904,9 @@ def _run_active():
 
     st.session_state.running = False
     st.session_state.pop("_run_process", None)
+    st.session_state.pop("_run_output_lines", None)
+    st.session_state.pop("_run_queue", None)
+    st.session_state.awaiting_resume = False
 
     st.markdown("---")
     col_a, col_b = st.columns(2)
@@ -699,6 +974,32 @@ def _render_run_list(platform: str):
     )
 
     run_path = filtered[selected]
+
+    # Extract-pipeline runs have a .json sidecar with structured stage data.
+    # Render the synthesis panel instead of the test-results table.
+    if "_pipeline_" in run_path.name and run_path.suffix == ".txt":
+        json_sidecar = run_path.with_suffix(".json")
+        if json_sidecar.exists():
+            try:
+                summary = json.loads(json_sidecar.read_text())
+                stages = summary.get("stages") or {}
+                # Show app + URL + timestamps as a header line.
+                st.markdown(
+                    f"**App:** `{summary.get('app_name', '?')}`  "
+                    f"&nbsp;&nbsp; **URL:** `{summary.get('url', '?')}`"
+                )
+                if summary.get("started_at"):
+                    st.caption(f"started {summary['started_at']}  ·  finished {summary.get('finished_at', '?')}")
+                render_pipeline_synthesis(stages, kb_path=stages.get("extract", {}).get("kb_path"))
+                with st.expander("Raw text report"):
+                    st.code(run_path.read_text(), language="text")
+                return
+            except (json.JSONDecodeError, OSError) as e:
+                st.warning(f"Couldn't read synthesis sidecar — falling back to text view. ({e})")
+        # No JSON sidecar — show the .txt as-is.
+        st.code(run_path.read_text(), language="text")
+        return
+
     text = run_path.read_text()
 
     if run_path.suffix == ".json":
