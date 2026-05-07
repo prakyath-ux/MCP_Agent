@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +35,258 @@ from qa.models import KnowledgeBase, Platform, TargetApp
 from qa.models.common import ElementType, Locator, make_element_id
 from qa.models.knowledge import L0Element, L1Element, L2Element, ScreenKnowledge
 from qa.tools.web_tools import EXHAUSTIVE_SCAN_JS, _safe_parse
+
+
+# ── Phase 1: dropdown options discovery (interactive expansion) ─────────────
+#
+# Single-pass DOM scan can't see options that only render after a dropdown
+# trigger is clicked. After the main scan, this pass re-visits each
+# dropdown whose options[] is empty, opens the popup, captures up to N
+# visible options, then restores the page state with Escape.
+#
+# Three sequential MCP round-trips per dropdown:
+#   1. Click trigger (resolved via XPath from L1)
+#   2. After 0.4s, scan visible popup options with a broad selector union;
+#      smart-fallback to leaf-text inside listbox/menu containers when
+#      ARIA markup is missing (TECU branch list, etc.)
+#   3. Press Escape to close the popup so subsequent scans/expansions
+#      start from a clean state
+#
+# Cap (default 5) keeps L0 token weight bounded — a 200-country list adds
+# ~80 tokens, not 4 KB. Plan picks a single value per test case anyway.
+
+_PLACEHOLDER_RE = re.compile(
+    r"^(select|choose|please\s+select|--\s*select\s*--|select\s+an\s+option|"
+    r"choose\s+an\s+option|select\.\.\.)$",
+    re.IGNORECASE,
+)
+
+
+async def _expand_dropdown(adapter, xpath: str, max_options: int = 5) -> list[str]:
+    """Open a dropdown via XPath, capture up to N options, close it.
+
+    Strategy: take a pre-click snapshot of every visible element, then
+    click, wait, and scan for elements that became visible (or were
+    added to the DOM) during that window. Newly-visible leaf-text nodes
+    are option candidates. This generalizes across popup styles —
+    portals, in-flow blocks, position-absolute overlays, etc.
+
+    Falls back to known role/class popup containers if the diff misses.
+
+    Returns [] on any failure. Failures are silent — extract continues
+    with options[] empty and Plan falls back to its FIRST sentinel.
+    """
+    if not xpath:
+        return []
+    xp_lit = json.dumps(xpath)
+
+    # All four phases (snapshot, click, wait, diff) run inside a single
+    # async JS function. Object-identity checks (Set of element refs)
+    # only work in one execution context — splitting across MCP calls
+    # would lose the references between snapshots.
+    expand_js = f"""
+      async () => {{
+        const xpath = {xp_lit};
+          let trigger = null;
+          try {{
+            const r = document.evaluate(xpath, document, null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            trigger = r.singleNodeValue;
+          }} catch (e) {{
+            return JSON.stringify({{status: 'BAD_XPATH', error: String(e).slice(0, 120)}});
+          }}
+          if (!trigger) return JSON.stringify({{status: 'NOT_FOUND'}});
+
+          // Cache the trigger's text BEFORE click. After click, the
+          // trigger's subtree absorbs the popup options, so its
+          // textContent inflates to a concatenation of every option.
+          // We use this both to skip the trigger element itself and to
+          // drop placeholder options that mirror the trigger label.
+          const triggerTextBefore = (trigger.textContent || '').trim();
+
+          // Pre-click snapshot: WeakSet-style identity for visible elements.
+          const isVisible = (e) => {{
+            if (!e || e.nodeType !== 1) return false;
+            if (e.offsetParent !== null) return true;
+            const cs = window.getComputedStyle(e);
+            return cs.display !== 'none' && cs.visibility !== 'hidden';
+          }};
+          const preVisible = new Set();
+          for (const e of document.querySelectorAll('*')) {{
+            if (isVisible(e)) preVisible.add(e);
+          }}
+
+          trigger.scrollIntoView({{block: 'center', behavior: 'instant'}});
+          trigger.click();
+          try {{ trigger.focus({{preventScroll: true}}); }} catch (_) {{}}
+          trigger.dispatchEvent(new KeyboardEvent('keydown',
+            {{key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true}}));
+
+          await new Promise(r => setTimeout(r, 400));
+
+          // Newly-visible elements = popup contents (in any style).
+          const newlyVisible = [];
+          for (const e of document.querySelectorAll('*')) {{
+            if (isVisible(e) && !preVisible.has(e)) newlyVisible.push(e);
+          }}
+
+          // Pass 1: standard option markup inside newly-visible nodes.
+          const standard = '[role=option], [role=menuitem], li[role=listitem], '
+            + '.MuiMenuItem-root, .dropdown-item, '
+            + '[class*="select__option"], [class*="dropdown__option"], '
+            + '[class*="combobox__option"], [class*="-Option"], [data-option-index]';
+          let opts = [];
+          for (const root of newlyVisible) {{
+            const matches = root.matches && root.matches(standard) ? [root] : [];
+            const desc = [...root.querySelectorAll(standard)];
+            for (const m of [...matches, ...desc]) {{
+              const t = (m.textContent || '').trim();
+              if (t) opts.push(t);
+            }}
+          }}
+
+          // Pass 2: leaf-text inside newly-visible if standard markup absent.
+          if (opts.length === 0) {{
+            for (const root of newlyVisible) {{
+              const t = (root.textContent || '').trim();
+              if (!t || t.length > 100) continue;
+              // Skip if any child of root has the SAME text — keep leaf-ish only.
+              let isLeaf = true;
+              for (const c of root.children) {{
+                const ct = (c.textContent || '').trim();
+                if (ct === t) {{ isLeaf = false; break; }}
+              }}
+              if (isLeaf) opts.push(t);
+            }}
+          }}
+
+          // Pass 3: known popup containers by role/class as a final safety net.
+          if (opts.length === 0) {{
+            const fallback = [...document.querySelectorAll(
+              '[role=listbox], [role=menu], [class*="popup"], '
+              + '[class*="dropdown"]:not(button), [class*="menu"]:not(button)'
+            )].filter(p => isVisible(p));
+            for (const popup of fallback) {{
+              const leafs = [...popup.querySelectorAll('*')].filter(l => {{
+                if (!isVisible(l)) return false;
+                const t = (l.textContent || '').trim();
+                if (!t || t.length > 100) return false;
+                for (const c of l.children) {{
+                  const ct = (c.textContent || '').trim();
+                  if (ct === t) return false;
+                }}
+                return true;
+              }});
+              const texts = leafs.map(l => (l.textContent || '').trim()).filter(t => t);
+              if (texts.length > 0) {{ opts = texts; break; }}
+            }}
+          }}
+
+          // Restore: send Escape, then blur active element.
+          document.dispatchEvent(new KeyboardEvent('keydown',
+            {{key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}}));
+          if (document.activeElement && document.activeElement !== document.body) {{
+            try {{ document.activeElement.blur(); }} catch (_) {{}}
+          }}
+
+          // Post-filters:
+          //   1. Drop the trigger's pre-click text (placeholder leak).
+          //   2. Drop the trigger element's post-click textContent
+          //      (concatenation of every option, e.g. "Select XSemi-FormalFriendly…").
+          //   3. Drop superset texts that wholly contain a shorter
+          //      sibling option — same wrapper-concat shape after step 2.
+          opts = opts.filter(t => t && t !== triggerTextBefore && t !== (trigger.textContent || '').trim());
+          // Wrapper-concat detection: a wrapper element typically contains
+          // EVERY option's text concatenated. Require 2+ other options as
+          // substrings before dropping — a single-substring overlap is
+          // legitimate (e.g. "Semi-Formal" contains "Formal" but is its
+          // own valid option).
+          opts = opts.filter((t, i) => {{
+            const containedOthers = opts.filter((other, j) =>
+              j !== i && other.length >= 2 && t.length > other.length && t.includes(other)
+            ).length;
+            return containedOthers < 2;
+          }});
+
+          return JSON.stringify({{
+            status: 'OK',
+            options: opts,
+            new_elements_count: newlyVisible.length,
+          }});
+      }}
+    """
+
+    raw = await adapter._call("evaluate_script", {"function": expand_js})
+    parsed = _safe_parse(raw)
+    if not isinstance(parsed, dict):
+        # Most likely cause: MCP didn't await the async fn and we got back
+        # a Promise serialization. Helpful to see exactly what came out.
+        print(f"      [debug] expand returned non-dict: {str(raw)[:160]}")
+        return []
+    if parsed.get("status") != "OK":
+        print(f"      [debug] expand status={parsed.get('status')} "
+              f"err={parsed.get('error', '')}")
+        return []
+
+    raw_opts = parsed.get("options") or []
+    new_count = parsed.get("new_elements_count", "?")
+    if not isinstance(raw_opts, list):
+        print(f"      [debug] options not a list: {type(raw_opts).__name__}")
+        return []
+    if not raw_opts:
+        print(f"      [debug] OK status, but 0 options found "
+              f"(newly-visible elements: {new_count})")
+
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for o in raw_opts:
+        if not isinstance(o, str):
+            continue
+        text = o.strip()
+        key = text.lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        if _PLACEHOLDER_RE.match(text):
+            continue
+        cleaned.append(text)
+        if len(cleaned) >= max_options:
+            break
+    return cleaned
+
+
+async def _expand_empty_dropdowns(adapter, payload: dict, max_options: int = 5) -> dict:
+    """Walk the elements list, expand each dropdown with empty options[].
+    Mutates payload in place. Returns expansion summary."""
+    elements = payload.get("elements") or []
+    candidates = [
+        el for el in elements
+        if el.get("kind") == "dropdown"
+        and not el.get("options")
+        and el.get("xpath")
+    ]
+    if not candidates:
+        return {"attempted": 0, "captured": 0, "failed": 0}
+
+    print(f"  Expanding {len(candidates)} dropdown(s) to capture options...")
+    captured = 0
+    failed = 0
+    for el in candidates:
+        name = (el.get("name") or "?")[:50]
+        try:
+            opts = await _expand_dropdown(adapter, el["xpath"], max_options)
+        except Exception as e:
+            print(f"    ✗ {name:<50} → exception: {type(e).__name__}: {e}")
+            failed += 1
+            continue
+        if opts:
+            el["options"] = opts
+            captured += 1
+            print(f"    ✓ {name:<50} → {len(opts)} option(s): {', '.join(opts[:3])}{' …' if len(opts) > 3 else ''}")
+        else:
+            failed += 1
+            print(f"    ✗ {name:<50} → no options captured")
+    return {"attempted": len(candidates), "captured": captured, "failed": failed}
 
 
 def _element_type(raw: str) -> ElementType:
@@ -191,6 +444,12 @@ async def run_exhaustive_extract(
             raise RuntimeError(
                 f"exhaustive scan returned unparseable output: {str(raw)[:500]}"
             )
+
+        # Phase 1: dropdown expansion. Only fires for elements where
+        # extract recorded kind=dropdown but options[] is empty (custom
+        # comboboxes whose list only renders after click). Native <select>
+        # already has options captured in the initial scan, so it's untouched.
+        await _expand_empty_dropdowns(adapter, payload, max_options=5)
 
         target_screen = (
             screen_name

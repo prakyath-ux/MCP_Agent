@@ -2100,8 +2100,18 @@ EXHAUSTIVE_SCAN_JS = r"""
       const testid = (el.getAttribute('data-testid') || '').toLowerCase();
       const haspopup = (el.getAttribute('aria-haspopup') || '').toLowerCase();
       const label = (labelFor(el) || '').toLowerCase();
+      // Label heuristic: "Select X" / "Choose X" / "Pick X" + a chevron/SVG
+      // descendant is a strong signal for a dropdown trigger. The chevron
+      // requirement filters action buttons like "Select all" / "Choose files"
+      // that share the verb but aren't dropdowns.
+      const labelMatchesPicker = /^(select|choose|pick)\s+\S/.test(label)
+        && !/\b(all|none|everything|files?|photos?|images?|date)\b/.test(label);
+      const hasChevron = !!el.querySelector(
+        'svg, [class*="chevron" i], [class*="arrow-down" i], [class*="caret" i]'
+      );
       if (haspopup === 'listbox' || haspopup === 'menu' || haspopup === 'true'
-          || /dropdown|combobox/.test(testid)) return 'dropdown';
+          || /dropdown|combobox/.test(testid)
+          || (labelMatchesPicker && hasChevron)) return 'dropdown';
       if (/file|upload|attach|picker/.test(testid)
           || /(upload|attach|add|choose).*(picture|photo|image|file|document)/.test(label)
           || /(profile.{0,5}pic|profile.{0,5}photo)/.test(label)) return 'file_upload';
