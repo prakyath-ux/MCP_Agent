@@ -182,11 +182,47 @@ async def _expand_dropdown(adapter, xpath: str, max_options: int = 5) -> list[st
             }}
           }}
 
-          // Restore: send Escape, then blur active element.
-          document.dispatchEvent(new KeyboardEvent('keydown',
-            {{key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}}));
+          // ── Escalating close: try cheap moves first, verify after each,
+          // and fall back to clicking the trigger again (toggles popup
+          // closed on most React-Select / Headless UI / Radix patterns).
+          // Verification uses the same DOM-diff: any element visible NOW
+          // that wasn't in `preVisible` is popup-rendered content. If that
+          // count is zero, the popup is closed.
+          const popupStillOpen = () => {{
+            for (const e of document.querySelectorAll('*')) {{
+              if (isVisible(e) && !preVisible.has(e)) return true;
+            }}
+            return false;
+          }};
+
+          // Step A: Escape on document and active element + blur
+          try {{
+            document.dispatchEvent(new KeyboardEvent('keydown',
+              {{key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}}));
+          }} catch (_) {{}}
           if (document.activeElement && document.activeElement !== document.body) {{
-            try {{ document.activeElement.blur(); }} catch (_) {{}}
+            try {{
+              document.activeElement.dispatchEvent(new KeyboardEvent('keydown',
+                {{key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}}));
+              document.activeElement.blur();
+            }} catch (_) {{}}
+          }}
+          await new Promise(r => setTimeout(r, 120));
+
+          // Step B (Plan B): re-click the trigger to TOGGLE the popup
+          // closed. Most app dropdowns (TECU's Branch, Forgenite's
+          // Communication Tone) are toggle-style — the same click that
+          // opened them closes them. Only run if the popup is still open
+          // after Step A, so we don't reopen a successfully-closed popup.
+          if (popupStillOpen()) {{
+            try {{ trigger.click(); }} catch (_) {{}}
+            await new Promise(r => setTimeout(r, 120));
+          }}
+
+          // Step C (last resort): click outside on documentElement.
+          if (popupStillOpen()) {{
+            try {{ document.documentElement.click(); }} catch (_) {{}}
+            await new Promise(r => setTimeout(r, 80));
           }}
 
           // Post-filters:
@@ -255,6 +291,273 @@ async def _expand_dropdown(adapter, xpath: str, max_options: int = 5) -> list[st
     return cleaned
 
 
+# ── Phase 2: radio-group expansion (conditional flow discovery) ─────────────
+#
+# Each radio option may toggle the visibility of a different set of fields
+# (Voice Bot reveals voice config; Form lead-capture reveals chip toggles).
+# After Phase 1, walk every native radio group, click each option, re-scan
+# the DOM, and record any newly-visible elements as conditional fields
+# tagged with depends_on=[radio_group, option_label]. Aria-radios are
+# skipped in v1 — most production apps still use `<input type=radio>`.
+#
+# State management (in-place, no reload):
+#   - For each group, click each option in turn; restore by re-clicking
+#     the first option at the end. Best-effort: some apps require a
+#     specific default which we may not match exactly.
+#   - Cascading hides aren't tracked explicitly; we record additions only.
+#     Plan handles depends_on when generating tests.
+
+_RADIO_NAME_RE = re.compile(r"@name\s*=\s*['\"]([^'\"]+)['\"]")
+
+
+_CLOSE_POPUPS_JS = """
+  () => {
+    // Multi-strategy popup dismissal — Escape doesn't always reach popup
+    // listeners (esp. React portal-mounted menus that listen for outside
+    // click on document.body). Try them all; idempotent.
+    try {
+      document.dispatchEvent(new KeyboardEvent('keydown',
+        {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+    } catch (_) {}
+    try {
+      document.body.dispatchEvent(new KeyboardEvent('keydown',
+        {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+    } catch (_) {}
+    try {
+      if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown',
+          {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+        document.activeElement.blur();
+      }
+    } catch (_) {}
+    try { document.body.click(); } catch (_) {}
+    try { document.documentElement.click(); } catch (_) {}
+    return JSON.stringify({status: 'CLOSED'});
+  }
+"""
+
+
+async def _close_all_popups(adapter) -> None:
+    """Best-effort dismissal of any open popup, modal, or focused widget.
+    Idempotent — safe to call repeatedly between phases / rescans."""
+    try:
+        await adapter._call("evaluate_script", {"function": _CLOSE_POPUPS_JS})
+        await asyncio.sleep(0.15)
+    except Exception:
+        pass
+
+
+async def _filter_popup_descendants(adapter, candidates: list[dict]) -> tuple[list[dict], int]:
+    """Drop any candidate whose XPath resolves to an element living inside
+    a popup container (`[role=listbox]`, `[role=menu]`, `[class*=popup]`,
+    `[class*=dropdown]:not(button)`, `[class*=menu]:not(button)`).
+
+    This is Layer 2 defense: even if the close logic in Phase 1 fails on
+    some unknown app, popup-internal contents never get tagged as
+    conditional fields.
+
+    Single batched MCP call for all candidates. Returns (kept, dropped_count).
+    """
+    if not candidates:
+        return [], 0
+    xpaths = [c.get("xpath") for c in candidates]
+    xpaths_json = json.dumps(xpaths)
+    js = f"""
+      () => {{
+        const xpaths = {xpaths_json};
+        const popupSel = '[role=listbox], [role=menu], [class*="popup" i]:not(button), '
+          + '[class*="dropdown" i]:not(button), [class*="menu" i]:not(button)';
+        return JSON.stringify(xpaths.map(xp => {{
+          if (!xp) return false;
+          try {{
+            const r = document.evaluate(xp, document, null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            let cur = r.singleNodeValue;
+            while (cur && cur.nodeType === 1) {{
+              if (cur.matches && cur.matches(popupSel)) return true;
+              cur = cur.parentElement;
+            }}
+            return false;
+          }} catch (_) {{ return false; }}
+        }}));
+      }}
+    """
+    raw = await adapter._call("evaluate_script", {"function": js})
+    parsed = _safe_parse(raw)
+    if not isinstance(parsed, list) or len(parsed) != len(candidates):
+        # Filter failed — return everything (trust upstream). Better to
+        # over-include with depends_on tags than to silently drop fields.
+        return candidates, 0
+    kept = [c for c, in_popup in zip(candidates, parsed) if not in_popup]
+    return kept, len(candidates) - len(kept)
+
+
+def _extract_name_attr_from_xpath(xpath: str) -> str:
+    if not xpath:
+        return ""
+    m = _RADIO_NAME_RE.search(xpath)
+    return m.group(1) if m else ""
+
+
+def _build_radio_click_js(group_name: str, option_label: str) -> str:
+    """Click a native radio by its `name` attribute and visible label.
+    Tries label[for=id] → wrapping <label> → aria-label → value, in that
+    order, and matches case-insensitively to tolerate small differences."""
+    gn = json.dumps(group_name)
+    ol = json.dumps(option_label)
+    return f"""
+      () => {{
+        const groupName = {gn};
+        const optionLabel = {ol};
+        const inputs = [...document.querySelectorAll(
+          'input[type="radio"][name="' + groupName + '"]'
+        )];
+        if (inputs.length === 0) return JSON.stringify({{status: 'NO_GROUP'}});
+
+        const norm = s => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        const target = norm(optionLabel);
+
+        let pick = null;
+        for (const inp of inputs) {{
+          let label = '';
+          if (inp.id) {{
+            const lbl = document.querySelector('label[for="' + inp.id + '"]');
+            if (lbl) label = (lbl.textContent || '').trim();
+          }}
+          if (!label) {{
+            const wrap = inp.closest('label');
+            if (wrap) label = (wrap.textContent || '').trim();
+          }}
+          if (!label) label = inp.getAttribute('aria-label') || '';
+          if (!label) label = inp.value || '';
+
+          const labNorm = norm(label);
+          if (labNorm === target || labNorm.includes(target) || target.includes(labNorm)) {{
+            pick = inp;
+            break;
+          }}
+        }}
+
+        if (!pick) return JSON.stringify({{status: 'OPTION_NOT_FOUND'}});
+        pick.scrollIntoView({{block: 'center', behavior: 'instant'}});
+        pick.click();
+        return JSON.stringify({{status: 'CLICKED', value: pick.value || ''}});
+      }}
+    """
+
+
+async def _click_radio_by_label(adapter, group_name: str, option_label: str) -> bool:
+    if not group_name or not option_label:
+        return False
+    js = _build_radio_click_js(group_name, option_label)
+    raw = await adapter._call("evaluate_script", {"function": js})
+    parsed = _safe_parse(raw)
+    return isinstance(parsed, dict) and parsed.get("status") == "CLICKED"
+
+
+async def _expand_radio_groups(adapter, payload: dict) -> dict:
+    """Phase 2: iterate native radio groups, click each option, re-scan,
+    record newly-visible elements with depends_on tags. Restore by
+    clicking the first option after each group."""
+    elements = payload.get("elements") or []
+    radio_entries = [
+        e for e in elements
+        if e.get("kind") == "radio"
+        and e.get("input_type") != "aria-radio"
+        and not e.get("disabled")
+        and len(e.get("options") or []) >= 2
+        and e.get("xpath")
+    ]
+    if not radio_entries:
+        return {"attempted": 0, "options_explored": 0, "new_elements": 0}
+
+    print(f"  Phase 2: expanding {len(radio_entries)} radio group(s)...")
+
+    initial_xpaths = {e.get("xpath") for e in elements if e.get("xpath")}
+    new_elements: list[dict] = []
+    explored = 0
+    failed_groups = 0
+
+    for radio_el in radio_entries:
+        group_attr = _extract_name_attr_from_xpath(radio_el.get("xpath", ""))
+        label_short = (radio_el.get("name") or "?")[:50]
+        if not group_attr:
+            print(f"    ✗ {label_short:<50} → could not derive @name attribute")
+            failed_groups += 1
+            continue
+
+        options = list(radio_el.get("options") or [])
+        group_new = 0
+        for opt_label in options:
+            # Force any leftover popup closed before EACH option toggle —
+            # otherwise rescan picks up popup contents as "new conditional
+            # elements" (false positives we hit in v1).
+            await _close_all_popups(adapter)
+            ok = await _click_radio_by_label(adapter, group_attr, opt_label)
+            if not ok:
+                continue
+            explored += 1
+            await asyncio.sleep(0.4)
+            # And again before rescan — radio click itself can shift focus
+            # and reopen state-bound popups.
+            await _close_all_popups(adapter)
+
+            raw = await adapter._call("evaluate_script", {"function": EXHAUSTIVE_SCAN_JS})
+            rescan = _safe_parse(raw)
+            if not isinstance(rescan, dict):
+                continue
+
+            # First pass — xpath-based dedup against initial scan.
+            xpath_new = []
+            for new_el in rescan.get("elements") or []:
+                xp = new_el.get("xpath")
+                if not xp or xp in initial_xpaths:
+                    continue
+                xpath_new.append(new_el)
+
+            # Layer 2 filter — drop any candidate inside a popup container
+            # (defense in case the close logic missed an open menu).
+            kept, dropped = await _filter_popup_descendants(adapter, xpath_new)
+            if dropped:
+                print(f"      [filter] dropped {dropped} popup-internal candidate(s)")
+
+            for new_el in kept:
+                xp = new_el.get("xpath")
+                new_el["depends_on"] = [
+                    f"radio:{group_attr}",
+                    f"option={opt_label}",
+                ]
+                initial_xpaths.add(xp)
+                new_elements.append(new_el)
+                group_new += 1
+
+        # Restore: click first option (best-effort).
+        if options:
+            await _click_radio_by_label(adapter, group_attr, options[0])
+            await asyncio.sleep(0.2)
+
+        marker = "✓" if group_new else "·"
+        print(f"    {marker} {label_short:<50} → {group_new} new element(s) across {len(options)} option(s)")
+
+    if new_elements:
+        print(f"    discovered {len(new_elements)} conditional element(s) total:")
+        for el in new_elements[:8]:
+            kind = el.get("kind", "?")
+            nm = (el.get("name") or "")[:50]
+            dep = el.get("depends_on") or []
+            print(f"      + {kind:<12} {nm:<50}  ({', '.join(dep)})")
+        if len(new_elements) > 8:
+            print(f"      … +{len(new_elements) - 8} more")
+
+    payload["elements"].extend(new_elements)
+    return {
+        "attempted": len(radio_entries),
+        "options_explored": explored,
+        "new_elements": len(new_elements),
+        "failed_groups": failed_groups,
+    }
+
+
 async def _expand_empty_dropdowns(adapter, payload: dict, max_options: int = 5) -> dict:
     """Walk the elements list, expand each dropdown with empty options[].
     Mutates payload in place. Returns expansion summary."""
@@ -278,7 +581,11 @@ async def _expand_empty_dropdowns(adapter, payload: dict, max_options: int = 5) 
         except Exception as e:
             print(f"    ✗ {name:<50} → exception: {type(e).__name__}: {e}")
             failed += 1
+            await _close_all_popups(adapter)
             continue
+        # Always force a clean state after each dropdown — the in-JS Escape
+        # often misses portal-mounted popups (e.g. Forgenite's combobox).
+        await _close_all_popups(adapter)
         if opts:
             el["options"] = opts
             captured += 1
@@ -354,7 +661,7 @@ def _build_kb(app: TargetApp, payload: dict, screen_name: str) -> KnowledgeBase:
             screen_name=screen_name,
             accept=str(raw.get("accept") or ""),
             semantic_hint="",
-            depends_on=[],
+            depends_on=[str(d) for d in (raw.get("depends_on") or []) if d],
         ))
 
         # Locators: XPath is primary now (tier-aware confidence), CSS
@@ -450,6 +757,12 @@ async def run_exhaustive_extract(
         # comboboxes whose list only renders after click). Native <select>
         # already has options captured in the initial scan, so it's untouched.
         await _expand_empty_dropdowns(adapter, payload, max_options=5)
+
+        # Phase 2: radio-group expansion. Toggles each native-radio option
+        # to discover conditional fields revealed only under specific
+        # selections. New elements are appended to payload with depends_on
+        # tags so Plan can scope test cases by selection state.
+        await _expand_radio_groups(adapter, payload)
 
         target_screen = (
             screen_name
