@@ -1,7 +1,7 @@
 {
   "app": {
     "platform": "web",
-    "url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+    "url": "http://10.0.3.55:3004/chatBot?editBotId=BOT-20260410-CAOHCY00",
     "package_name": null,
     "app_name": "TECU",
     "device_id": null
@@ -6348,9 +6348,710 @@
           "last_seen": "2026-05-05T11:12:04.409830"
         }
       ]
+    },
+    {
+      "screen_name": "newapplication",
+      "screen_url": "https://qa-tq-awp.impactodigifin.xyz/newapplication",
+      "l0": [
+        {
+          "element_id": "newapplication:unlabeled:link",
+          "name": "(unlabeled)",
+          "type": "link",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=a; locator_tier=6; disambiguation_failed=true",
+          "options": [],
+          "interaction_order": 0,
+          "default_value": "",
+          "validation_rules": "input_type=a",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:add_profile_picture:file_upload",
+          "name": "Add profile picture",
+          "type": "file_upload",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=submit; locator_tier=1",
+          "options": [],
+          "interaction_order": 1,
+          "default_value": "",
+          "validation_rules": "input_type=submit",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:first_name:text_input",
+          "name": "First Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "exhaustive_extract; input_type=text; locator_tier=1",
+          "options": [],
+          "interaction_order": 2,
+          "default_value": "",
+          "validation_rules": "input_type=text",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:enter_email_address:text_input",
+          "name": "Enter email address",
+          "type": "text_input",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=email; locator_tier=1",
+          "options": [],
+          "interaction_order": 3,
+          "default_value": "",
+          "validation_rules": "input_type=email",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:middle_name_optional:text_input",
+          "name": "Middle Name (optional)",
+          "type": "text_input",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=text; locator_tier=1",
+          "options": [],
+          "interaction_order": 4,
+          "default_value": "",
+          "validation_rules": "input_type=text",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:mobile_number:text_input",
+          "name": "Mobile Number*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "exhaustive_extract; input_type=tel; locator_tier=1",
+          "options": [],
+          "interaction_order": 5,
+          "default_value": "",
+          "validation_rules": "input_type=tel",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:last_name:text_input",
+          "name": "Last Name*",
+          "type": "text_input",
+          "required": true,
+          "behavior": "exhaustive_extract; input_type=text; locator_tier=1",
+          "options": [],
+          "interaction_order": 6,
+          "default_value": "",
+          "validation_rules": "input_type=text",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:select_branch:dropdown",
+          "name": "Select Branch",
+          "type": "dropdown",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=submit; locator_tier=1",
+          "options": [
+            "100 - TECU - MARABELLA BRANCH",
+            "200 - TECU - COUVA BRANCH",
+            "300 - TECU - PT. FORTIN BRANCH",
+            "900 - TECU Business Development Unit",
+            "600 - TISL"
+          ],
+          "interaction_order": 7,
+          "default_value": "",
+          "validation_rules": "input_type=submit",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:save_exit:button",
+          "name": "Save & Exit",
+          "type": "button",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=submit; locator_tier=1",
+          "options": [],
+          "interaction_order": 8,
+          "default_value": "",
+          "validation_rules": "input_type=submit",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        },
+        {
+          "element_id": "newapplication:save_continue:button",
+          "name": "Save & Continue",
+          "type": "button",
+          "required": false,
+          "behavior": "exhaustive_extract; input_type=submit; locator_tier=1",
+          "options": [],
+          "interaction_order": 9,
+          "default_value": "",
+          "validation_rules": "input_type=submit",
+          "screen_name": "newapplication",
+          "accept": "",
+          "semantic_hint": "",
+          "depends_on": []
+        }
+      ],
+      "l1": [
+        {
+          "element_id": "newapplication:unlabeled:link",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "/html/body[1]/div[2]/div[1]/div[1]/div[1]/a[1]",
+              "confidence": 0.3
+            },
+            {
+              "strategy": "label",
+              "value": "(unlabeled)",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom_disambiguation_failed",
+          "last_known_coordinates": null,
+          "widget_type": "a",
+          "identifier": "/html/body[1]/div[2]/div[1]/div[1]/div[1]/a[1]",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:add_profile_picture:file_upload",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()='Add profile picture']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[@data-testid='button']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "button[data-testid=\"button\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "label",
+              "value": "Add profile picture",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "button",
+          "identifier": "//button[normalize-space()='Add profile picture']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:first_name:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@data-testid='input-firstName']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='firstName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='firstName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Enter first name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @name='firstName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @placeholder='Enter first name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "input[data-testid=\"input-firstName\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"firstName\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[name=\"firstName\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter\\ first\\ name\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "label",
+              "value": "First Name*",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "input",
+          "identifier": "//input[@data-testid='input-firstName']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:enter_email_address:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@data-testid='input-email']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='email']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='email']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Enter email address']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='email' and @name='email']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='email' and @placeholder='Enter email address']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "input[data-testid=\"input-email\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"email\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter\\ email\\ address\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "label",
+              "value": "Enter email address",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "input",
+          "identifier": "//input[@data-testid='input-email']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:middle_name_optional:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='middleName']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='middleName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Enter middle name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @name='middleName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @placeholder='Enter middle name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"middleName\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "css",
+              "value": "input[name=\"middleName\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter\\ middle\\ name\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "label",
+              "value": "Middle Name (optional)",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "input",
+          "identifier": "//input[@id='middleName']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:mobile_number:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='mobileNumber']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='primaryMobileNo']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Enter mobile number']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='tel' and @name='primaryMobileNo']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='tel' and @placeholder='Enter mobile number']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"mobileNumber\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "css",
+              "value": "input[name=\"primaryMobileNo\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter\\ mobile\\ number\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "label",
+              "value": "Mobile Number*",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "input",
+          "identifier": "//input[@id='mobileNumber']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:last_name:text_input",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//input[@id='lastName']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@name='lastName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@placeholder='Enter last name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @name='lastName']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "xpath",
+              "value": "//input[@type='text' and @placeholder='Enter last name']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "input[id=\"lastName\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "css",
+              "value": "input[name=\"lastName\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "css",
+              "value": "input[placeholder=\"Enter\\ last\\ name\"]",
+              "confidence": 0.65
+            },
+            {
+              "strategy": "label",
+              "value": "Last Name*",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "input",
+          "identifier": "//input[@id='lastName']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:select_branch:dropdown",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[@data-testid='dropdown-button']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()='Select Branch']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "button[data-testid=\"dropdown-button\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "label",
+              "value": "Select Branch",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "button",
+          "identifier": "//button[@data-testid='dropdown-button']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:save_exit:button",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()='Save & Exit']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[@data-testid='button']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "button[data-testid=\"button\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "label",
+              "value": "Save & Exit",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "button",
+          "identifier": "//button[normalize-space()='Save & Exit']",
+          "screen_name": "newapplication"
+        },
+        {
+          "element_id": "newapplication:save_continue:button",
+          "locators": [
+            {
+              "strategy": "xpath",
+              "value": "//button[normalize-space()='Save & Continue']",
+              "confidence": 0.99
+            },
+            {
+              "strategy": "xpath",
+              "value": "//button[@data-testid='button']",
+              "confidence": 0.6
+            },
+            {
+              "strategy": "css",
+              "value": "button[data-testid=\"button\"]",
+              "confidence": 0.85
+            },
+            {
+              "strategy": "label",
+              "value": "Save & Continue",
+              "confidence": 0.4
+            }
+          ],
+          "retry_strategy": "exhaustive_dom",
+          "last_known_coordinates": null,
+          "widget_type": "button",
+          "identifier": "//button[normalize-space()='Save & Continue']",
+          "screen_name": "newapplication"
+        }
+      ],
+      "l2": [
+        {
+          "element_id": "newapplication:unlabeled:link",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:add_profile_picture:file_upload",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:first_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:enter_email_address:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:middle_name_optional:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:mobile_number:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:last_name:text_input",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:select_branch:dropdown",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:save_exit:button",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        },
+        {
+          "element_id": "newapplication:save_continue:button",
+          "runs": [],
+          "change_log": [
+            "2026-05-07: discovered by exhaustive_extract"
+          ],
+          "accessibility_issues": [],
+          "first_seen": "2026-05-07T15:49:54.739997",
+          "last_seen": "2026-05-07T15:49:54.739997"
+        }
+      ]
     }
   ],
   "created_at": "2026-04-15T10:31:23.510742",
-  "updated_at": "2026-05-05T11:12:04.409830",
-  "version": 8
+  "updated_at": "2026-05-07T16:07:37.142030",
+  "version": 1
 }
