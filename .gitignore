@@ -30,3 +30,8 @@ artifacts/test_files/tecu copy/
 # test run outputs (per-run artifacts, not source code)
 artifacts/results/*/
 !artifacts/results/.gitkeep
+
+# Local-only notes / drafts (never to be committed)
+LOCAL_*
+doc.pdf
+IBORG_NOTES.md
