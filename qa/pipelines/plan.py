@@ -14,10 +14,74 @@ from qa.engine.model_factory import build_model_config, build_model_settings
 async def run_plan(inp: PlanInput) -> PlanOutput:
     """Pipeline 2: Generate test cases from L0 knowledge index.
 
-    This pipeline has NO MCP server — pure LLM reasoning.
-    Reads only L0 (tiny planning index), generates test cases.
-    One LLM call, cheapest pipeline.
+    Dispatcher: for mobile KBs that span >1 screen, runs Plan once per
+    screen and aggregates the results so Execute (which iterates per
+    screen on mobile) gets a screen-tailored test block for each one.
+    Web and single-screen mobile take the original single-LLM-call path.
     """
+    platform = inp.knowledge.app.platform.value  # "mobile" | "web"
+    screens = inp.screen_names or inp.knowledge.screen_names()
+    if platform == "mobile" and len(screens) > 1:
+        return await _run_plan_per_screen(inp, screens)
+    return await _run_plan_single_block(inp)
+
+
+async def _run_plan_per_screen(inp: PlanInput, screens: list[str]) -> PlanOutput:
+    """Mobile multi-screen path: run Plan once per screen, aggregate.
+
+    Why: Mobile execute iterates per screen. When Plan emits one merged
+    block, cross-screen test cases land under the wrong screen during
+    execute reporting ("test not executed under each screen" noise).
+    Per-screen blocks restore the April-21 behavior — each screen gets
+    its own tailored set of cases, tc_id renumbered globally so the
+    aggregated list stays unique.
+    """
+    per_screen_cap = max(5, inp.max_total_cases // len(screens))
+    print(
+        f"\n  PLAN: mobile multi-screen — running per-screen "
+        f"({len(screens)} screens, ~{per_screen_cap} cases/screen)"
+    )
+
+    aggregated: list[TestCase] = []
+    total_cost = 0.0
+    total_duration = 0.0
+    raw_parts: list[str] = []
+
+    for screen_name in screens:
+        sub_inp = inp.model_copy(update={
+            "screen_names": [screen_name],
+            "max_total_cases": per_screen_cap,
+        })
+        sub_result = await _run_plan_single_block(sub_inp)
+        # Renumber tc_id globally + tag each TC with its screen so the
+        # execute pipeline's per-screen filter actually matches. Plan-LLM
+        # output omits screen_name; we set it from the loop variable here.
+        offset = len(aggregated)
+        for i, tc in enumerate(sub_result.test_cases, start=1):
+            tc.tc_id = f"TC{offset + i}"
+            if not tc.screen_name:
+                tc.screen_name = screen_name
+        aggregated.extend(sub_result.test_cases)
+        total_cost += sub_result.cost_usd
+        total_duration += sub_result.duration_sec
+        raw_parts.append(f"### Screen: {screen_name}\n\n{sub_result.raw_plan_text}")
+
+    return PlanOutput(
+        test_cases=aggregated,
+        coverage_summary=(
+            f"{len(aggregated)} cases across {len(screens)} screen(s)"
+        ),
+        model=inp.model,
+        cost_usd=total_cost,
+        duration_sec=total_duration,
+        raw_plan_text="\n\n".join(raw_parts),
+    )
+
+
+async def _run_plan_single_block(inp: PlanInput) -> PlanOutput:
+    """Original single-LLM-call planning path. Used for web and for
+    mobile when the KB has only one screen (or the caller specified a
+    single screen via screen_names)."""
     from qa.prompts.plan import PLAN_PROMPT
 
     # Build L0 index — only the compact planning data

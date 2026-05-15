@@ -61,15 +61,6 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
     else:
         test_cases = inp.test_cases
 
-    # Always rebuild plan_text from the parsed test_cases — guarantees the
-    # LLM sees element_id (which the tools resolve to the verified-unique
-    # locator). The raw plan-LLM output omits element_id by design.
-    plan_text = "\n".join(
-        f"{tc.tc_id} | element_id={tc.element_id} | {tc.field_name} | "
-        f"{tc.approach.value} | {tc.test_value}"
-        for tc in test_cases
-    )
-
     if not test_cases:
         print("  ERROR: No test cases generated")
         return ExecuteOutput(summary=TestSummary(), model=inp.model)
@@ -154,8 +145,21 @@ async def run_execute(inp: ExecuteInput) -> ExecuteOutput:
                 indent=2,
             ) if l0_index else "{}"
 
-            # Filter test cases for this screen
+            # Filter test cases for this screen. If a screen has zero
+            # matching cases (e.g. plan grouped everything under another
+            # screen name), fall back to all test_cases to avoid sending
+            # the LLM an empty plan.
             screen_tcs = [tc for tc in test_cases if tc.screen_name == screen_name] or test_cases
+
+            # Build plan_text from the filtered set so each screen's LLM
+            # call sees ONLY the cases for that screen — no off-screen
+            # SKIPPED noise in the report. Includes element_id so the
+            # compound tools can resolve verified-unique locators.
+            plan_text = "\n".join(
+                f"{tc.tc_id} | element_id={tc.element_id} | {tc.field_name} | "
+                f"{tc.approach.value} | {tc.test_value}"
+                for tc in screen_tcs
+            )
 
             if platform == Platform.MOBILE:
                 opening = (
